@@ -1,0 +1,20 @@
+{
+  "appId": "sa.com.jandalah.portal",
+  "appName": "بوابة جندله",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "server": {
+    "url": "https://portal.jandalah.com.sa",
+    "cleartext": true
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "backgroundColor": "#1E293B",
+      "showSpinner": false
+    },
+    "PushNotifications": {
+      "presentationOptions": ["badge", "sound", "alert"]
+    }
+  }
+}
