@@ -31,23 +31,23 @@
                                 <div>
                                     <div class="d-flex align-items-center gap-2 mb-1">
                                         <span class="badge bg-primary rounded-pill px-2 py-1"><i class="fa fa-apple me-1"/> آيفون - سفاري</span>
-                                        <h6 class="fw-bold mb-0 text-dark">تثبيت تطبيق جندله على الشاشة الرئيسية</h6>
+                                        <h6 class="fw-bold mb-0 text-dark">تثبيت تطبيق جندله على شاشتك الرئيسية</h6>
                                     </div>
                                     <p class="text-muted small mb-2">
-                                        لتشغيل التطبيق والوصول السريع للبصمة والإجازات بضغطة واحدة:
+                                        لتثبيت التطبيق للوصول السريع بدون متصفح:
                                     </p>
                                     <div class="d-flex flex-column gap-2 small bg-light p-2 rounded-3 border">
                                         <div class="d-flex align-items-center">
                                             <span class="badge bg-secondary rounded-circle me-2" style="width: 22px; height: 22px; line-height: 16px;">1</span>
-                                            <span>اضغط على زر المشاركة <i class="fa fa-share-square-o text-primary mx-1 fs-5"/> في الشريط السفلي للمتصفح.</span>
+                                            <span>اضغط على زر المشاركة <i class="fa fa-share-square-o text-primary mx-1 fs-5"/> في أسفل شاشة الآيفون.</span>
                                         </div>
                                         <div class="d-flex align-items-center">
                                             <span class="badge bg-secondary rounded-circle me-2" style="width: 22px; height: 22px; line-height: 16px;">2</span>
-                                            <span>مرر القائمة لأسفل واختر <strong>"إضافة إلى الشاشة الرئيسية"</strong> (<i class="fa fa-plus-square text-primary mx-1"/> Add to Home Screen).</span>
+                                            <span>اختر من القائمة <strong>"إضافة إلى الصفحة الرئيسية"</strong> (<i class="fa fa-plus-square text-primary mx-1"/> Add to Home Screen).</span>
                                         </div>
                                         <div class="d-flex align-items-center">
                                             <span class="badge bg-secondary rounded-circle me-2" style="width: 22px; height: 22px; line-height: 16px;">3</span>
-                                            <span>اضغط على <strong>"إضافة" (Add)</strong> في أعلى الزاوية ليظهر التطبيق فوراً كأيقونة في هاتفك.</span>
+                                            <span>اضغط على <strong>"إضافة" (Add)</strong> في أعلى اليمين ليظهر التطبيق فوراً على هاتفك.</span>
                                         </div>
                                     </div>
                                 </div>
@@ -64,15 +64,15 @@
                                 <div>
                                     <div class="d-flex align-items-center gap-2 mb-1">
                                         <span class="badge bg-warning text-dark rounded-pill px-2 py-1"><i class="fa fa-chrome me-1"/> آيفون - كروم</span>
-                                        <h6 class="fw-bold mb-0 text-dark">أنت تتصفح من متصفح كروم على الآيفون</h6>
+                                        <h6 class="fw-bold mb-0 text-dark">تثبيت التطبيق عبر متصفح كروم</h6>
                                     </div>
                                     <p class="text-muted small mb-2">
-                                        لتثبيت التطبيق على الشاشة الرئيسية مباشرة:
+                                        للتثبيت السريع على الآيفون:
                                     </p>
                                     <div class="d-flex flex-column gap-2 small bg-light p-2 rounded-3 border mb-2">
                                         <div class="d-flex align-items-center">
                                             <span class="badge bg-secondary rounded-circle me-2" style="width: 22px; height: 22px; line-height: 16px;">1</span>
-                                            <span>اضغط على زر الخيارات <strong>(...)</strong> في الشريط أسفل الشاشة.</span>
+                                            <span>اضغط على قائمة الخيارات <strong>(...)</strong> في أسفل شاشة كروم.</span>
                                         </div>
                                         <div class="d-flex align-items-center">
                                             <span class="badge bg-secondary rounded-circle me-2" style="width: 22px; height: 22px; line-height: 16px;">2</span>
@@ -81,7 +81,7 @@
                                     </div>
                                     <div class="d-flex align-items-center gap-2">
                                         <button class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="copyPortalUrl();">
-                                            <i class="fa fa-copy me-1"/> نسخ الرابط لفتحه في سفاري (موصى به)
+                                            <i class="fa fa-copy me-1"/> نسخ الرابط لفتحه في سفاري (الخيار المفضل)
                                         </button>
                                         <span id="copy_feedback_chrome" class="small text-success fw-bold d-none">تم النسخ! افتح سفاري والصق الرابط</span>
                                     </div>
@@ -98,27 +98,27 @@
                                 <img src="/jandalah_employee_portal/static/src/img/icon-192.png" alt="جندله" class="rounded-3 shadow-sm flex-shrink-0" style="width: 54px; height: 54px;"/>
                                 <div>
                                     <div class="d-flex align-items-center gap-2 mb-1">
-                                        <span class="badge bg-danger rounded-pill px-2 py-1"><i class="fa fa-whatsapp me-1"/> متصفح واتساب الداخلي</span>
-                                        <h6 class="fw-bold mb-0 text-dark">يجب فتح الرابط في متصفح سفاري لتثبيت التطبيق</h6>
+                                        <span class="badge bg-danger rounded-pill px-2 py-1"><i class="fa fa-exclamation-triangle me-1"/> متصفح داخلي</span>
+                                        <h6 class="fw-bold mb-0 text-dark">يُرجى فتح الرابط في المتصفح الرئيسي</h6>
                                     </div>
                                     <p class="text-muted small mb-2">
-                                        متصفح واتساب الداخلي لا يدعم تثبيت التطبيقات. يرجى فتح الصفحة في المتصفح الرئيسي:
+                                        أنت تتصفح حالياً من داخل تطبيق (مثل واتساب أو تويتر). لتفعيل الحضور وتثبيت التطبيق، يجب الفتح في المتصفح الخارجي:
                                     </p>
                                     <div class="d-flex flex-column gap-2 small bg-light p-2 rounded-3 border mb-2">
                                         <div class="d-flex align-items-center">
                                             <span class="badge bg-secondary rounded-circle me-2" style="width: 22px; height: 22px; line-height: 16px;">1</span>
-                                            <span>اضغط على أيقونة المتصفح <i class="fa fa-compass mx-1"/> أو الثلاث نقاط (...) أسفل أو أعلى الشاشة.</span>
+                                            <span>اضغط على قائمة النقاط الثلاث <strong>(...)</strong> أو زر المشاركة في زاوية الشاشة.</span>
                                         </div>
                                         <div class="d-flex align-items-center">
                                             <span class="badge bg-secondary rounded-circle me-2" style="width: 22px; height: 22px; line-height: 16px;">2</span>
-                                            <span>اختر <strong>"الفتح في متصفح سفاري" (Open in Safari)</strong>.</span>
+                                            <span>اختر <strong>"فتح في المتصفح"</strong> (Open in Chrome / Safari).</span>
                                         </div>
                                     </div>
                                     <div class="d-flex align-items-center gap-2">
                                         <button class="btn btn-sm btn-primary rounded-pill px-3" onclick="copyPortalUrl();">
-                                            <i class="fa fa-copy me-1"/> نسخ الرابط لفتحه خارجياً
+                                            <i class="fa fa-copy me-1"/> نسخ الرابط
                                         </button>
-                                        <span id="copy_feedback_inapp" class="small text-success fw-bold d-none">تم نسخ الرابط! افتح سفاري والصقه</span>
+                                        <span id="copy_feedback_inapp" class="small text-success fw-bold d-none">تم نسخ الرابط بنجاح!</span>
                                     </div>
                                 </div>
                             </div>
@@ -126,26 +126,24 @@
                         </div>
                     </div>
 
-                    <!-- 4. Android / Generic PWA Install Banner -->
+                    <!-- 4. Android / Desktop Chrome Standard Native Install Box -->
                     <div id="pwa_android_box" class="card border-0 shadow-sm rounded-4 p-3 bg-white d-none" style="border-right: 5px solid #198754 !important;">
                         <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
                             <div class="d-flex align-items-center gap-3">
-                                <img src="/jandalah_employee_portal/static/src/img/icon-192.png" alt="جندله" class="rounded-3 shadow-sm flex-shrink-0" style="width: 52px; height: 52px;"/>
+                                <img src="/jandalah_employee_portal/static/src/img/icon-192.png" alt="جندله" class="rounded-3 shadow-sm" style="width: 48px; height: 48px;"/>
                                 <div>
-                                    <div class="d-flex align-items-center gap-2 mb-1">
-                                        <span class="badge bg-success rounded-pill px-2 py-1"><i class="fa fa-android me-1"/> أندرويد / الويب</span>
-                                        <h6 class="fw-bold mb-0 text-dark">ثبّت تطبيق جندله على هاتفك</h6>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <h6 class="fw-bold mb-0 text-dark">تطبيق جندله الذكي (PWA)</h6>
+                                        <span class="badge bg-success rounded-pill px-2">أندرويد / كمبيوتر</span>
                                     </div>
-                                    <p class="text-muted small mb-0">
-                                        تطبيق سريع وخفيف للوصول المباشر للبصمة والإجازات بدون الحاجة لفتح المتصفح.
-                                    </p>
+                                    <small class="text-muted">ثبّت التطبيق على جهازك لتسجيل الحضور بلمسة واحدة وبدون كتابة الرابط مجدداً</small>
                                 </div>
                             </div>
                             <div class="d-flex align-items-center gap-2">
-                                <button id="btn_pwa_android_install" class="btn btn-success fw-bold rounded-pill px-4 shadow-sm">
+                                <button id="btn_pwa_install" class="btn btn-success fw-bold rounded-pill px-4 shadow-sm" onclick="installPWA();">
                                     <i class="fa fa-download me-1"/> تثبيت التطبيق الآن
                                 </button>
-                                <button type="button" class="btn-close" onclick="dismissPwa();" aria-label="Close"></button>
+                                <button type="button" class="btn-close ms-1" onclick="dismissPwa();" aria-label="Close"></button>
                             </div>
                         </div>
                     </div>
@@ -169,19 +167,19 @@
                             </div>
                             <div class="d-flex align-items-center gap-2">
                                 <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#pwaHelpModal">
-                                    <i class="fa fa-mobile me-1"/> طريقة تثبيت التطبيق
+                                    <i class="fa fa-mobile me-1"/> دليل تثبيت التطبيق
                                 </button>
                                 <span t-if="is_checked_in" class="badge bg-success fs-6 px-3 py-2 rounded-pill">
-                                    <i class="fa fa-check-circle me-1"/> مسجل حضور حالياً
+                                    <i class="fa fa-check-circle me-1"/> متواجد بالعمل الآن
                                 </span>
                                 <span t-else="" class="badge bg-secondary fs-6 px-3 py-2 rounded-pill">
-                                    <i class="fa fa-clock-o me-1"/> خارج وقت العمل
+                                    <i class="fa fa-clock-o me-1"/> غير متواجد حالياً
                                 </span>
                             </div>
                         </div>
 
                         <!-- ESS Actions Row -->
-                        <div class="row g-3">
+                        <div class="row g-3 mb-3">
                             <!-- Punch In/Out Card -->
                             <div class="col-12 col-md-6">
                                 <div class="card h-100 border-0 shadow-sm rounded-3">
@@ -189,12 +187,12 @@
                                         <div>
                                             <div class="d-flex align-items-center justify-content-between mb-2">
                                                 <h5 class="fw-bold mb-0 text-primary">
-                                                    <i class="fa fa-fingerprint me-2"/> بصمة الدوام الذكية
+                                                    <i class="fa fa-fingerprint me-2"/> تسجيل الحضور والانصراف
                                                 </h5>
                                                 <small class="text-muted" id="ess_live_clock"></small>
                                             </div>
                                             <p class="text-muted small mb-3">
-                                                تسجيل الحضور والانصراف الفوري عبر تحديد الموقع الجغرافي (GPS) بنقرة واحدة.
+                                                تسجيل الحضور والانصراف الذكي بالبصمة والموقع الجغرافي (GPS) بتوقيت المملكة.
                                             </p>
                                         </div>
 
@@ -203,17 +201,17 @@
                                                     t-attf-class="btn btn-lg w-100 fw-bold rounded-pill py-3 shadow-sm #{ 'btn-danger' if is_checked_in else 'btn-success' }"
                                                     onclick="toggleAttendance();">
                                                 <i t-attf-class="fa #{ 'fa-sign-out' if is_checked_in else 'fa-sign-in' } me-2"/>
-                                                <span id="btn_toggle_text"><t t-esc="'تسجيل انصراف' if is_checked_in else 'تسجيل حضور'"/></span>
+                                                <span id="btn_toggle_text"><t t-esc="'تسجيل الانصراف' if is_checked_in else 'تسجيل الحضور'"/></span>
                                             </button>
                                             <div id="attendance_feedback" class="mt-2 small fw-bold text-center" style="min-height: 20px;"></div>
                                         </div>
 
                                         <div class="d-flex justify-content-between align-items-center pt-2 border-top">
                                             <small class="text-muted">
-                                                إجمالي السجلات: <span class="fw-bold"><t t-esc="attendance_count"/></span>
+                                                إجمالي الحركات: <span class="fw-bold"><t t-esc="attendance_count"/></span>
                                             </small>
                                             <a href="/my/attendance" class="btn btn-sm btn-outline-primary rounded-pill">
-                                                سجل الدوام الكامل <i class="fa fa-arrow-left ms-1"/>
+                                                سجل حركاتي <i class="fa fa-arrow-left ms-1"/>
                                             </a>
                                         </div>
                                     </div>
@@ -227,14 +225,14 @@
                                         <div>
                                             <div class="d-flex align-items-center justify-content-between mb-2">
                                                 <h5 class="fw-bold mb-0 text-success">
-                                                    <i class="fa fa-calendar-check-o me-2"/> الإجازات والطلبات
+                                                    <i class="fa fa-calendar-check-o me-2"/> طلبات الإجازات
                                                 </h5>
                                                 <span class="badge bg-light text-dark border">
-                                                    <t t-esc="leaves_count"/> طلب مسجل
+                                                    <t t-esc="leaves_count"/> طلب إجازة
                                                 </span>
                                             </div>
                                             <p class="text-muted small mb-3">
-                                                تقديم طلبات الإجازات والاستئذان السنوي والمرضي ومتابعة حالة اعتمادها.
+                                                تقديم طلبات الإجازات ومتابعة حالة اعتمادها بكل سهولة.
                                             </p>
                                         </div>
 
@@ -246,16 +244,72 @@
 
                                         <div class="d-flex justify-content-between align-items-center pt-2 border-top">
                                             <small class="text-muted">
-                                                الرصيد والطلبات السابقة
+                                                سجل إجازاتي ومتابعتها
                                             </small>
                                             <a href="/my/leaves" class="btn btn-sm btn-outline-success rounded-pill">
-                                                سجل الإجازات <i class="fa fa-arrow-left ms-1"/>
+                                                عرض السجل <i class="fa fa-arrow-left ms-1"/>
                                             </a>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
+
+                        <!-- 3. Supervisor & Direct Manager Card (Visible only if is_supervisor) -->
+                        <t t-if="is_supervisor">
+                            <div class="card border-0 shadow-sm rounded-3 bg-white" style="border-right: 5px solid #6f42c1 !important;">
+                                <div class="card-body p-3">
+                                    <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+                                        <div class="d-flex align-items-center gap-3">
+                                            <div class="rounded-circle d-flex align-items-center justify-content-center text-white shadow-sm" style="width: 48px; height: 48px; background: linear-gradient(135deg, #6f42c1, #4e2d8a);">
+                                                <i class="fa fa-users fs-5"/>
+                                            </div>
+                                            <div>
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <h5 class="fw-bold mb-0 text-dark">لوحة المشرف والإدارة المباشرة</h5>
+                                                    <span class="badge bg-purple text-white rounded-pill px-2" style="background-color: #6f42c1;">مشرف ميداني / مدير مباشر</span>
+                                                </div>
+                                                <p class="text-muted small mb-0">متابعة الحضور الميداني بالـ GPS واعتماد الإجازات لفريق العمل التابع لك (بدون تراخيص إضافية)</p>
+                                            </div>
+                                        </div>
+                                        <span class="badge bg-light text-dark border px-3 py-2 rounded-pill">
+                                            <i class="fa fa-user-circle-o me-1 text-primary"/> <t t-esc="subordinates_count"/> موظف بالفريق
+                                        </span>
+                                    </div>
+
+                                    <div class="row g-2 text-center mb-3">
+                                        <div class="col-4">
+                                            <div class="p-2 bg-light rounded-3 border">
+                                                <small class="text-muted d-block">إجمالي الفريق</small>
+                                                <span class="fs-5 fw-bold text-dark"><t t-esc="subordinates_count"/></span>
+                                            </div>
+                                        </div>
+                                        <div class="col-4">
+                                            <div class="p-2 bg-light rounded-3 border">
+                                                <small class="text-muted d-block">متواجدون الآن</small>
+                                                <span class="fs-5 fw-bold text-success"><t t-esc="team_checked_in_count"/></span>
+                                            </div>
+                                        </div>
+                                        <div class="col-4">
+                                            <div class="p-2 bg-light rounded-3 border">
+                                                <small class="text-muted d-block">بانتظار اعتمادك</small>
+                                                <span class="fs-5 fw-bold text-warning"><t t-esc="team_pending_leaves_count"/></span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="d-flex gap-2 flex-wrap">
+                                        <a href="/my/team" class="btn btn-outline-primary rounded-pill px-4 flex-grow-1 fw-bold">
+                                            <i class="fa fa-list-alt me-1"/> متابعة حضور الفريق الميداني
+                                        </a>
+                                        <a href="/my/team/leaves" class="btn rounded-pill px-4 flex-grow-1 fw-bold text-white" style="background-color: #6f42c1;">
+                                            <i class="fa fa-check-square-o me-1"/> اعتمادات الإجازات (<t t-esc="team_pending_leaves_count"/>)
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </t>
+
                     </div>
                 </div>
 
@@ -265,7 +319,7 @@
                         <div class="modal-content border-0 shadow-lg rounded-4">
                             <div class="modal-header border-0 pb-0">
                                 <h5 class="modal-title fw-bold text-dark" id="pwaHelpModalLabel">
-                                    <i class="fa fa-mobile text-primary me-2"/> دليل تثبيت تطبيق جندله على الهاتف
+                                    <i class="fa fa-mobile text-primary me-2"/> دليل تثبيت التطبيق على هاتفك
                                 </h5>
                                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                             </div>
@@ -273,208 +327,193 @@
                                 <ul class="nav nav-pills nav-fill mb-3 bg-light p-1 rounded-pill" id="pwaTab" role="tablist">
                                     <li class="nav-item" role="presentation">
                                         <button class="nav-link active rounded-pill fw-bold" id="ios-tab" data-bs-toggle="pill" data-bs-target="#tab-ios" type="button" role="tab">
-                                            <i class="fa fa-apple me-1"/> هواتف آيفون (iOS)
+                                            <i class="fa fa-apple me-1"/> آبل (iOS)
                                         </button>
                                     </li>
                                     <li class="nav-item" role="presentation">
                                         <button class="nav-link rounded-pill fw-bold" id="android-tab" data-bs-toggle="pill" data-bs-target="#tab-android" type="button" role="tab">
-                                            <i class="fa fa-android me-1"/> هواتف أندرويد
+                                            <i class="fa fa-android me-1"/> أندرويد
                                         </button>
                                     </li>
                                 </ul>
+
                                 <div class="tab-content" id="pwaTabContent">
-                                    <!-- iOS Tab -->
                                     <div class="tab-pane fade show active" id="tab-ios" role="tabpanel">
-                                        <div class="alert alert-info border-0 rounded-3 small mb-3">
-                                            <i class="fa fa-info-circle me-1"/> نظام آبل يتطلب تثبيت التطبيق عبر متصفح <strong>سفاري (Safari)</strong> ليعمل كأي تطبيق رسمي.
-                                        </div>
-                                        <ol class="list-group list-group-numbered list-group-flush small mb-3">
-                                            <li class="list-group-item border-0 px-0">افتح الرابط في متصفح سفاري (أو انسخه وافتحه هناك).</li>
-                                            <li class="list-group-item border-0 px-0">اضغط على زر المشاركة <i class="fa fa-share-square-o text-primary mx-1 fs-5"/> الموجود أسفل الشاشة.</li>
-                                            <li class="list-group-item border-0 px-0">اختر خيار <strong>"إضافة إلى الشاشة الرئيسية"</strong> (Add to Home Screen <i class="fa fa-plus-square text-primary mx-1"/>).</li>
-                                            <li class="list-group-item border-0 px-0">اضغط كلمة <strong>"إضافة" (Add)</strong> في أعلى الزاوية.</li>
-                                        </ol>
-                                        <div class="text-center">
-                                            <button class="btn btn-outline-primary rounded-pill btn-sm px-4" onclick="copyPortalUrl();">
-                                                <i class="fa fa-copy me-1"/> نسخ رابط البوابة لفتحه في سفاري
-                                            </button>
+                                        <div class="d-flex flex-column gap-3 small">
+                                            <div class="d-flex align-items-start gap-2 bg-light p-3 rounded-3 border">
+                                                <span class="badge bg-primary rounded-circle" style="width: 24px; height: 24px; line-height: 18px;">1</span>
+                                                <div>
+                                                    <span class="fw-bold d-block text-dark">استخدم متصفح سفاري (Safari)</span>
+                                                    <span class="text-muted">افتح الرابط عبر متصفح سفاري الرسمي للحصول على تجربة التطبيق الأصلي.</span>
+                                                </div>
+                                            </div>
+                                            <div class="d-flex align-items-start gap-2 bg-light p-3 rounded-3 border">
+                                                <span class="badge bg-primary rounded-circle" style="width: 24px; height: 24px; line-height: 18px;">2</span>
+                                                <div>
+                                                    <span class="fw-bold d-block text-dark">اضغط على زر المشاركة</span>
+                                                    <span class="text-muted">اضغط على أيقونة المشاركة <i class="fa fa-share-square-o text-primary"/> الموجودة في الشريط السفلي.</span>
+                                                </div>
+                                            </div>
+                                            <div class="d-flex align-items-start gap-2 bg-light p-3 rounded-3 border">
+                                                <span class="badge bg-primary rounded-circle" style="width: 24px; height: 24px; line-height: 18px;">3</span>
+                                                <div>
+                                                    <span class="fw-bold d-block text-dark">اختر "إضافة إلى الصفحة الرئيسية"</span>
+                                                    <span class="text-muted">انزل في القائمة واضغط على خيار (Add to Home Screen).</span>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
-                                    <!-- Android Tab -->
+
                                     <div class="tab-pane fade" id="tab-android" role="tabpanel">
-                                        <ol class="list-group list-group-numbered list-group-flush small mb-3">
-                                            <li class="list-group-item border-0 px-0">افتح الرابط في متصفح جوجل كروم على هاتفك.</li>
-                                            <li class="list-group-item border-0 px-0">اضغط على زر <strong>"تثبيت التطبيق الآن"</strong> الظاهر أعلى الصفحة.</li>
-                                            <li class="list-group-item border-0 px-0">أو اضغط على زر الخيارات (⋮) أعلى المتصفح واختر <strong>"تثبيت التطبيق"</strong> أو "إضافة إلى الشاشة الرئيسية".</li>
-                                        </ol>
+                                        <div class="d-flex flex-column gap-3 small">
+                                            <div class="d-flex align-items-start gap-2 bg-light p-3 rounded-3 border">
+                                                <span class="badge bg-success rounded-circle" style="width: 24px; height: 24px; line-height: 18px;">1</span>
+                                                <div>
+                                                    <span class="fw-bold d-block text-dark">اضغط على زر التثبيت المباشر</span>
+                                                    <span class="text-muted">اضغط على زر "تثبيت التطبيق الآن" الظاهر في أعلى الصفحة.</span>
+                                                </div>
+                                            </div>
+                                            <div class="d-flex align-items-start gap-2 bg-light p-3 rounded-3 border">
+                                                <span class="badge bg-success rounded-circle" style="width: 24px; height: 24px; line-height: 18px;">2</span>
+                                                <div>
+                                                    <span class="fw-bold d-block text-dark">أو عبر قائمة المتصفح</span>
+                                                    <span class="text-muted">اضغط على النقاط الثلاث (...) في كروم واختر "تثبيت التطبيق" أو "Install App".</span>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                             <div class="modal-footer border-0 pt-0">
-                                <button type="button" class="btn btn-light rounded-pill px-4 w-100" data-bs-dismiss="modal">إغلاق الدليل</button>
+                                <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">إغلاق</button>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- PWA Smart Detection & Punch Script -->
+                <!-- Client-Side Scripts for Live Clock, PWA Detection & Geolocation Punch -->
                 <script type="text/javascript">
-                //<![CDATA[
-                    // 1. Service Worker Registration
-                    if ('serviceWorker' in navigator) {
-                        navigator.serviceWorker.register('/jandalah/sw.js').then(function(reg) {
-                            console.log('Jandalah PWA Service Worker Registered!');
-                        }).catch(function(err) {
-                            console.warn('SW registration failed:', err);
-                        });
-                    }
-
-                    // 2. Smart Environment & Browser Detection
-                    var ua = navigator.userAgent || navigator.vendor || window.opera || '';
-                    var isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-                    var isIos = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
-                    var isCriOS = /CriOS/i.test(ua);
-                    var isInApp = /WhatsApp|FBAN|FBAV|Instagram|Line|Messenger/i.test(ua);
-                    var isAndroid = /Android/i.test(ua);
-                    var isDismissed = localStorage.getItem('jandalah_pwa_dismissed_v2');
-
-                    if (!isStandalone && !isDismissed) {
-                        var container = document.getElementById('pwa_smart_container');
-                        if (container) {
-                            container.classList.remove('d-none');
-                            if (isIos) {
-                                if (isInApp) {
-                                    var inappBox = document.getElementById('pwa_inapp_box');
-                                    if (inappBox) inappBox.classList.remove('d-none');
-                                } else if (isCriOS) {
-                                    var chromeBox = document.getElementById('pwa_ios_chrome_box');
-                                    if (chromeBox) chromeBox.classList.remove('d-none');
-                                } else {
-                                    var safariBox = document.getElementById('pwa_ios_safari_box');
-                                    if (safariBox) safariBox.classList.remove('d-none');
-                                }
-                            } else {
-                                var androidBox = document.getElementById('pwa_android_box');
-                                if (androidBox) androidBox.classList.remove('d-none');
-                            }
-                        }
-                    }
-
-                    // 3. Android PWA beforeinstallprompt handler
-                    var deferredPrompt = null;
-                    window.addEventListener('beforeinstallprompt', function(e) {
-                        e.preventDefault();
-                        deferredPrompt = e;
-                        if (!isStandalone && !isDismissed) {
-                            var container = document.getElementById('pwa_smart_container');
-                            var androidBox = document.getElementById('pwa_android_box');
-                            if (container) container.classList.remove('d-none');
-                            if (androidBox) androidBox.classList.remove('d-none');
-                        }
-                    });
-
-                    var btnAndroidInstall = document.getElementById('btn_pwa_android_install');
-                    if (btnAndroidInstall) {
-                        btnAndroidInstall.addEventListener('click', function() {
-                            if (deferredPrompt) {
-                                deferredPrompt.prompt();
-                                deferredPrompt.userChoice.then(function(choice) {
-                                    deferredPrompt = null;
-                                    dismissPwa();
-                                });
-                            } else {
-                                alert('لتثبيت التطبيق: اضغط على قائمة المتصفح (⋮) ثم اختر "تثبيت التطبيق" أو "إضافة إلى الشاشة الرئيسية".');
-                            }
-                        });
-                    }
-
-                    function dismissPwa() {
-                        var container = document.getElementById('pwa_smart_container');
-                        if (container) container.classList.add('d-none');
-                        localStorage.setItem('jandalah_pwa_dismissed_v2', '1');
-                    }
-
-                    function copyPortalUrl() {
-                        var currentUrl = window.location.origin + '/my';
-                        if (navigator.clipboard && navigator.clipboard.writeText) {
-                            navigator.clipboard.writeText(currentUrl).then(function() {
-                                showCopyFeedback();
-                            }).catch(function() {
-                                fallbackCopyText(currentUrl);
-                            });
-                        } else {
-                            fallbackCopyText(currentUrl);
-                        }
-                    }
-
-                    function fallbackCopyText(text) {
-                        var tempInput = document.createElement('input');
-                        tempInput.value = text;
-                        document.body.appendChild(tempInput);
-                        tempInput.select();
-                        try {
-                            document.execCommand('copy');
-                            showCopyFeedback();
-                        } catch (err) {
-                            alert('رابط البوابة هو: ' + text);
-                        }
-                        document.body.removeChild(tempInput);
-                    }
-
-                    function showCopyFeedback() {
-                        var fbChrome = document.getElementById('copy_feedback_chrome');
-                        var fbInapp = document.getElementById('copy_feedback_inapp');
-                        if (fbChrome) fbChrome.classList.remove('d-none');
-                        if (fbInapp) fbInapp.classList.remove('d-none');
-                        setTimeout(function() {
-                            if (fbChrome) fbChrome.classList.add('d-none');
-                            if (fbInapp) fbInapp.classList.add('d-none');
-                        }, 4000);
-                    }
-
-                    // 4. Live Clock
+                    // 1. Live Saudi Clock
                     function updateClock() {
-                        var now = new Date();
-                        var timeStr = now.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                        var clockEl = document.getElementById('ess_live_clock');
-                        if (clockEl) clockEl.innerText = timeStr;
+                        const now = new Date();
+                        const options = { timeZone: 'Asia/Riyadh', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
+                        const clockEl = document.getElementById('ess_live_clock');
+                        if (clockEl) {
+                            clockEl.innerText = now.toLocaleTimeString('ar-SA', options);
+                        }
                     }
                     setInterval(updateClock, 1000);
                     updateClock();
 
-                    // 5. Punch Functionality
-                    function toggleAttendance() {
-                        var btn = document.getElementById('btn_toggle_attendance');
-                        var btnText = document.getElementById('btn_toggle_text');
-                        var feedback = document.getElementById('attendance_feedback');
-                        
-                        btn.disabled = true;
-                        btnText.innerText = 'جارٍ تحديد الموقع...';
-                        feedback.className = 'mt-2 small fw-bold text-info text-center';
-                        feedback.innerText = 'يرجى الانتظار، جاري قراءة إحداثيات الموقع (GPS)...';
+                    // 2. Service Worker Registration
+                    if ('serviceWorker' in navigator) {
+                        navigator.serviceWorker.register('/jandalah/sw.js').then(function() {
+                            console.log('Jandalah PWA ServiceWorker Registered');
+                        }).catch(function(err) {
+                            console.log('SW registration error:', err);
+                        });
+                    }
 
-                        if (navigator.geolocation) {
-                            navigator.geolocation.getCurrentPosition(
-                                function(pos) {
-                                    sendPunch(pos.coords.latitude, pos.coords.longitude);
-                                },
-                                function(err) {
-                                    console.warn('Geolocation error:', err.message);
-                                    feedback.className = 'mt-2 small text-warning text-center';
-                                    feedback.innerText = 'تعذر قراءة GPS بدقة، سيتم التسجيل عبر عنوان IP الحالي...';
-                                    sendPunch(null, null);
-                                },
-                                { timeout: 8000, enableHighAccuracy: true }
-                            );
-                        } else {
-                            sendPunch(null, null);
+                    // 3. Smart Adaptive PWA Detection
+                    let deferredPrompt = null;
+                    const ua = navigator.userAgent || navigator.vendor || window.opera;
+                    const isIOS = /iPad|iPhone|iPod/.test(ua) &amp;&amp; !window.MSStream;
+                    const isCriOS = isIOS &amp;&amp; /CriOS/.test(ua);
+                    const isSafari = isIOS &amp;&amp; /Safari/.test(ua) &amp;&amp; !isCriOS;
+                    const isInApp = /FBAN|FBAV|Instagram|WhatsApp|Twitter|Snapchat/i.test(ua);
+                    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+                    document.addEventListener('DOMContentLoaded', function() {
+                        if (isStandalone) {
+                            return; // Already installed as PWA!
+                        }
+
+                        const pwaContainer = document.getElementById('pwa_smart_container');
+                        if (!pwaContainer) return;
+
+                        if (sessionStorage.getItem('jandalah_pwa_dismissed') === '1') {
+                            return;
+                        }
+
+                        if (isInApp) {
+                            pwaContainer.classList.remove('d-none');
+                            document.getElementById('pwa_inapp_box')?.classList.remove('d-none');
+                        } else if (isIOS) {
+                            pwaContainer.classList.remove('d-none');
+                            if (isSafari) {
+                                document.getElementById('pwa_ios_safari_box')?.classList.remove('d-none');
+                            } else {
+                                document.getElementById('pwa_ios_chrome_box')?.classList.remove('d-none');
+                            }
+                        }
+                    });
+
+                    window.addEventListener('beforeinstallprompt', (e) => {
+                        e.preventDefault();
+                        deferredPrompt = e;
+                        const pwaContainer = document.getElementById('pwa_smart_container');
+                        if (pwaContainer &amp;&amp; sessionStorage.getItem('jandalah_pwa_dismissed') !== '1') {
+                            pwaContainer.classList.remove('d-none');
+                            document.getElementById('pwa_android_box')?.classList.remove('d-none');
+                        }
+                    });
+
+                    function installPWA() {
+                        if (deferredPrompt) {
+                            deferredPrompt.prompt();
+                            deferredPrompt.userChoice.then((choiceResult) => {
+                                if (choiceResult.outcome === 'accepted') {
+                                    dismissPwa();
+                                }
+                                deferredPrompt = null;
+                            });
                         }
                     }
 
-                    function sendPunch(lat, lon) {
-                        var feedback = document.getElementById('attendance_feedback');
-                        var btn = document.getElementById('btn_toggle_attendance');
-                        var btnText = document.getElementById('btn_toggle_text');
+                    function dismissPwa() {
+                        const container = document.getElementById('pwa_smart_container');
+                        if (container) container.classList.add('d-none');
+                        sessionStorage.setItem('jandalah_pwa_dismissed', '1');
+                    }
+
+                    function copyPortalUrl() {
+                        const url = window.location.origin + '/my';
+                        navigator.clipboard.writeText(url).then(() => {
+                            const f1 = document.getElementById('copy_feedback_chrome');
+                            const f2 = document.getElementById('copy_feedback_inapp');
+                            if (f1) f1.classList.remove('d-none');
+                            if (f2) f2.classList.remove('d-none');
+                        });
+                    }
+
+                    // 4. GPS Geolocation and 1-Tap Toggle
+                    function toggleAttendance() {
+                        const btn = document.getElementById('btn_toggle_attendance');
+                        const feedback = document.getElementById('attendance_feedback');
+                        btn.disabled = true;
+                        feedback.className = 'mt-2 small fw-bold text-info text-center';
+                        feedback.innerHTML = '<i class="fa fa-spinner fa-spin me-1"></i> جاري تحديد الموقع الجغرافي (GPS)...';
+
+                        if ("geolocation" in navigator) {
+                            navigator.geolocation.getCurrentPosition(
+                                function(pos) {
+                                    sendAttendance(pos.coords.latitude, pos.coords.longitude);
+                                },
+                                function(err) {
+                                    console.warn("GPS error: " + err.message);
+                                    sendAttendance(null, null);
+                                },
+                                { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+                            );
+                        } else {
+                            sendAttendance(null, null);
+                        }
+                    }
+
+                    function sendAttendance(lat, lon) {
+                        const btn = document.getElementById('btn_toggle_attendance');
+                        const feedback = document.getElementById('attendance_feedback');
+                        feedback.innerHTML = '<i class="fa fa-spinner fa-spin me-1"></i> جاري حفظ تسجيل الحضور في النظام...';
 
                         fetch('/my/attendance/toggle', {
                             method: 'POST',
@@ -482,8 +521,6 @@
                                 'Content-Type': 'application/json',
                             },
                             body: JSON.stringify({
-                                jsonrpc: "2.0",
-                                method: "call",
                                 params: {
                                     latitude: lat,
                                     longitude: lon,
@@ -491,33 +528,31 @@
                                 }
                             })
                         })
-                        .then(function(r) { return r.json(); })
-                        .then(function(res) {
-                            var result = res.result || {};
-                            if (result.status === 'success') {
+                        .then(res => res.json())
+                        .then(data => {
+                            btn.disabled = false;
+                            if (data.result &amp;&amp; data.result.status === 'success') {
                                 feedback.className = 'mt-2 small fw-bold text-success text-center';
-                                feedback.innerText = result.message;
-                                setTimeout(function() { window.location.reload(); }, 1200);
+                                feedback.innerHTML = '<i class="fa fa-check-circle me-1"></i> ' + data.result.message;
+                                setTimeout(() => { window.location.reload(); }, 1500);
                             } else {
                                 feedback.className = 'mt-2 small fw-bold text-danger text-center';
-                                feedback.innerText = result.message || 'حدث خطأ أثناء التسجيل';
-                                btn.disabled = false;
+                                feedback.innerHTML = '<i class="fa fa-times-circle me-1"></i> ' + (data.result ? data.result.message : 'حدث خطأ في التسجيل');
                             }
                         })
-                        .catch(function(err) {
-                            feedback.className = 'mt-2 small fw-bold text-danger text-center';
-                            feedback.innerText = 'خطأ في الاتصال بالخادم، يرجى المحاولة ثانية.';
+                        .catch(err => {
                             btn.disabled = false;
+                            feedback.className = 'mt-2 small fw-bold text-danger text-center';
+                            feedback.innerHTML = '<i class="fa fa-times-circle me-1"></i> تعذر الاتصال بالسيرفر. يرجى المحاولة ثانية.';
                         });
                     }
-                //]]>
                 </script>
             </t>
         </xpath>
     </template>
 
     <!-- 2. Attendance History Page (/my/attendance) -->
-    <template id="portal_my_attendance_view" name="سجل الحضور والانصراف">
+    <template id="portal_my_attendance_view" name="سجل حركات الحضور">
         <t t-call="portal.portal_layout">
             <t t-set="breadcrumbs_searchbar" t-value="True"/>
             <t t-set="title">سجل الحضور والانصراف | جندله</t>
@@ -526,10 +561,10 @@
                 <div class="row align-items-center mb-4">
                     <div class="col-md-6">
                         <h3 class="fw-bold mb-1 text-dark">
-                            <i class="fa fa-fingerprint text-primary me-2"/> سجل الحضور والانصراف
+                            <i class="fa fa-fingerprint text-primary me-2"/> سجل حركات الحضور والانصراف
                         </h3>
                         <p class="text-muted small mb-0">
-                            استعراض تفاصيل تسجيلات الدوام، ساعات العمل، ومواقع التسجيل.
+                            عرض كافة حركات الحضور والانصراف والموقع الجغرافي وساعات العمل المسجلة بتوقيت المملكة.
                         </p>
                     </div>
                     <div class="col-md-6 text-md-end mt-3 mt-md-0">
@@ -549,8 +584,8 @@
                             <thead class="table-light">
                                 <tr>
                                     <th class="py-3">#</th>
-                                    <th class="py-3">وقت الحضور</th>
-                                    <th class="py-3">وقت الانصراف</th>
+                                    <th class="py-3">وقت الحضور (بتوقيت الرياض)</th>
+                                    <th class="py-3">وقت الانصراف (بتوقيت الرياض)</th>
                                     <th class="py-3">ساعات العمل</th>
                                     <th class="py-3">موقع الحضور (GPS)</th>
                                     <th class="py-3">موقع الانصراف (GPS)</th>
@@ -562,7 +597,7 @@
                                     <tr>
                                         <td colspan="7" class="py-5 text-muted">
                                             <i class="fa fa-folder-open-o fs-1 d-block mb-2 text-secondary"/>
-                                            لا توجد سجلات حضور مسجلة حتى الآن.
+                                            لا توجد أي حركات حضور وانصراف مسجلة حتى الآن.
                                         </td>
                                     </tr>
                                 </t>
@@ -571,20 +606,20 @@
                                         <td class="text-muted"><t t-esc="att_index + 1"/></td>
                                         <td class="fw-bold text-success">
                                             <t t-if="att.check_in">
-                                                <t t-esc="att.check_in.strftime('%Y/%m/%d %I:%M %p')"/>
+                                                <t t-esc="format_tz(att.check_in)"/>
                                             </t>
                                         </td>
                                         <td class="fw-bold text-danger">
                                             <t t-if="att.check_out">
-                                                <t t-esc="att.check_out.strftime('%Y/%m/%d %I:%M %p')"/>
+                                                <t t-esc="format_tz(att.check_out)"/>
                                             </t>
                                             <t t-else="">
-                                                <span class="badge bg-warning text-dark">قيد الدوام</span>
+                                                <span class="badge bg-warning text-dark">متواجد حالياً</span>
                                             </t>
                                         </td>
                                         <td class="fw-bold">
                                             <t t-if="att.worked_hours">
-                                                <t t-esc="'%.2f' % att.worked_hours"/> ساعة
+                                                <t t-esc="'%.2f' % att.worked_hours"/> س
                                             </t>
                                             <t t-else="">-</t>
                                         </td>
@@ -592,7 +627,7 @@
                                             <t t-if="att.in_latitude and att.in_longitude">
                                                 <a t-attf-href="https://www.google.com/maps?q=#{att.in_latitude},#{att.in_longitude}" 
                                                    target="_blank" class="badge bg-light text-primary border text-decoration-none">
-                                                    <i class="fa fa-map-marker me-1"/> خريطة
+                                                    <i class="fa fa-map-marker me-1"/> الخريطة
                                                 </a>
                                             </t>
                                             <t t-else="">
@@ -603,7 +638,7 @@
                                             <t t-if="att.out_latitude and att.out_longitude">
                                                 <a t-attf-href="https://www.google.com/maps?q=#{att.out_latitude},#{att.out_longitude}" 
                                                    target="_blank" class="badge bg-light text-danger border text-decoration-none">
-                                                    <i class="fa fa-map-marker me-1"/> خريطة
+                                                    <i class="fa fa-map-marker me-1"/> الخريطة
                                                 </a>
                                             </t>
                                             <t t-else="">
@@ -618,11 +653,13 @@
                             </tbody>
                         </table>
                     </div>
-                </div>
 
-                <!-- Pager -->
-                <div class="mt-4 d-flex justify-content-center" t-if="pager">
-                    <t t-call="portal.pager"/>
+                    <!-- Pagination -->
+                    <t t-if="pager">
+                        <div class="card-footer bg-white border-0 py-3 d-flex justify-content-center">
+                            <t t-call="portal.pager"/>
+                        </div>
+                    </t>
                 </div>
             </div>
         </t>
@@ -632,37 +669,39 @@
     <template id="portal_my_leaves_view" name="طلبات الإجازات">
         <t t-call="portal.portal_layout">
             <t t-set="breadcrumbs_searchbar" t-value="True"/>
-            <t t-set="title">طلبات الإجازات والاستئذانات | جندله</t>
+            <t t-set="title">طلبات الإجازات | جندله</t>
 
             <div class="container-fluid py-3">
-                <!-- Alerts -->
-                <div t-if="success" class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm mb-4" role="alert">
-                    <i class="fa fa-check-circle me-2"/> <strong>تم بنجاح!</strong> تم إرسال طلب الإجازة بنجاح وهو الآن قيد المراجعة والاعتماد.
+                <!-- Notifications -->
+                <div t-if="success" class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm" role="alert">
+                    <i class="fa fa-check-circle me-2"/> تم تقديم طلب الإجازة بنجاح، وهو قيد الاعتماد من الإدارة.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
-                <div t-if="error" class="alert alert-danger alert-dismissible fade show rounded-3 shadow-sm mb-4" role="alert">
-                    <i class="fa fa-exclamation-triangle me-2"/> <strong>تنبيه:</strong> <t t-esc="error"/>
+                <div t-if="error" class="alert alert-danger alert-dismissible fade show rounded-3 shadow-sm" role="alert">
+                    <i class="fa fa-exclamation-circle me-2"/> حدث خطأ أثناء تقديم الطلب: <t t-esc="error"/>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
 
                 <div class="row align-items-center mb-4">
                     <div class="col-md-6">
                         <h3 class="fw-bold mb-1 text-dark">
-                            <i class="fa fa-calendar-check-o text-success me-2"/> طلبات الإجازات والاستئذانات
+                            <i class="fa fa-calendar-check-o text-success me-2"/> سجل ومتابعة الإجازات
                         </h3>
                         <p class="text-muted small mb-0">
-                            متابعة طلبات الإجازات الخاصة بك وتقديم طلب جديد للإدارة.
+                            عرض ومتابعة رصيد الإجازات وتفاصيل الطلبات السابقة والحالية.
                         </p>
                     </div>
                     <div class="col-md-6 text-md-end mt-3 mt-md-0">
-                        <button type="button" class="btn btn-success rounded-pill px-4 shadow-sm" data-bs-toggle="modal" data-bs-target="#newLeaveModal">
-                            <i class="fa fa-plus-circle me-1"/> تقديم طلب إجازة جديد
+                        <button type="button" class="btn btn-success rounded-pill px-4 shadow-sm fw-bold me-2" data-bs-toggle="modal" data-bs-target="#newLeaveModal">
+                            <i class="fa fa-plus-circle me-1"/> طلب إجازة جديد
                         </button>
-                        <a href="/my" class="btn btn-outline-secondary rounded-pill ms-2">
+                        <a href="/my" class="btn btn-outline-secondary rounded-pill">
                             <i class="fa fa-arrow-right me-1"/> العودة للرئيسية
                         </a>
                     </div>
                 </div>
 
-                <!-- Table Card -->
+                <!-- Leaves Table -->
                 <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
                     <div class="table-responsive">
                         <table class="table table-hover align-middle mb-0 text-center">
@@ -674,7 +713,7 @@
                                     <th class="py-3">إلى تاريخ</th>
                                     <th class="py-3">المدة (أيام)</th>
                                     <th class="py-3">البيان / السبب</th>
-                                    <th class="py-3">حالة الطلب</th>
+                                    <th class="py-3">الحالة</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -682,42 +721,42 @@
                                     <tr>
                                         <td colspan="7" class="py-5 text-muted">
                                             <i class="fa fa-calendar-times-o fs-1 d-block mb-2 text-secondary"/>
-                                            لا توجد طلبات إجازة مسجلة لديك حتى الآن.
+                                            لا توجد طلبات إجازة مقدمة حتى الآن.
                                         </td>
                                     </tr>
                                 </t>
                                 <t t-foreach="leaves" t-as="l">
                                     <tr>
                                         <td class="text-muted"><t t-esc="l_index + 1"/></td>
-                                        <td class="fw-bold text-dark"><t t-esc="l.holiday_status_id.name"/></td>
+                                        <td class="fw-bold text-dark">
+                                            <t t-esc="l.holiday_status_id.name"/>
+                                        </td>
                                         <td><t t-esc="l.request_date_from"/></td>
                                         <td><t t-esc="l.request_date_to"/></td>
-                                        <td class="fw-bold"><t t-esc="l.number_of_days"/> يوم</td>
-                                        <td class="text-muted small"><t t-esc="l.name or '-'"/></td>
+                                        <td class="fw-bold text-primary">
+                                            <t t-esc="l.number_of_days"/> يوم
+                                        </td>
+                                        <td class="text-muted small">
+                                            <t t-esc="l.name or '-'"/>
+                                        </td>
                                         <td>
-                                            <span t-if="l.state == 'validate'" class="badge bg-success rounded-pill px-3 py-2">
-                                                معتمد
-                                            </span>
-                                            <span t-elif="l.state == 'refuse'" class="badge bg-danger rounded-pill px-3 py-2">
-                                                مرفوض
-                                            </span>
-                                            <span t-elif="l.state in ['confirm', 'validate1']" class="badge bg-warning text-dark rounded-pill px-3 py-2">
-                                                قيد المراجعة والاعتماد
-                                            </span>
-                                            <span t-else="" class="badge bg-secondary rounded-pill px-3 py-2">
-                                                مسودة
-                                            </span>
+                                            <span t-if="l.state == 'validate'" class="badge bg-success rounded-pill px-3 py-2">معتمدة</span>
+                                            <span t-elif="l.state == 'confirm'" class="badge bg-warning text-dark rounded-pill px-3 py-2">قيد الاعتماد</span>
+                                            <span t-elif="l.state == 'refuse'" class="badge bg-danger rounded-pill px-3 py-2">مرفوضة</span>
+                                            <span t-else="" class="badge bg-secondary rounded-pill px-3 py-2"><t t-esc="l.state"/></span>
                                         </td>
                                     </tr>
                                 </t>
                             </tbody>
                         </table>
                     </div>
-                </div>
 
-                <!-- Pager -->
-                <div class="mt-4 d-flex justify-content-center" t-if="pager">
-                    <t t-call="portal.pager"/>
+                    <!-- Pagination -->
+                    <t t-if="pager">
+                        <div class="card-footer bg-white border-0 py-3 d-flex justify-content-center">
+                            <t t-call="portal.pager"/>
+                        </div>
+                    </t>
                 </div>
 
                 <!-- Modal for New Leave Request -->
@@ -753,8 +792,8 @@
                                         </div>
                                     </div>
                                     <div class="mb-3">
-                                        <label class="form-label fw-bold">السبب / ملاحظات الطلب</label>
-                                        <textarea name="name" class="form-control rounded-3" rows="3" placeholder="اكتب سبب طلب الإجازة هنا..."></textarea>
+                                        <label class="form-label fw-bold">ملاحظات / سبب الإجازة</label>
+                                        <textarea name="name" class="form-control rounded-3" rows="3" placeholder="اكتب هنا أي تفاصيل إضافية..."></textarea>
                                     </div>
                                 </div>
                                 <div class="modal-footer border-0 pt-0">
@@ -768,6 +807,310 @@
                     </div>
                 </div>
 
+            </div>
+        </t>
+    </template>
+
+    <!-- 4. Supervisor Team Attendance Page (/my/team) -->
+    <template id="portal_team_attendance_view" name="حضور وانصراف فريق العمل">
+        <t t-call="portal.portal_layout">
+            <t t-set="breadcrumbs_searchbar" t-value="True"/>
+            <t t-set="title">حضور فريق العمل الميداني | جندله</t>
+
+            <div class="container-fluid py-3">
+                <div class="row align-items-center mb-4">
+                    <div class="col-md-7">
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <h3 class="fw-bold mb-0 text-dark">
+                                <i class="fa fa-users text-primary me-2"/> حضور وانصراف فريق العمل الميداني
+                            </h3>
+                            <span class="badge bg-purple text-white rounded-pill px-2" style="background-color: #6f42c1;">لوحة المشرف</span>
+                        </div>
+                        <p class="text-muted small mb-0">
+                            متابعة حضور وانصراف الموظفين التابعين لإشرافك ومواقع تواجدهم الجغرافي بالـ GPS لحظة بلحظة.
+                        </p>
+                    </div>
+                    <div class="col-md-5 text-md-end mt-3 mt-md-0">
+                        <span class="badge bg-success fs-6 p-2 rounded-pill me-2">
+                            متواجدون الآن: <t t-esc="checked_in_count"/> / <t t-esc="total_subordinates"/>
+                        </span>
+                        <a href="/my" class="btn btn-outline-secondary rounded-pill">
+                            <i class="fa fa-arrow-right me-1"/> العودة للرئيسية
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Team Cards / Table -->
+                <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0 text-center">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="py-3">#</th>
+                                    <th class="py-3 text-start ps-4">الموظف</th>
+                                    <th class="py-3">الحالة الحالية</th>
+                                    <th class="py-3">وقت الحضور (بتوقيت الرياض)</th>
+                                    <th class="py-3">موقع الحضور (GPS)</th>
+                                    <th class="py-3">ساعات عمل اليوم</th>
+                                    <th class="py-3">بيانات الاتصال</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-if="not team_data">
+                                    <tr>
+                                        <td colspan="7" class="py-5 text-muted">
+                                            <i class="fa fa-users fs-1 d-block mb-2 text-secondary"/>
+                                            لا يوجد موظفون مسجلون تحت إشرافك المباشر حالياً.
+                                        </td>
+                                    </tr>
+                                </t>
+                                <t t-foreach="team_data" t-as="item">
+                                    <t t-set="sub_emp" t-value="item['employee']"/>
+                                    <tr>
+                                        <td class="text-muted"><t t-esc="item_index + 1"/></td>
+                                        <td class="text-start ps-4">
+                                            <div class="d-flex align-items-center">
+                                                <div class="rounded-circle bg-light d-flex align-items-center justify-content-center text-primary fw-bold me-2 border" style="width: 38px; height: 38px;">
+                                                    <t t-esc="sub_emp.name[:1]"/>
+                                                </div>
+                                                <div>
+                                                    <span class="fw-bold d-block text-dark"><t t-esc="sub_emp.name"/></span>
+                                                    <small class="text-muted">
+                                                        <t t-if="sub_emp.job_title"><t t-esc="sub_emp.job_title"/> | </t>
+                                                        <t t-if="sub_emp.department_id"><t t-esc="sub_emp.department_id.name"/></t>
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <t t-if="item['is_checked_in']">
+                                                <span class="badge bg-success rounded-pill px-3 py-2">
+                                                    <i class="fa fa-circle me-1"/> متواجد بالعمل
+                                                </span>
+                                            </t>
+                                            <t t-else="">
+                                                <span class="badge bg-secondary rounded-pill px-3 py-2">
+                                                    <i class="fa fa-circle-o me-1"/> غير متواجد / انصرف
+                                                </span>
+                                            </t>
+                                        </td>
+                                        <td class="fw-bold">
+                                            <span t-attf-class="#{ 'text-success' if item['is_checked_in'] else 'text-muted' }">
+                                                <t t-esc="item['check_in_time_str']"/>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <t t-if="item['open_attendance'] and item['open_attendance'].in_latitude and item['open_attendance'].in_longitude">
+                                                <a t-attf-href="https://www.google.com/maps?q=#{item['open_attendance'].in_latitude},#{item['open_attendance'].in_longitude}" 
+                                                   target="_blank" class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-sm">
+                                                    <i class="fa fa-map-marker text-danger me-1"/> خريطة الموقع
+                                                </a>
+                                            </t>
+                                            <t t-elif="item['last_attendance'] and item['last_attendance'].in_latitude and item['last_attendance'].in_longitude">
+                                                <a t-attf-href="https://www.google.com/maps?q=#{item['last_attendance'].in_latitude},#{item['last_attendance'].in_longitude}" 
+                                                   target="_blank" class="badge bg-light text-secondary border text-decoration-none">
+                                                    <i class="fa fa-map-marker me-1"/> آخر موقع
+                                                </a>
+                                            </t>
+                                            <t t-else="">
+                                                <span class="text-muted small">-</span>
+                                            </t>
+                                        </td>
+                                        <td class="fw-bold text-primary">
+                                            <t t-esc="item['today_hours']"/> س
+                                        </td>
+                                        <td>
+                                            <t t-if="sub_emp.mobile_phone or sub_emp.work_phone">
+                                                <a t-attf-href="tel:#{sub_emp.mobile_phone or sub_emp.work_phone}" class="btn btn-sm btn-light border rounded-circle me-1" title="اتصال">
+                                                    <i class="fa fa-phone text-success"/>
+                                                </a>
+                                            </t>
+                                            <t t-if="sub_emp.work_email">
+                                                <a t-attf-href="mailto:#{sub_emp.work_email}" class="btn btn-sm btn-light border rounded-circle" title="إرسال بريد">
+                                                    <i class="fa fa-envelope text-primary"/>
+                                                </a>
+                                            </t>
+                                        </td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <!-- 5. Supervisor Team Leaves Approvals Page (/my/team/leaves) -->
+    <template id="portal_team_leaves_view" name="اعتمادات إجازات الفريق">
+        <t t-call="portal.portal_layout">
+            <t t-set="breadcrumbs_searchbar" t-value="True"/>
+            <t t-set="title">اعتمادات إجازات الفريق | جندله</t>
+
+            <div class="container-fluid py-3">
+                <!-- Notifications -->
+                <div t-if="success == 'approved'" class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm" role="alert">
+                    <i class="fa fa-check-circle me-2"/> تم اعتماد طلب الإجازة بنجاح وتحديث السجل في النظام.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                <div t-if="success == 'refused'" class="alert alert-warning alert-dismissible fade show rounded-3 shadow-sm" role="alert">
+                    <i class="fa fa-info-circle me-2"/> تم رفض طلب الإجازة.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                <div t-if="error" class="alert alert-danger alert-dismissible fade show rounded-3 shadow-sm" role="alert">
+                    <i class="fa fa-exclamation-circle me-2"/> حدث خطأ أثناء تنفيذ الإجراء: <t t-esc="error"/>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+
+                <div class="row align-items-center mb-4">
+                    <div class="col-md-7">
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <h3 class="fw-bold mb-0 text-dark">
+                                <i class="fa fa-check-square-o text-purple me-2" style="color: #6f42c1;"/> اعتمادات إجازات الفريق الميداني
+                            </h3>
+                            <span class="badge bg-warning text-dark rounded-pill px-2">
+                                بانتظار الاعتماد: <t t-esc="pending_count"/>
+                            </span>
+                        </div>
+                        <p class="text-muted small mb-0">
+                            مراجعة واعتماد أو رفض طلبات الإجازات المقدمة من موظفيك التابعين لإشرافك مباشرة من هاتفك وبدون تراخيص مدفوعة.
+                        </p>
+                    </div>
+                    <div class="col-md-5 text-md-end mt-3 mt-md-0">
+                        <a href="/my/team" class="btn btn-outline-primary rounded-pill me-2">
+                            <i class="fa fa-users me-1"/> حضور الفريق
+                        </a>
+                        <a href="/my" class="btn btn-outline-secondary rounded-pill">
+                            <i class="fa fa-arrow-right me-1"/> العودة للرئيسية
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Section: Pending Requests Awaiting Action -->
+                <h5 class="fw-bold text-dark mb-3">
+                    <i class="fa fa-hourglass-half text-warning me-2"/> طلبات معلقة بانتظار قرارك (<t t-esc="pending_count"/>)
+                </h5>
+
+                <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-5">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0 text-center">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="py-3">#</th>
+                                    <th class="py-3 text-start ps-4">الموظف</th>
+                                    <th class="py-3">نوع الإجازة</th>
+                                    <th class="py-3">من تاريخ</th>
+                                    <th class="py-3">إلى تاريخ</th>
+                                    <th class="py-3">المدة (أيام)</th>
+                                    <th class="py-3">ملاحظات الطلب</th>
+                                    <th class="py-3">إجراء المشرف / المدير</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-if="not pending_leaves">
+                                    <tr>
+                                        <td colspan="8" class="py-5 text-muted">
+                                            <i class="fa fa-check-circle-o fs-1 d-block mb-2 text-success"/>
+                                            لا توجد أي طلبات إجازة معلقة حالياً. تم البت في كافة الطلبات!
+                                        </td>
+                                    </tr>
+                                </t>
+                                <t t-foreach="pending_leaves" t-as="pl">
+                                    <tr>
+                                        <td class="text-muted"><t t-esc="pl_index + 1"/></td>
+                                        <td class="text-start ps-4">
+                                            <div class="d-flex align-items-center">
+                                                <div class="rounded-circle bg-light d-flex align-items-center justify-content-center text-primary fw-bold me-2 border" style="width: 36px; height: 36px;">
+                                                    <t t-esc="pl.employee_id.name[:1]"/>
+                                                </div>
+                                                <div>
+                                                    <span class="fw-bold d-block text-dark"><t t-esc="pl.employee_id.name"/></span>
+                                                    <small class="text-muted"><t t-esc="pl.employee_id.job_title or ''"/></small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="fw-bold text-dark">
+                                            <t t-esc="pl.holiday_status_id.name"/>
+                                        </td>
+                                        <td><t t-esc="pl.request_date_from"/></td>
+                                        <td><t t-esc="pl.request_date_to"/></td>
+                                        <td class="fw-bold text-primary">
+                                            <t t-esc="pl.number_of_days"/> يوم
+                                        </td>
+                                        <td class="text-muted small">
+                                            <t t-esc="pl.name or '-'"/>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex justify-content-center gap-2">
+                                                <form action="/my/team/leaves/action" method="post" class="d-inline">
+                                                    <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                                    <input type="hidden" name="leave_id" t-att-value="pl.id"/>
+                                                    <input type="hidden" name="action" value="approve"/>
+                                                    <button type="submit" class="btn btn-sm btn-success rounded-pill px-3 fw-bold shadow-sm" onclick="return confirm('هل أنت متأكد من اعتماد طلب الإجازة؟');">
+                                                        <i class="fa fa-check me-1"/> اعتماد
+                                                    </button>
+                                                </form>
+                                                <form action="/my/team/leaves/action" method="post" class="d-inline">
+                                                    <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                                    <input type="hidden" name="leave_id" t-att-value="pl.id"/>
+                                                    <input type="hidden" name="action" value="refuse"/>
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-bold" onclick="return confirm('هل أنت متأكد من رفض طلب الإجازة؟');">
+                                                        <i class="fa fa-times me-1"/> رفض
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Section: Recent Decision History -->
+                <h5 class="fw-bold text-dark mb-3">
+                    <i class="fa fa-history text-secondary me-2"/> سجل القرارات السابقة لفريقك
+                </h5>
+
+                <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0 text-center">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="py-3">#</th>
+                                    <th class="py-3 text-start ps-4">الموظف</th>
+                                    <th class="py-3">نوع الإجازة</th>
+                                    <th class="py-3">الفترة</th>
+                                    <th class="py-3">المدة</th>
+                                    <th class="py-3">القرار والحالة</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-if="not history_leaves">
+                                    <tr>
+                                        <td colspan="6" class="py-4 text-muted">
+                                            لا توجد قرارات سابقة مسجلة.
+                                        </td>
+                                    </tr>
+                                </t>
+                                <t t-foreach="history_leaves" t-as="hl">
+                                    <tr>
+                                        <td class="text-muted"><t t-esc="hl_index + 1"/></td>
+                                        <td class="text-start ps-4 fw-bold text-dark"><t t-esc="hl.employee_id.name"/></td>
+                                        <td><t t-esc="hl.holiday_status_id.name"/></td>
+                                        <td class="small text-muted"><t t-esc="hl.request_date_from"/> إلى <t t-esc="hl.request_date_to"/></td>
+                                        <td class="fw-bold text-primary"><t t-esc="hl.number_of_days"/> يوم</td>
+                                        <td>
+                                            <span t-if="hl.state == 'validate'" class="badge bg-success rounded-pill px-3 py-1">معتمدة</span>
+                                            <span t-elif="hl.state == 'refuse'" class="badge bg-danger rounded-pill px-3 py-1">مرفوضة</span>
+                                            <span t-else="" class="badge bg-secondary rounded-pill px-3 py-1"><t t-esc="hl.state"/></span>
+                                        </td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </t>
     </template>

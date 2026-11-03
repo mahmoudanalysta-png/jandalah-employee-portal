@@ -3,7 +3,7 @@ from odoo import http, fields, _
 from odoo.http import request
 from odoo.addons.portal.controllers.portal import CustomerPortal, pager as portal_pager
 import json
-import pytz
+# import pytz
 from datetime import datetime
 import xmlrpc.client
 import logging
@@ -15,6 +15,25 @@ ENTERPRISE_URL = 'http://127.0.0.1:8071'
 ENTERPRISE_DB = 'jandalah_dev'
 ENTERPRISE_USER = 'admin'
 ENTERPRISE_PWD = 'admin'
+
+def format_tz_saudi(dt, tz_name='Asia/Riyadh'):
+    """Converts a naive or UTC datetime to Saudi Arabia timezone (Asia/Riyadh - UTC+3) and formats cleanly."""
+    if not dt:
+        return '-'
+    if isinstance(dt, str):
+        try:
+            dt = fields.Datetime.from_string(dt)
+        except Exception:
+            return dt
+    try:
+        user_tz = pytz.timezone(tz_name or 'Asia/Riyadh')
+        if not getattr(dt, 'tzinfo', None):
+            dt = pytz.utc.localize(dt)
+        local_dt = dt.astimezone(user_tz)
+        am_pm = 'صباحاً' if local_dt.strftime('%p') == 'AM' else 'مساءً'
+        return f"{local_dt.strftime('%Y/%m/%d %I:%M')} {am_pm}"
+    except Exception:
+        return dt.strftime('%Y/%m/%d %I:%M %p')
 
 def sync_attendance_to_enterprise(employee_name, employee_email, employee_barcode, action, check_time, lat=None, lon=None, ip=None, browser=None):
     # Syncs attendance punch to Enterprise instance via XML-RPC API
@@ -102,14 +121,39 @@ def sync_attendance_to_enterprise(employee_name, employee_email, employee_barcod
 class JandalahCustomerPortal(CustomerPortal):
 
     def _get_employee(self):
-        # Helper to find the employee linked to current user
+        # Helper to find the employee record linked to current user with comprehensive fallbacks
         user = request.env.user
         emp = request.env['hr.employee'].sudo().search([('user_id', '=', user.id)], limit=1)
-        if not emp and user.email:
-            emp = request.env['hr.employee'].sudo().search([('work_email', '=ilike', user.email.strip())], limit=1)
+        if not emp:
+            user_email = (user.email or '').strip()
+            user_login = (user.login or '').strip()
+            # Build search domain for work_email, login, private_email, or partner_id
+            domain = ['|', '|', '|',
+                ('work_email', '=ilike', user_email),
+                ('work_email', '=ilike', user_login),
+                ('private_email', '=ilike', user_email),
+                ('work_contact_id', '=', user.partner_id.id),
+            ]
+            emp = request.env['hr.employee'].sudo().search(domain, limit=1)
             if emp and not emp.user_id:
                 emp.sudo().write({'user_id': user.id})
+
+        # Ensure Asia/Riyadh timezone is consistently set
+        if emp:
+            if not emp.tz:
+                emp.sudo().write({'tz': 'Asia/Riyadh'})
+            if user and not user.tz:
+                user.sudo().write({'tz': 'Asia/Riyadh'})
+
         return emp
+
+    def _get_subordinates(self, emp):
+        # Finds all subordinates where the current employee is Direct Manager (parent_id) or Coach/Supervisor (coach_id)
+        if not emp:
+            return request.env['hr.employee'].sudo().browse()
+        return request.env['hr.employee'].sudo().search([
+            '|', ('parent_id', '=', emp.id), ('coach_id', '=', emp.id)
+        ])
 
     def _prepare_home_portal_values(self, counters):
         values = super()._prepare_home_portal_values(counters)
@@ -124,6 +168,25 @@ class JandalahCustomerPortal(CustomerPortal):
                 ('employee_id', '=', emp.id)
             ], order='check_in desc', limit=1)
 
+            # Check supervisor/manager status
+            subordinates = self._get_subordinates(emp)
+            is_supervisor = bool(subordinates)
+            team_checked_in = 0
+            team_pending_leaves = 0
+
+            if is_supervisor:
+                sub_ids = subordinates.ids
+                # Team members currently checked in
+                team_checked_in = request.env['hr.attendance'].sudo().search_count([
+                    ('employee_id', 'in', sub_ids),
+                    ('check_out', '=', False)
+                ])
+                # Team leave requests awaiting approval
+                team_pending_leaves = request.env['hr.leave'].sudo().search_count([
+                    ('employee_id', 'in', sub_ids),
+                    ('state', '=', 'confirm')
+                ])
+
             values.update({
                 'employee': emp,
                 'is_checked_in': bool(open_att),
@@ -131,6 +194,12 @@ class JandalahCustomerPortal(CustomerPortal):
                 'last_attendance': last_att,
                 'attendance_count': request.env['hr.attendance'].sudo().search_count([('employee_id', '=', emp.id)]),
                 'leaves_count': request.env['hr.leave'].sudo().search_count([('employee_id', '=', emp.id)]),
+                'format_tz': format_tz_saudi,
+                # Supervisor values
+                'is_supervisor': is_supervisor,
+                'subordinates_count': len(subordinates),
+                'team_checked_in_count': team_checked_in,
+                'team_pending_leaves_count': team_pending_leaves,
             })
         return values
 
@@ -144,7 +213,7 @@ class JandalahCustomerPortal(CustomerPortal):
             "display": "standalone",
             "background_color": "#ffffff",
             "theme_color": "#0d6efd",
-            "description": "بوابة الخدمة الذاتية للموظفين - تسجيل حضور وانصراف بالـ GPS وإجازات",
+            "description": "بوابة الخدمة الذاتية للموظفين - تسجيل الحضور الذكي بالـ GPS والإجازات",
             "orientation": "portrait-primary",
             "icons": [
                 {
@@ -172,7 +241,7 @@ class JandalahCustomerPortal(CustomerPortal):
     @http.route('/jandalah/sw.js', type='http', auth='public', methods=['GET'], csrf=False)
     def portal_pwa_sw(self, **kw):
         sw_code = """
-const CACHE_NAME = 'jandalah-ess-v1';
+const CACHE_NAME = 'jandalah-ess-v2';
 self.addEventListener('install', event => {
     self.skipWaiting();
 });
@@ -201,7 +270,7 @@ self.addEventListener('fetch', event => {
         if not emp:
             return {
                 'status': 'error',
-                'message': 'عذراً، لم يتم العثور على سجل موظف مرتبط بحسابك الحالي.'
+                'message': 'لم يتم العثور على ملف موظف مرتبط بحسابك.'
             }
 
         # IP Address capture
@@ -210,15 +279,7 @@ self.addEventListener('fetch', event => {
             ip_addr = ip_addr.split(',')[0].strip()
 
         now_utc = fields.Datetime.now()
-
-        # Format local time in Riyadh tz
-        tz_name = emp.tz or request.env.user.tz or 'Asia/Riyadh'
-        try:
-            tz = pytz.timezone(tz_name)
-            now_local = pytz.utc.localize(datetime.utcnow()).astimezone(tz)
-            formatted_time = now_local.strftime('%I:%M %p - %Y/%m/%d')
-        except Exception:
-            formatted_time = str(now_utc)
+        formatted_time = format_tz_saudi(now_utc)
 
         # Check for open attendance
         open_att = request.env['hr.attendance'].sudo().search([
@@ -259,7 +320,7 @@ self.addEventListener('fetch', event => {
             return {
                 'status': 'success',
                 'action': 'checked_out',
-                'message': f'تم تسجيل الانصراف بنجاح في {formatted_time}',
+                'message': f'تم تسجيل الانصراف بنجاح الساعة {formatted_time}',
                 'time': formatted_time,
                 'worked_hours': worked_hours,
                 'employee_name': emp.name,
@@ -297,7 +358,7 @@ self.addEventListener('fetch', event => {
             return {
                 'status': 'success',
                 'action': 'checked_in',
-                'message': f'تم تسجيل الحضور بنجاح في {formatted_time}',
+                'message': f'تم تسجيل الحضور بنجاح الساعة {formatted_time}',
                 'time': formatted_time,
                 'employee_name': emp.name,
             }
@@ -307,7 +368,7 @@ self.addEventListener('fetch', event => {
         emp = self._get_employee()
         if not emp:
             return request.render('portal.portal_my_home', {
-                'error_message': 'لا يوجد موظف مسجل لهذا الحساب'
+                'error_message': 'لا يوجد ملف موظف مرتبط'
             })
 
         Attendance = request.env['hr.attendance'].sudo()
@@ -342,6 +403,7 @@ self.addEventListener('fetch', event => {
             'total_hours': total_hours,
             'page_name': 'attendance',
             'pager': pager,
+            'format_tz': format_tz_saudi,
             'default_url': '/my/attendance',
         })
         return request.render('jandalah_employee_portal.portal_my_attendance_view', values)
@@ -351,7 +413,7 @@ self.addEventListener('fetch', event => {
         emp = self._get_employee()
         if not emp:
             return request.render('portal.portal_my_home', {
-                'error_message': 'لا يوجد موظف مسجل لهذا الحساب'
+                'error_message': 'لا يوجد ملف موظف مرتبط'
             })
 
         Leave = request.env['hr.leave'].sudo()
@@ -379,6 +441,7 @@ self.addEventListener('fetch', event => {
             'pager': pager,
             'success': success,
             'error': error,
+            'format_tz': format_tz_saudi,
             'default_url': '/my/leaves',
         })
         return request.render('jandalah_employee_portal.portal_my_leaves_view', values)
@@ -398,9 +461,139 @@ self.addEventListener('fetch', event => {
                 'employee_id': emp.id,
                 'request_date_from': request_date_from,
                 'request_date_to': request_date_to,
-                'name': name.strip() if name else 'طلب إجازة عبر البوابة الذكية',
+                'name': name.strip() if name else 'طلب إجازة من البوابة',
             }
             new_leave = request.env['hr.leave'].sudo().create(leave_vals)
             return request.redirect('/my/leaves?success=1')
         except Exception as e:
             return request.redirect(f'/my/leaves?error={str(e)}')
+
+    # =========================================================================
+    # SUPERVISOR & DIRECT MANAGER PORTAL SUITE (Zero License Overhead)
+    # =========================================================================
+
+    @http.route('/my/team', type='http', auth='user', website=True)
+    def portal_my_team_attendance(self, **kw):
+        """Displays live attendance and status of subordinates for supervisors/direct managers."""
+        emp = self._get_employee()
+        if not emp:
+            return request.render('portal.portal_my_home', {'error_message': 'لا يوجد ملف موظف مرتبط'})
+
+        subordinates = self._get_subordinates(emp)
+        if not subordinates:
+            return request.render('portal.portal_my_home', {
+                'error_message': 'ليس لديك موظفون تابعون للإشراف الميداني أو الإدارة المباشرة'
+            })
+
+        Attendance = request.env['hr.attendance'].sudo()
+        team_data = []
+
+        for sub in subordinates:
+            open_att = Attendance.search([
+                ('employee_id', '=', sub.id),
+                ('check_out', '=', False)
+            ], order='check_in desc', limit=1)
+
+            last_att = Attendance.search([
+                ('employee_id', '=', sub.id)
+            ], order='check_in desc', limit=1)
+
+            today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+            today_atts = Attendance.search([
+                ('employee_id', '=', sub.id),
+                ('check_in', '>=', today_start)
+            ])
+            today_hours = round(sum(a.worked_hours for a in today_atts if a.worked_hours), 2)
+
+            team_data.append({
+                'employee': sub,
+                'is_checked_in': bool(open_att),
+                'open_attendance': open_att,
+                'last_attendance': last_att,
+                'today_hours': today_hours,
+                'check_in_time_str': format_tz_saudi(open_att.check_in) if open_att else (format_tz_saudi(last_att.check_in) if last_att else '-'),
+                'check_out_time_str': format_tz_saudi(last_att.check_out) if last_att and last_att.check_out else ('متواجد بالعمل' if open_att else '-'),
+            })
+
+        checked_in_count = sum(1 for m in team_data if m['is_checked_in'])
+
+        values = self._prepare_portal_layout_values()
+        values.update({
+            'employee': emp,
+            'team_data': team_data,
+            'total_subordinates': len(subordinates),
+            'checked_in_count': checked_in_count,
+            'page_name': 'team_attendance',
+            'format_tz': format_tz_saudi,
+            'default_url': '/my/team',
+        })
+        return request.render('jandalah_employee_portal.portal_team_attendance_view', values)
+
+    @http.route('/my/team/leaves', type='http', auth='user', website=True)
+    def portal_my_team_leaves(self, success=None, error=None, **kw):
+        """Displays pending leave requests submitted by subordinates for supervisor/manager approval."""
+        emp = self._get_employee()
+        if not emp:
+            return request.render('portal.portal_my_home', {'error_message': 'لا يوجد ملف موظف مرتبط'})
+
+        subordinates = self._get_subordinates(emp)
+        if not subordinates:
+            return request.render('portal.portal_my_home', {
+                'error_message': 'ليس لديك موظفون تابعون للإشراف الميداني أو الإدارة المباشرة'
+            })
+
+        sub_ids = subordinates.ids
+        Leave = request.env['hr.leave'].sudo()
+
+        pending_leaves = Leave.search([
+            ('employee_id', 'in', sub_ids),
+            ('state', '=', 'confirm')
+        ], order='date_from desc')
+
+        history_leaves = Leave.search([
+            ('employee_id', 'in', sub_ids),
+            ('state', 'in', ['validate', 'refuse'])
+        ], order='date_from desc', limit=20)
+
+        values = self._prepare_portal_layout_values()
+        values.update({
+            'employee': emp,
+            'pending_leaves': pending_leaves,
+            'history_leaves': history_leaves,
+            'pending_count': len(pending_leaves),
+            'page_name': 'team_leaves',
+            'success': success,
+            'error': error,
+            'format_tz': format_tz_saudi,
+            'default_url': '/my/team/leaves',
+        })
+        return request.render('jandalah_employee_portal.portal_team_leaves_view', values)
+
+    @http.route('/my/team/leaves/action', type='http', auth='user', methods=['POST'], website=True, csrf=True)
+    def portal_team_leave_action(self, leave_id=None, action=None, **kw):
+        """Executes Approve or Refuse on subordinate leave requests."""
+        emp = self._get_employee()
+        if not emp or not leave_id or action not in ['approve', 'refuse']:
+            return request.redirect('/my/team/leaves?error=invalid_request')
+
+        subordinates = self._get_subordinates(emp)
+        sub_ids = subordinates.ids
+
+        leave = request.env['hr.leave'].sudo().browse(int(leave_id))
+        if not leave.exists() or leave.employee_id.id not in sub_ids:
+            return request.redirect('/my/team/leaves?error=unauthorized')
+
+        try:
+            if action == 'approve':
+                if hasattr(leave, 'action_approve'):
+                    leave.sudo().action_approve()
+                elif hasattr(leave, 'action_validate'):
+                    leave.sudo().action_validate()
+                return request.redirect('/my/team/leaves?success=approved')
+            elif action == 'refuse':
+                if hasattr(leave, 'action_refuse'):
+                    leave.sudo().action_refuse()
+                return request.redirect('/my/team/leaves?success=refused')
+        except Exception as e:
+            _logger.error("Error executing supervisor leave action: %s", e)
+            return request.redirect(f'/my/team/leaves?error={str(e)}')
