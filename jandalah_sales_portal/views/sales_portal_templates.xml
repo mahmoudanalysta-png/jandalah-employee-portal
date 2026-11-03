@@ -1,0 +1,1014 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- 1. Extend Portal Home with Sales Portal Shortcut Card -->
+    <template id="portal_my_home_sales_jandalah" inherit_id="portal.portal_my_home" priority="25">
+        <xpath expr="//div[hasclass('o_portal_my_home')]" position="inside">
+            <div class="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-white" style="border-right: 5px solid #198754 !important;">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center shadow-sm" style="width: 48px; height: 48px; font-size: 20px;">
+                            <i class="fa fa-truck"/>
+                        </div>
+                        <div>
+                            <h5 class="fw-bold mb-0 text-dark">بوابة المبيعات وسيارات التوزيع</h5>
+                            <small class="text-muted">إصدار الفواتير، التحصيل، رصيد العميل والحد الائتماني، وجرد مخزن السيارة</small>
+                        </div>
+                    </div>
+                    <a href="/my/sales" class="btn btn-success rounded-pill px-4 fw-bold shadow-sm">
+                        دخول المبيعات <i class="fa fa-arrow-left ms-1"/>
+                    </a>
+                </div>
+            </div>
+        </xpath>
+    </template>
+
+    <!-- 2. Main Sales Dashboard View (/my/sales) -->
+    <template id="sales_dashboard_view" name="لوحة تحكم مبيعات سيارات التوزيع">
+        <t t-call="portal.portal_layout">
+            <t t-set="breadcrumbs_searchbar" t-value="True"/>
+            <t t-set="title">بوابة المبيعات وسيارات التوزيع | جندله</t>
+
+            <div class="container-fluid py-3">
+                <!-- Header Banner -->
+                <div class="card border-0 shadow-sm rounded-4 p-4 mb-4 text-white" style="background: linear-gradient(135deg, #0d6efd 0%, #198754 100%);">
+                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                        <div>
+                            <span class="badge bg-white text-dark rounded-pill px-3 py-1 mb-2 fw-bold">
+                                <t t-esc="company.name"/>
+                            </span>
+                            <h3 class="fw-bold mb-1">
+                                <i class="fa fa-truck me-2"/> مرحباً بك، <t t-esc="employee.name if employee else request.env.user.name"/>
+                            </h3>
+                            <p class="mb-0 text-white-50 small">
+                                بوابة المبيعات الميدانية وسيارات التوزيع - بيع، تحصيل، وجرد حي
+                            </p>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <a href="/my/sales/order/new" class="btn btn-light text-success fw-bold rounded-pill px-4 py-2 shadow-sm">
+                                <i class="fa fa-plus-circle me-1"/> فاتورة بيع جديدة
+                            </a>
+                            <a href="/my" class="btn btn-outline-light rounded-pill px-3 py-2">
+                                <i class="fa fa-home me-1"/> الرئيسية
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stats Counters Row -->
+                <div class="row g-3 mb-4">
+                    <div class="col-6 col-md-4">
+                        <div class="card border-0 shadow-sm rounded-4 p-3 bg-white h-100">
+                            <span class="text-muted small d-block mb-1">مبيعات اليوم:</span>
+                            <h4 class="fw-bold text-success mb-0"><t t-esc="'%.2f' % today_sales_total"/> <small class="fs-6">ر.س</small></h4>
+                            <small class="text-muted">إجمالي الفواتير الصادرة اليوم</small>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-4">
+                        <div class="card border-0 shadow-sm rounded-4 p-3 bg-white h-100">
+                            <span class="text-muted small d-block mb-1">فواتير اليوم:</span>
+                            <h4 class="fw-bold text-primary mb-0"><t t-esc="today_orders_count"/> <small class="fs-6">فاتورة</small></h4>
+                            <small class="text-muted">عدد الحركات المعتمدة</small>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <div class="card border-0 shadow-sm rounded-4 p-3 bg-white h-100">
+                            <span class="text-muted small d-block mb-1">مخزن السيارة:</span>
+                            <h4 class="fw-bold text-dark mb-0">
+                                <t t-if="van_location">
+                                    <t t-esc="van_items_count"/> <small class="fs-6">صنف متوفر</small>
+                                </t>
+                                <t t-else="">
+                                    <span class="fs-6 text-warning">غير محدد</span>
+                                </t>
+                            </h4>
+                            <small class="text-muted">
+                                <t t-if="van_location"><t t-esc="van_location.name"/></t>
+                                <t t-else="">المخزن العام للفرع</t>
+                            </small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5 Pillars Action Grid -->
+                <h5 class="fw-bold text-dark mb-3">
+                    <i class="fa fa-th-large text-primary me-2"/> خدمات وأقسام المبيعات
+                </h5>
+                <div class="row g-3 mb-4">
+                    <!-- 1. New Sale Order -->
+                    <div class="col-6 col-md-4 col-lg">
+                        <a href="/my/sales/order/new" class="card border-0 shadow-sm rounded-4 p-3 text-center text-decoration-none h-100 bg-white hover-shadow transition">
+                            <div class="rounded-circle bg-success-subtle text-success d-flex align-items-center justify-content-center mx-auto mb-2" style="width: 52px; height: 52px; font-size: 22px;">
+                                <i class="fa fa-cart-plus"/>
+                            </div>
+                            <span class="fw-bold text-dark d-block">إصدار فاتورة بيع</span>
+                            <small class="text-muted">بيع مباشر وفوري</small>
+                        </a>
+                    </div>
+
+                    <!-- 2. Payments & Collections -->
+                    <div class="col-6 col-md-4 col-lg">
+                        <a href="/my/sales/payments" class="card border-0 shadow-sm rounded-4 p-3 text-center text-decoration-none h-100 bg-white hover-shadow transition">
+                            <div class="rounded-circle bg-warning-subtle text-warning d-flex align-items-center justify-content-center mx-auto mb-2" style="width: 52px; height: 52px; font-size: 22px;">
+                                <i class="fa fa-money"/>
+                            </div>
+                            <span class="fw-bold text-dark d-block">التحصيل وسندات القبض</span>
+                            <small class="text-muted">تسجيل دفعات العملاء</small>
+                        </a>
+                    </div>
+
+                    <!-- 3. Customers & Credit Limits -->
+                    <div class="col-6 col-md-4 col-lg">
+                        <a href="/my/sales/customers" class="card border-0 shadow-sm rounded-4 p-3 text-center text-decoration-none h-100 bg-white hover-shadow transition">
+                            <div class="rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center mx-auto mb-2" style="width: 52px; height: 52px; font-size: 22px;">
+                                <i class="fa fa-users"/>
+                            </div>
+                            <span class="fw-bold text-dark d-block">دليل العملاء والأرصدة</span>
+                            <small class="text-muted">الأرصدة والحد الائتماني</small>
+                        </a>
+                    </div>
+
+                    <!-- 4. Van Stock -->
+                    <div class="col-6 col-md-4 col-lg">
+                        <a href="/my/sales/stock/van" class="card border-0 shadow-sm rounded-4 p-3 text-center text-decoration-none h-100 bg-white hover-shadow transition">
+                            <div class="rounded-circle bg-info-subtle text-info d-flex align-items-center justify-content-center mx-auto mb-2" style="width: 52px; height: 52px; font-size: 22px;">
+                                <i class="fa fa-truck"/>
+                            </div>
+                            <span class="fw-bold text-dark d-block">مخزن السيارة</span>
+                            <small class="text-muted">بضاعة سيارة المندوب</small>
+                        </a>
+                    </div>
+
+                    <!-- 5. Main Warehouse Stock -->
+                    <div class="col-12 col-md-4 col-lg">
+                        <a href="/my/sales/stock/main" class="card border-0 shadow-sm rounded-4 p-3 text-center text-decoration-none h-100 bg-white hover-shadow transition">
+                            <div class="rounded-circle bg-secondary-subtle text-secondary d-flex align-items-center justify-content-center mx-auto mb-2" style="width: 52px; height: 52px; font-size: 22px;">
+                                <i class="fa fa-building-o"/>
+                            </div>
+                            <span class="fw-bold text-dark d-block">المستودع الرئيسي</span>
+                            <small class="text-muted">استعلام المخزن المركزي</small>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Recent Orders Section -->
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold text-dark mb-0">
+                        <i class="fa fa-history text-secondary me-2"/> آخر الفواتير الصادرة
+                    </h5>
+                    <a href="/my/sales/orders" class="btn btn-sm btn-outline-primary rounded-pill">
+                        عرض كافة الفواتير <i class="fa fa-arrow-left ms-1"/>
+                    </a>
+                </div>
+
+                <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0 text-center">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="py-3">رقم الفاتورة</th>
+                                    <th class="py-3 text-start ps-4">العميل</th>
+                                    <th class="py-3">التاريخ</th>
+                                    <th class="py-3">طريقة السداد</th>
+                                    <th class="py-3">الإجمالي</th>
+                                    <th class="py-3">الحالة</th>
+                                    <th class="py-3">الإجراء</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-if="not recent_orders">
+                                    <tr>
+                                        <td colspan="7" class="py-4 text-muted">
+                                            لا توجد فواتير بيع مسجلة حتى الآن. اضغط "فاتورة بيع جديدة" لبدء البيع!
+                                        </td>
+                                    </tr>
+                                </t>
+                                <t t-foreach="recent_orders" t-as="o">
+                                    <tr>
+                                        <td class="fw-bold text-primary"><t t-esc="o.name"/></td>
+                                        <td class="text-start ps-4 fw-bold text-dark"><t t-esc="o.partner_id.name"/></td>
+                                        <td class="small text-muted"><t t-esc="o.date_order.strftime('%Y/%m/%d %I:%M %p') if o.date_order else '-'"/></td>
+                                        <td>
+                                            <span class="badge bg-light text-dark border rounded-pill px-2">
+                                                <t t-esc="dict(o._fields['payment_method_type'].selection).get(o.payment_method_type, 'نقداً')"/>
+                                            </span>
+                                        </td>
+                                        <td class="fw-bold text-success"><t t-esc="'%.2f' % o.amount_total"/> ر.س</td>
+                                        <td>
+                                            <span t-if="o.state in ['sale', 'done']" class="badge bg-success rounded-pill px-2">معتمدة</span>
+                                            <span t-else="" class="badge bg-secondary rounded-pill px-2"><t t-esc="o.state"/></span>
+                                        </td>
+                                        <td>
+                                            <a t-attf-href="/my/sales/order/#{o.id}" class="btn btn-sm btn-outline-primary rounded-pill">
+                                                <i class="fa fa-eye me-1"/> الفاتورة
+                                            </a>
+                                        </td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </t>
+    </template>
+
+    <!-- 3. New Sales Order Form (/my/sales/order/new) -->
+    <template id="sales_order_new_view" name="إصدار فاتورة بيع جديدة">
+        <t t-call="portal.portal_layout">
+            <t t-set="title">إصدار فاتورة بيع جديدة | جندله</t>
+
+            <div class="container-fluid py-3" style="max-width: 900px;">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h4 class="fw-bold text-dark mb-0">
+                        <i class="fa fa-cart-plus text-success me-2"/> إصدار فاتورة بيع جديدة
+                    </h4>
+                    <a href="/my/sales" class="btn btn-outline-secondary rounded-pill btn-sm">
+                        <i class="fa fa-arrow-right me-1"/> عودة للمبيعات
+                    </a>
+                </div>
+
+                <!-- Error Alert -->
+                <t t-if="error">
+                    <div class="alert alert-danger rounded-4 shadow-sm mb-3">
+                        <i class="fa fa-exclamation-triangle me-2"/>
+                        <t t-if="error == 'missing_partner'">يرجى اختيار العميل أولاً.</t>
+                        <t t-elif="error == 'no_products'">يرجى إضافة صنف واحد على الأقل وتحديد الكمية.</t>
+                        <t t-elif="error == 'credit_limit_exceeded'">تنبيه أمان: العميل تجاوز الحد الائتماني المسموح به! يرجى اختيار السداد نقداً أو تحصيل مديونية العميل أولاً.</t>
+                        <t t-else=""><t t-esc="error"/></t>
+                    </div>
+                </t>
+
+                <form action="/my/sales/order/create" method="post" id="sales_order_form">
+                    <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                    <input type="hidden" name="latitude" id="order_latitude"/>
+                    <input type="hidden" name="longitude" id="order_longitude"/>
+
+                    <!-- Customer Selection Card with Live Balance -->
+                    <div class="card border-0 shadow-sm rounded-4 p-3 mb-3 bg-white">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <label class="fw-bold text-dark mb-0">
+                                <i class="fa fa-user me-1 text-primary"/> اختيار العميل:
+                            </label>
+                            <a href="/my/sales/customers" class="small text-primary text-decoration-none">
+                                + إضافة عميل جديد
+                            </a>
+                        </div>
+                        <select name="partner_id" id="partner_id_select" class="form-select rounded-3 py-2" required="required" onchange="onCustomerChange(this.value)">
+                            <option value="">-- اختر العميل من القائمة --</option>
+                            <t t-foreach="customers" t-as="c">
+                                <option t-att-value="c.id"><t t-esc="c.name"/> (<t t-esc="c.phone or c.mobile or 'بدون هاتف'"/>)</option>
+                            </t>
+                        </select>
+
+                        <!-- Live Customer Financial Badge (Updated via AJAX) -->
+                        <div id="customer_credit_box" class="mt-3 p-3 rounded-3 border d-none" style="background-color: #f8f9fa;">
+                            <div class="row text-center">
+                                <div class="col-4 border-end">
+                                    <small class="text-muted d-block">المديونية الحالية:</small>
+                                    <span id="cust_balance" class="fw-bold fs-6 text-danger">0.00 ر.س</span>
+                                </div>
+                                <div class="col-4 border-end">
+                                    <small class="text-muted d-block">الحد الائتماني:</small>
+                                    <span id="cust_limit" class="fw-bold fs-6 text-dark">0.00 ر.س</span>
+                                </div>
+                                <div class="col-4">
+                                    <small class="text-muted d-block">المتاح للبيع الآجل:</small>
+                                    <span id="cust_available" class="fw-bold fs-6 text-success">0.00 ر.س</span>
+                                </div>
+                            </div>
+                            <div id="cust_warning" class="alert alert-warning py-1 px-2 mt-2 mb-0 small text-center d-none">
+                                <i class="fa fa-warning me-1"/> تنبيه: العميل قريب من تجاوز الحد الائتماني المعتمد.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Products Table Card -->
+                    <div class="card border-0 shadow-sm rounded-4 p-3 mb-3 bg-white">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <label class="fw-bold text-dark mb-0">
+                                <i class="fa fa-cubes me-1 text-success"/> أصناف الفاتورة:
+                            </label>
+                            <button type="button" class="btn btn-sm btn-outline-success rounded-pill" onclick="addProductRow()">
+                                <i class="fa fa-plus me-1"/> إضافة صنف
+                            </button>
+                        </div>
+
+                        <div id="products_container" class="d-flex flex-column gap-3">
+                            <!-- Row 1 Default -->
+                            <div class="product-row p-3 rounded-3 border bg-light">
+                                <div class="row g-2 align-items-center">
+                                    <div class="col-12 col-md-5">
+                                        <label class="small text-muted d-block">المنتج:</label>
+                                        <select name="product_id[]" class="form-select form-select-sm product-select" required="required" onchange="onProductSelect(this)">
+                                            <option value="">-- اختر الصنف --</option>
+                                            <t t-foreach="products" t-as="p">
+                                                <option t-att-value="p.id" t-att-data-price="p.lst_price"><t t-esc="p.display_name"/> - (<t t-esc="'%.2f' % p.lst_price"/> ر.س)</option>
+                                            </t>
+                                        </select>
+                                    </div>
+                                    <div class="col-4 col-md-2">
+                                        <label class="small text-muted d-block">الكمية:</label>
+                                        <input type="number" step="any" min="0.1" name="quantity[]" value="1" class="form-control form-control-sm qty-input" required="required" oninput="calculateTotals()"/>
+                                    </div>
+                                    <div class="col-4 col-md-2">
+                                        <label class="small text-muted d-block">السعر:</label>
+                                        <input type="number" step="any" min="0" name="price[]" value="0.0" class="form-control form-control-sm price-input" required="required" oninput="calculateTotals()"/>
+                                    </div>
+                                    <div class="col-4 col-md-2">
+                                        <label class="small text-muted d-block">خصم %:</label>
+                                        <input type="number" step="any" min="0" max="100" name="discount[]" value="0" class="form-control form-control-sm disc-input" oninput="calculateTotals()"/>
+                                    </div>
+                                    <div class="col-12 col-md-1 text-end">
+                                        <button type="button" class="btn btn-sm btn-outline-danger rounded-circle mt-3" onclick="removeProductRow(this)">
+                                            <i class="fa fa-trash"/>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Payment Method & Location Card -->
+                    <div class="card border-0 shadow-sm rounded-4 p-3 mb-3 bg-white">
+                        <label class="fw-bold text-dark mb-2">
+                            <i class="fa fa-credit-card me-1 text-primary"/> طريقة السداد:
+                        </label>
+                        <div class="row g-2 mb-3">
+                            <div class="col-6 col-md-3">
+                                <input type="radio" class="btn-check" name="payment_method" id="pay_cash" value="cash" checked="checked"/>
+                                <label class="btn btn-outline-success w-100 py-2 rounded-3 fw-bold" for="pay_cash">
+                                    <i class="fa fa-money me-1"/> نقداً (Cash)
+                                </label>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <input type="radio" class="btn-check" name="payment_method" id="pay_card" value="card"/>
+                                <label class="btn btn-outline-primary w-100 py-2 rounded-3 fw-bold" for="pay_card">
+                                    <i class="fa fa-credit-card me-1"/> شبكة / مدى
+                                </label>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <input type="radio" class="btn-check" name="payment_method" id="pay_bank" value="bank"/>
+                                <label class="btn btn-outline-info w-100 py-2 rounded-3 fw-bold" for="pay_bank">
+                                    <i class="fa fa-bank me-1"/> تحويل بنكي
+                                </label>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <input type="radio" class="btn-check" name="payment_method" id="pay_credit" value="credit"/>
+                                <label class="btn btn-outline-danger w-100 py-2 rounded-3 fw-bold" for="pay_credit">
+                                    <i class="fa fa-calendar me-1"/> آجل (On Due)
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- GPS location note -->
+                        <div class="d-flex align-items-center gap-2 small text-muted">
+                            <i class="fa fa-map-marker text-danger"/>
+                            <span id="gps_status">جاري تحديد الموقع الجغرافي للبيع تلقائياً بالـ GPS...</span>
+                        </div>
+                    </div>
+
+                    <!-- Totals & Submit Card -->
+                    <div class="card border-0 shadow-sm rounded-4 p-4 mb-4 bg-white text-center">
+                        <div class="d-flex justify-content-between text-muted mb-1">
+                            <span>المجموع الفرعي (قبل الضريبة):</span>
+                            <span id="subtotal_display" class="fw-bold">0.00 ر.س</span>
+                        </div>
+                        <div class="d-flex justify-content-between text-muted mb-2">
+                            <span>ضريبة القيمة المضافة (15%):</span>
+                            <span id="tax_display" class="fw-bold">0.00 ر.س</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center pt-2 border-top mb-3">
+                            <span class="fs-5 fw-bold text-dark">المبلغ الإجمالي النهائي:</span>
+                            <span id="total_display" class="fs-4 fw-bold text-success">0.00 ر.س</span>
+                        </div>
+
+                        <button type="submit" id="btn_submit_order" class="btn btn-success btn-lg w-100 rounded-pill py-3 fw-bold shadow-sm">
+                            <i class="fa fa-check-circle me-2"/> تأكيد وإصدار الفاتورة فوراً
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Client Side Script -->
+                <script type="text/javascript">
+                    function onProductSelect(selectEl) {
+                        const row = selectEl.closest('.product-row');
+                        const selectedOpt = selectEl.options[selectEl.selectedIndex];
+                        const price = selectedOpt.getAttribute('data-price') || 0.0;
+                        const priceInput = row.querySelector('.price-input');
+                        if (priceInput) {
+                            priceInput.value = parseFloat(price).toFixed(2);
+                        }
+                        calculateTotals();
+                    }
+
+                    function calculateTotals() {
+                        let subtotal = 0;
+                        document.querySelectorAll('.product-row').forEach(row => {
+                            const qty = parseFloat(row.querySelector('.qty-input')?.value || 0);
+                            const price = parseFloat(row.querySelector('.price-input')?.value || 0);
+                            const disc = parseFloat(row.querySelector('.disc-input')?.value || 0);
+                            const lineTotal = (qty * price) * (1 - (disc / 100));
+                            if (lineTotal > 0) subtotal += lineTotal;
+                        });
+
+                        const tax = subtotal * 0.15;
+                        const grandTotal = subtotal + tax;
+
+                        document.getElementById('subtotal_display').innerText = subtotal.toFixed(2) + ' ر.س';
+                        document.getElementById('tax_display').innerText = tax.toFixed(2) + ' ر.س';
+                        document.getElementById('total_display').innerText = grandTotal.toFixed(2) + ' ر.س';
+                    }
+
+                    function addProductRow() {
+                        const container = document.getElementById('products_container');
+                        const firstRow = container.querySelector('.product-row');
+                        const newRow = firstRow.cloneNode(true);
+                        newRow.querySelector('.qty-input').value = 1;
+                        newRow.querySelector('.price-input').value = 0.0;
+                        newRow.querySelector('.disc-input').value = 0;
+                        newRow.querySelector('.product-select').selectedIndex = 0;
+                        container.appendChild(newRow);
+                    }
+
+                    function removeProductRow(btn) {
+                        const rows = document.querySelectorAll('.product-row');
+                        if (rows.length > 1) {
+                            btn.closest('.product-row').remove();
+                            calculateTotals();
+                        } else {
+                            alert('يجب أن تحتوي الفاتورة على صنف واحد على الأقل.');
+                        }
+                    }
+
+                    function onCustomerChange(partnerId) {
+                        const box = document.getElementById('customer_credit_box');
+                        if (!partnerId) {
+                            box.classList.add('d-none');
+                            return;
+                        }
+                        fetch('/api/sales/customer/info', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ params: { partner_id: partnerId } })
+                        })
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.result and data.result.status === 'success') {
+                                const d = data.result.data;
+                                document.getElementById('cust_balance').innerText = d.balance.toFixed(2) + ' ر.س';
+                                document.getElementById('cust_limit').innerText = d.credit_limit.toFixed(2) + ' ر.س';
+                                document.getElementById('cust_available').innerText = d.available_credit.toFixed(2) + ' ر.س';
+                                box.classList.remove('d-none');
+                                const warn = document.getElementById('cust_warning');
+                                if (d.is_over_limit) {
+                                    warn.classList.remove('d-none');
+                                } else {
+                                    warn.classList.add('d-none');
+                                }
+                            }
+                        });
+                    }
+
+                    // GPS Capture
+                    if ("geolocation" in navigator) {
+                        navigator.geolocation.getCurrentPosition(function(pos) {
+                            document.getElementById('order_latitude').value = pos.coords.latitude;
+                            document.getElementById('order_longitude').value = pos.coords.longitude;
+                            document.getElementById('gps_status').innerHTML = '<span class="text-success"><i class="fa fa-check-circle me-1"/> تم تحديد موقع البيع (GPS) بنجاح</span>';
+                        }, function() {
+                            document.getElementById('gps_status').innerText = 'تعذر تحديد الـ GPS، سيتم الحفظ بدون إحداثيات.';
+                        });
+                    }
+                </script>
+            </div>
+        </t>
+    </template>
+
+    <!-- 4. Sales Order Detail & ZATCA Invoice View (/my/sales/order/<id>) -->
+    <template id="sales_order_detail_view" name="تفاصيل فاتورة البيع والزكاة">
+        <t t-call="portal.portal_layout">
+            <t t-set="title">فاتورة بيع | <t t-esc="order.name"/></t>
+
+            <div class="container-fluid py-3" style="max-width: 800px;">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <a href="/my/sales" class="btn btn-outline-secondary rounded-pill btn-sm">
+                        <i class="fa fa-arrow-right me-1"/> عودة للمبيعات
+                    </a>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-primary rounded-pill btn-sm" onclick="window.print();">
+                            <i class="fa fa-print me-1"/> طباعة
+                        </button>
+                        <a t-attf-href="'https://wa.me/?text=' + 'فاتورة بيع معتمدة رقم: ' + order.name + ' بقيمة: ' + '%.2f' % order.amount_total + ' ر.س شركة ' + order.company_id.name" 
+                           target="_blank" class="btn btn-success rounded-pill btn-sm">
+                            <i class="fa fa-whatsapp me-1"/> واتساب
+                        </a>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm rounded-4 p-4 bg-white" id="invoice_printable">
+                    <!-- Invoice Header -->
+                    <div class="text-center pb-3 border-bottom mb-3">
+                        <h4 class="fw-bold mb-1 text-dark"><t t-esc="order.company_id.name"/></h4>
+                        <p class="text-muted small mb-1">فاتورة ضريبية مبسطة (Simplified Tax Invoice)</p>
+                        <span class="badge bg-light text-dark border">الرقم الضريبي: <t t-esc="order.company_id.vat or '300000000000003'"/></span>
+                    </div>
+
+                    <!-- Order Info Grid -->
+                    <div class="row g-2 text-dark small mb-3">
+                        <div class="col-6">
+                            <span class="text-muted d-block">رقم الفاتورة:</span>
+                            <span class="fw-bold fs-6 text-primary"><t t-esc="order.name"/></span>
+                        </div>
+                        <div class="col-6 text-end">
+                            <span class="text-muted d-block">تاريخ الفاتورة:</span>
+                            <span class="fw-bold"><t t-esc="order.date_order.strftime('%Y/%m/%d %I:%M %p') if order.date_order else '-'"/></span>
+                        </div>
+                        <div class="col-6">
+                            <span class="text-muted d-block">العميل:</span>
+                            <span class="fw-bold"><t t-esc="order.partner_id.name"/></span>
+                        </div>
+                        <div class="col-6 text-end">
+                            <span class="text-muted d-block">طريقة السداد:</span>
+                            <span class="badge bg-success-subtle text-success border">
+                                <t t-esc="dict(order._fields['payment_method_type'].selection).get(order.payment_method_type, 'نقداً')"/>
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Items Table -->
+                    <table class="table table-sm table-bordered text-center align-middle mb-3 small">
+                        <thead class="table-light">
+                            <tr>
+                                <th>الصنف</th>
+                                <th>الكمية</th>
+                                <th>السعر</th>
+                                <th>خصم %</th>
+                                <th>الإجمالي</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-foreach="order.order_line" t-as="l">
+                                <tr>
+                                    <td class="text-start ps-2 fw-bold"><t t-esc="l.name"/></td>
+                                    <td><t t-esc="l.product_uom_qty"/></td>
+                                    <td><t t-esc="'%.2f' % l.price_unit"/></td>
+                                    <td><t t-esc="l.discount"/>%</td>
+                                    <td class="fw-bold text-dark"><t t-esc="'%.2f' % l.price_subtotal"/></td>
+                                </tr>
+                            </t>
+                        </tbody>
+                    </table>
+
+                    <!-- Totals & ZATCA QR -->
+                    <div class="row align-items-center pt-2 border-top">
+                        <div class="col-6 text-center">
+                            <t t-if="order.zatca_qr_code">
+                                <img t-attf-src="'https://api.qrserver.com/v1/create-qr-code/?size=120x120&amp;data=' + order.zatca_qr_code" 
+                                     alt="ZATCA QR" class="border p-1 rounded-2 shadow-sm" style="width: 110px; height: 110px;"/>
+                                <small class="d-block text-muted mt-1" style="font-size: 10px;">فاتورة إلكترونية معتمدة</small>
+                            </t>
+                        </div>
+                        <div class="col-6 text-end">
+                            <small class="text-muted d-block">المجموع الفرعي: <span class="fw-bold text-dark"><t t-esc="'%.2f' % order.amount_untaxed"/> ر.س</span></small>
+                            <small class="text-muted d-block">ضريبة القيمة المضافة: <span class="fw-bold text-dark"><t t-esc="'%.2f' % order.amount_tax"/> ر.س</span></small>
+                            <h5 class="fw-bold text-success mt-2 mb-0">الإجمالي: <t t-esc="'%.2f' % order.amount_total"/> ر.س</h5>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <!-- 5. Orders History List View (/my/sales/orders) -->
+    <template id="sales_orders_list_view" name="سجل فواتير وأوامر البيع">
+        <t t-call="portal.portal_layout">
+            <t t-set="title">سجل فواتير وأوامر البيع | جندله</t>
+
+            <div class="container-fluid py-3">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h4 class="fw-bold text-dark mb-0">
+                        <i class="fa fa-list-alt text-primary me-2"/> سجل فواتير المبيعات
+                    </h4>
+                    <div class="d-flex gap-2">
+                        <a href="/my/sales/order/new" class="btn btn-success rounded-pill btn-sm px-3">
+                            <i class="fa fa-plus me-1"/> فاتورة جديدة
+                        </a>
+                        <a href="/my/sales" class="btn btn-outline-secondary rounded-pill btn-sm">
+                            <i class="fa fa-arrow-right me-1"/> لوحة المبيعات
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Orders Table Card -->
+                <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0 text-center">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="py-3">رقم الفاتورة</th>
+                                    <th class="py-3 text-start ps-4">العميل</th>
+                                    <th class="py-3">تاريخ البيع</th>
+                                    <th class="py-3">طريقة السداد</th>
+                                    <th class="py-3">المبلغ الإجمالي</th>
+                                    <th class="py-3">الحالة</th>
+                                    <th class="py-3">عرض وطباعة</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-if="not orders">
+                                    <tr>
+                                        <td colspan="7" class="py-5 text-muted">
+                                            لا توجد فواتير بيع مسجلة حالياً.
+                                        </td>
+                                    </tr>
+                                </t>
+                                <t t-foreach="orders" t-as="o">
+                                    <tr>
+                                        <td class="fw-bold text-primary"><t t-esc="o.name"/></td>
+                                        <td class="text-start ps-4 fw-bold text-dark"><t t-esc="o.partner_id.name"/></td>
+                                        <td class="small text-muted"><t t-esc="o.date_order.strftime('%Y/%m/%d %I:%M') if o.date_order else '-'"/></td>
+                                        <td>
+                                            <span class="badge bg-light text-dark border rounded-pill">
+                                                <t t-esc="dict(o._fields['payment_method_type'].selection).get(o.payment_method_type, 'نقداً')"/>
+                                            </span>
+                                        </td>
+                                        <td class="fw-bold text-success"><t t-esc="'%.2f' % o.amount_total"/> ر.س</td>
+                                        <td>
+                                            <span t-if="o.state in ['sale', 'done']" class="badge bg-success rounded-pill px-2">معتمدة</span>
+                                            <span t-else="" class="badge bg-secondary rounded-pill px-2"><t t-esc="o.state"/></span>
+                                        </td>
+                                        <td>
+                                            <a t-attf-href="/my/sales/order/#{o.id}" class="btn btn-sm btn-outline-primary rounded-pill">
+                                                <i class="fa fa-eye me-1"/> الفاتورة
+                                            </a>
+                                        </td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <!-- 6. Customers Directory with Balances & Credit Limits (/my/sales/customers) -->
+    <template id="sales_customers_view" name="دليل العملاء والأرصدة">
+        <t t-call="portal.portal_layout">
+            <t t-set="title">دليل العملاء والأرصدة والحد الائتماني | جندله</t>
+
+            <div class="container-fluid py-3">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h4 class="fw-bold text-dark mb-0">
+                        <i class="fa fa-users text-primary me-2"/> دليل العملاء والأرصدة الائتمانية
+                    </h4>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-primary rounded-pill btn-sm px-3" data-bs-toggle="modal" data-bs-target="#newCustomerModal">
+                            <i class="fa fa-user-plus me-1"/> إضافة عميل
+                        </button>
+                        <a href="/my/sales" class="btn btn-outline-secondary rounded-pill btn-sm">
+                            <i class="fa fa-arrow-right me-1"/> عودة للمبيعات
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Customer Cards Grid -->
+                <div class="row g-3">
+                    <t t-if="not customers">
+                        <div class="col-12 text-center py-5 text-muted">
+                            لا يوجد عملاء مسجلون حالياً. اضغط "إضافة عميل" لإضافة عميل جديد.
+                        </div>
+                    </t>
+                    <t t-foreach="customers" t-as="c">
+                        <div class="col-12 col-md-6 col-lg-4">
+                            <div class="card border-0 shadow-sm rounded-4 p-3 bg-white h-100" style="border: 1px solid #edf2f7 !important;">
+                                <div class="d-flex justify-content-between align-items-start pb-2 border-bottom">
+                                    <div>
+                                        <h6 class="fw-bold text-dark mb-0"><t t-esc="c.name"/></h6>
+                                        <small class="text-muted"><t t-esc="c.phone or c.mobile or 'بدون هاتف'"/></small>
+                                    </div>
+                                    <span t-if="c.customer_lat and c.customer_lng" class="badge bg-light text-primary border rounded-pill">
+                                        <i class="fa fa-map-marker me-1"/> GPS
+                                    </span>
+                                </div>
+                                <div class="row g-2 py-2 text-center small">
+                                    <div class="col-6">
+                                        <div class="bg-light p-2 rounded-3 border">
+                                            <span class="text-muted d-block">الرصيد المستحق:</span>
+                                            <span class="fw-bold text-danger"><t t-esc="'%.2f' % getattr(c, 'credit', 0.0)"/> ر.س</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="bg-light p-2 rounded-3 border">
+                                            <span class="text-muted d-block">الحد الائتماني:</span>
+                                            <span class="fw-bold text-dark"><t t-esc="'%.2f' % getattr(c, 'credit_limit', 0.0)"/> ر.س</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                                    <a t-attf-href="'tel:' + (c.phone or c.mobile)" class="btn btn-sm btn-light border rounded-pill px-3" t-if="c.phone or c.mobile">
+                                        <i class="fa fa-phone text-success me-1"/> اتصال
+                                    </a>
+                                    <a t-attf-href="'/my/sales/order/new?partner_id=' + str(c.id)" class="btn btn-sm btn-success rounded-pill px-3">
+                                        <i class="fa fa-cart-plus me-1"/> بيع للعميل
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </div>
+
+                <!-- New Customer Modal -->
+                <div class="modal fade" id="newCustomerModal" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content rounded-4 border-0 shadow">
+                            <form action="/my/sales/customer/create" method="post">
+                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                <input type="hidden" name="latitude" id="cust_modal_lat"/>
+                                <input type="hidden" name="longitude" id="cust_modal_lng"/>
+                                <div class="modal-header border-0 pb-0">
+                                    <h5 class="modal-title fw-bold text-dark">
+                                        <i class="fa fa-user-plus text-primary me-2"/> إضافة عميل جديد بالـ GPS
+                                    </h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="mb-3">
+                                        <label class="form-label small fw-bold">اسم العميل أو المتجر:</label>
+                                        <input type="text" name="name" class="form-control rounded-3" required="required" placeholder="مثال: تموينات النور"/>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label small fw-bold">رقم الهاتف أو الجوال:</label>
+                                        <input type="tel" name="phone" class="form-control rounded-3" placeholder="05xxxxxxxx"/>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label small fw-bold">الحد الائتماني المسموح به (ر.س):</label>
+                                        <input type="number" step="any" name="credit_limit" value="5000" class="form-control rounded-3"/>
+                                    </div>
+                                    <div class="small text-muted">
+                                        <i class="fa fa-map-marker text-danger me-1"/> سيتم التقاط الإحداثيات الجغرافية لموقع المتجر تلقائياً.
+                                    </div>
+                                </div>
+                                <div class="modal-footer border-0 pt-0">
+                                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">إلغاء</button>
+                                    <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold">حفظ العميل</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <script type="text/javascript">
+                    if ("geolocation" in navigator) {
+                        navigator.geolocation.getCurrentPosition(function(pos) {
+                            const latEl = document.getElementById('cust_modal_lat');
+                            const lngEl = document.getElementById('cust_modal_lng');
+                            if (latEl) latEl.value = pos.coords.latitude;
+                            if (lngEl) lngEl.value = pos.coords.longitude;
+                        });
+                    }
+                </script>
+            </div>
+        </t>
+    </template>
+
+    <!-- 7. Payments & Collections View (/my/sales/payments) -->
+    <template id="sales_payments_view" name="التحصيل وسندات القبض">
+        <t t-call="portal.portal_layout">
+            <t t-set="title">التحصيل وسندات القبض | جندله</t>
+
+            <div class="container-fluid py-3">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h4 class="fw-bold text-dark mb-0">
+                        <i class="fa fa-money text-warning me-2"/> التحصيل وسندات القبض
+                    </h4>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-success rounded-pill btn-sm px-3" data-bs-toggle="modal" data-bs-target="#newPaymentModal">
+                            <i class="fa fa-plus-circle me-1"/> سند قبض جديد
+                        </button>
+                        <a href="/my/sales" class="btn btn-outline-secondary rounded-pill btn-sm">
+                            <i class="fa fa-arrow-right me-1"/> عودة للمبيعات
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Payments Table Card -->
+                <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0 text-center">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="py-3">رقم السند</th>
+                                    <th class="py-3 text-start ps-4">العميل</th>
+                                    <th class="py-3">التاريخ</th>
+                                    <th class="py-3">اليومية / الخزينة</th>
+                                    <th class="py-3">المبلغ المحصل</th>
+                                    <th class="py-3">الحالة</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-if="not payments">
+                                    <tr>
+                                        <td colspan="6" class="py-5 text-muted">
+                                            لا توجد سندات قبض مسجلة حتى الآن.
+                                        </td>
+                                    </tr>
+                                </t>
+                                <t t-foreach="payments" t-as="p">
+                                    <tr>
+                                        <td class="fw-bold text-primary"><t t-esc="p.name"/></td>
+                                        <td class="text-start ps-4 fw-bold text-dark"><t t-esc="p.partner_id.name"/></td>
+                                        <td class="small text-muted"><t t-esc="p.date.strftime('%Y/%m/%d') if p.date else '-'"/></td>
+                                        <td><t t-esc="p.journal_id.name"/></td>
+                                        <td class="fw-bold text-success fs-6"><t t-esc="'%.2f' % p.amount"/> ر.س</td>
+                                        <td>
+                                            <span t-if="p.state == 'posted'" class="badge bg-success rounded-pill px-2">معتمد</span>
+                                            <span t-else="" class="badge bg-secondary rounded-pill px-2"><t t-esc="p.state"/></span>
+                                        </td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- New Payment Modal -->
+                <div class="modal fade" id="newPaymentModal" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content rounded-4 border-0 shadow">
+                            <form action="/my/sales/payment/create" method="post">
+                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                <div class="modal-header border-0 pb-0">
+                                    <h5 class="modal-title fw-bold text-dark">
+                                        <i class="fa fa-money text-success me-2"/> تسجيل سند قبض جديد
+                                    </h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="mb-3">
+                                        <label class="form-label small fw-bold">العميل المسدد:</label>
+                                        <select name="partner_id" class="form-select rounded-3" required="required">
+                                            <option value="">-- اختر العميل --</option>
+                                            <t t-foreach="customers" t-as="c">
+                                                <option t-att-value="c.id"><t t-esc="c.name"/> (مديونية: <t t-esc="'%.2f' % getattr(c, 'credit', 0.0)"/> ر.س)</option>
+                                            </t>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label small fw-bold">المبلغ المحصل (ر.س):</label>
+                                        <input type="number" step="any" min="1" name="amount" class="form-control rounded-3" required="required" placeholder="0.00"/>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label small fw-bold">طريقة الاستلام / اليومية:</label>
+                                        <select name="journal_id" class="form-select rounded-3">
+                                            <t t-foreach="journals" t-as="j">
+                                                <option t-att-value="j.id"><t t-esc="j.name"/></option>
+                                            </t>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label small fw-bold">ملاحظات أو رقم الإيصال:</label>
+                                        <input type="text" name="memo" class="form-control rounded-3" placeholder="تحصيل دفعة نقدية"/>
+                                    </div>
+                                </div>
+                                <div class="modal-footer border-0 pt-0">
+                                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">إلغاء</button>
+                                    <button type="submit" class="btn btn-success rounded-pill px-4 fw-bold">تأكيد وقيد التحصيل</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <!-- 8. Van Stock Inquiry View (/my/sales/stock/van) -->
+    <template id="sales_van_stock_view" name="جرد ومخزن سيارة المندوب">
+        <t t-call="portal.portal_layout">
+            <t t-set="title">جرد مخزن السيارة | جندله</t>
+
+            <div class="container-fluid py-3">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <h4 class="fw-bold text-dark mb-0">
+                            <i class="fa fa-truck text-info me-2"/> جرد ومخزون سيارة التوزيع
+                        </h4>
+                        <small class="text-muted">
+                            الموقع: <t t-esc="van_location.name if van_location else 'المستودع العام للمبيعات'"/>
+                        </small>
+                    </div>
+                    <a href="/my/sales" class="btn btn-outline-secondary rounded-pill btn-sm">
+                        <i class="fa fa-arrow-right me-1"/> عودة للمبيعات
+                    </a>
+                </div>
+
+                <!-- Van Stock Table Card -->
+                <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0 text-center">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="py-3">#</th>
+                                    <th class="py-3 text-start ps-4">الصنف / المنتج</th>
+                                    <th class="py-3">الباركود</th>
+                                    <th class="py-3">الكمية المتاحة بالسيارة</th>
+                                    <th class="py-3">سعر البيع</th>
+                                    <th class="py-3">إجمالي القيمة</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-if="not quants">
+                                    <tr>
+                                        <td colspan="6" class="py-5 text-muted">
+                                            لا توجد بضاعة مسجلة في عهدة السيارة حالياً.
+                                        </td>
+                                    </tr>
+                                </t>
+                                <t t-foreach="quants" t-as="q">
+                                    <tr>
+                                        <td class="text-muted"><t t-esc="q_index + 1"/></td>
+                                        <td class="text-start ps-4 fw-bold text-dark"><t t-esc="q.product_id.display_name"/></td>
+                                        <td class="small text-muted"><t t-esc="q.product_id.barcode or '-'"/></td>
+                                        <td>
+                                            <span class="badge bg-success fs-6 px-3 py-1 rounded-pill">
+                                                <t t-esc="q.quantity"/> <t t-esc="q.product_uom_id.name"/>
+                                            </span>
+                                        </td>
+                                        <td class="text-dark"><t t-esc="'%.2f' % q.product_id.lst_price"/> ر.س</td>
+                                        <td class="fw-bold text-primary"><t t-esc="'%.2f' % (q.quantity * q.product_id.lst_price)"/> ر.س</td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <!-- 9. Main Warehouse Stock Inquiry View (/my/sales/stock/main) -->
+    <template id="sales_main_stock_view" name="استعلام المستودع الرئيسي">
+        <t t-call="portal.portal_layout">
+            <t t-set="title">استعلام مخزون المستودع الرئيسي | جندله</t>
+
+            <div class="container-fluid py-3">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <h4 class="fw-bold text-dark mb-0">
+                            <i class="fa fa-building-o text-secondary me-2"/> استعلام مخزون المستودع المركزي
+                        </h4>
+                        <small class="text-muted">
+                            الشركة: <t t-esc="company.name"/> | المستودع: <t t-esc="main_warehouse.name if main_warehouse else 'المركزي'"/>
+                        </small>
+                    </div>
+                    <a href="/my/sales" class="btn btn-outline-secondary rounded-pill btn-sm">
+                        <i class="fa fa-arrow-right me-1"/> عودة للمبيعات
+                    </a>
+                </div>
+
+                <!-- Main Stock Table Card -->
+                <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0 text-center">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="py-3">#</th>
+                                    <th class="py-3 text-start ps-4">الصنف / المنتج</th>
+                                    <th class="py-3">الباركود</th>
+                                    <th class="py-3">الكمية المتوفرة بالمستودع</th>
+                                    <th class="py-3">سعر الوحدة</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-if="not quants">
+                                    <tr>
+                                        <td colspan="5" class="py-5 text-muted">
+                                            لا توجد أصناف في المستودع الرئيسي.
+                                        </td>
+                                    </tr>
+                                </t>
+                                <t t-foreach="quants" t-as="q">
+                                    <tr>
+                                        <td class="text-muted"><t t-esc="q_index + 1"/></td>
+                                        <td class="text-start ps-4 fw-bold text-dark"><t t-esc="q.product_id.display_name"/></td>
+                                        <td class="small text-muted"><t t-esc="q.product_id.barcode or '-'"/></td>
+                                        <td>
+                                            <span class="badge bg-primary fs-6 px-3 py-1 rounded-pill">
+                                                <t t-esc="q.quantity"/> <t t-esc="q.product_uom_id.name"/>
+                                            </span>
+                                        </td>
+                                        <td class="fw-bold text-success"><t t-esc="'%.2f' % q.product_id.lst_price"/> ر.س</td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+</odoo>
