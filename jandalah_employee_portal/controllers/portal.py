@@ -3,8 +3,8 @@ from odoo import http, fields, _
 from odoo.http import request
 from odoo.addons.portal.controllers.portal import CustomerPortal, pager as portal_pager
 import json
-# import pytz
-from datetime import datetime
+import pytz
+from datetime import datetime, timedelta
 import xmlrpc.client
 import logging
 
@@ -17,7 +17,7 @@ ENTERPRISE_USER = 'admin'
 ENTERPRISE_PWD = 'admin'
 
 def format_tz_saudi(dt, tz_name='Asia/Riyadh'):
-    """Converts a naive or UTC datetime to Saudi Arabia timezone (Asia/Riyadh - UTC+3) and formats cleanly."""
+    """Converts naive or UTC datetime to Saudi Arabia timezone (UTC+3) and formats cleanly."""
     if not dt:
         return '-'
     if isinstance(dt, str):
@@ -25,15 +25,29 @@ def format_tz_saudi(dt, tz_name='Asia/Riyadh'):
             dt = fields.Datetime.from_string(dt)
         except Exception:
             return dt
+    
+    local_dt = None
     try:
+        import pytz
         user_tz = pytz.timezone(tz_name or 'Asia/Riyadh')
         if not getattr(dt, 'tzinfo', None):
             dt = pytz.utc.localize(dt)
         local_dt = dt.astimezone(user_tz)
+    except Exception:
+        pass
+
+    if local_dt is None:
+        try:
+            # Saudi Arabia is permanently UTC+3 (no DST)
+            local_dt = dt + timedelta(hours=3)
+        except Exception:
+            local_dt = dt
+
+    try:
         am_pm = 'صباحاً' if local_dt.strftime('%p') == 'AM' else 'مساءً'
         return f"{local_dt.strftime('%Y/%m/%d %I:%M')} {am_pm}"
     except Exception:
-        return dt.strftime('%Y/%m/%d %I:%M %p')
+        return local_dt.strftime('%Y/%m/%d %I:%M %p')
 
 def sync_attendance_to_enterprise(employee_name, employee_email, employee_barcode, action, check_time, lat=None, lon=None, ip=None, browser=None):
     # Syncs attendance punch to Enterprise instance via XML-RPC API
