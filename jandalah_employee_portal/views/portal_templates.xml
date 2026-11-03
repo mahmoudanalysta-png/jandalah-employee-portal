@@ -860,7 +860,90 @@
                 </div>
 
                 <!-- Team Cards / Table -->
-                <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                <!-- Mobile Team Attendance Cards (d-block d-md-none) -->
+                <div class="d-block d-md-none mb-4">
+                    <t t-if="not team_data">
+                        <div class="card border-0 shadow-sm rounded-4 p-4 text-center text-muted bg-white">
+                            <i class="fa fa-users fs-1 d-block mb-2 text-secondary"/>
+                            لا يوجد موظفون مسجلون تحت إشرافك المباشر حالياً.
+                        </div>
+                    </t>
+                    <t t-foreach="team_data" t-as="item">
+                        <t t-set="sub_emp" t-value="item['employee']"/>
+                        <div class="card border-0 shadow-sm rounded-4 p-3 mb-3 bg-white" style="border: 1px solid #edf2f7 !important;">
+                            <div class="d-flex align-items-start justify-content-between pb-2 border-bottom">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="rounded-circle bg-light border d-flex align-items-center justify-content-center text-primary fw-bold" style="width: 42px; height: 42px; font-size: 15px;">
+                                        <t t-esc="sub_emp.name[:1]"/>
+                                    </div>
+                                    <div>
+                                        <span class="fw-bold d-block text-dark fs-6"><t t-esc="sub_emp.name"/></span>
+                                        <small class="text-muted"><t t-esc="sub_emp.job_title or 'موظف ميداني'"/></small>
+                                    </div>
+                                </div>
+                                <span t-if="item['is_checked_in']" class="badge bg-success rounded-pill px-2.5 py-1.5">
+                                    <i class="fa fa-circle me-1 small"/> متواجد الآن
+                                </span>
+                                <span t-else="" class="badge bg-secondary rounded-pill px-2.5 py-1.5">
+                                    غير متواجد
+                                </span>
+                            </div>
+
+                            <div class="row g-2 py-2 text-center small">
+                                <div class="col-6">
+                                    <div class="bg-light p-2 rounded-3 border">
+                                        <small class="text-muted d-block">وقت الحضور:</small>
+                                        <span class="fw-bold text-success"><t t-esc="item['check_in_time_str']"/></span>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="bg-light p-2 rounded-3 border">
+                                        <small class="text-muted d-block">ساعات اليوم:</small>
+                                        <span class="fw-bold text-primary"><t t-esc="item['today_hours']"/> س</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="d-flex justify-content-between align-items-center pt-2">
+                                <div>
+                                    <t t-if="item['open_attendance'] and item['open_attendance'].in_latitude and item['open_attendance'].in_longitude">
+                                        <a t-attf-href="https://www.google.com/maps?q=#{item['open_attendance'].in_latitude},#{item['open_attendance'].in_longitude}" 
+                                           target="_blank" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                                            <i class="fa fa-map-marker me-1"/> الخريطة (GPS)
+                                        </a>
+                                    </t>
+                                    <t t-elif="item['last_attendance'] and item['last_attendance'].in_latitude and item['last_attendance'].in_longitude">
+                                        <a t-attf-href="https://www.google.com/maps?q=#{item['last_attendance'].in_latitude},#{item['last_attendance'].in_longitude}" 
+                                           target="_blank" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
+                                            <i class="fa fa-map-marker me-1"/> آخر موقع (GPS)
+                                        </a>
+                                    </t>
+                                    <t t-else="">
+                                        <span class="text-muted small"><i class="fa fa-map-marker me-1"/> بدون GPS</span>
+                                    </t>
+                                </div>
+                                <div class="d-flex gap-1">
+                                    <t t-if="sub_emp.work_phone or sub_emp.mobile_phone">
+                                        <a t-attf-href="tel:#{sub_emp.work_phone or sub_emp.mobile_phone}" class="btn btn-sm btn-light border rounded-circle" title="اتصال">
+                                            <i class="fa fa-phone text-success"/>
+                                        </a>
+                                        <a t-attf-href="'https://wa.me/' + (sub_emp.mobile_phone or sub_emp.work_phone or '').replace('+', '').replace(' ', '')" target="_blank" class="btn btn-sm btn-light border rounded-circle" title="واتساب">
+                                            <i class="fa fa-whatsapp text-success"/>
+                                        </a>
+                                    </t>
+                                    <t t-if="sub_emp.work_email">
+                                        <a t-attf-href="'mailto:' + sub_emp.work_email" class="btn btn-sm btn-light border rounded-circle" title="إرسال بريد">
+                                            <i class="fa fa-envelope text-primary"/>
+                                        </a>
+                                    </t>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </div>
+
+                <!-- Desktop Team Table (d-none d-md-block) -->
+                <div class="card border-0 shadow-sm rounded-4 overflow-hidden d-none d-md-block">
                     <div class="table-responsive">
                         <table class="table table-hover align-middle mb-0 text-center">
                             <thead class="table-light">
@@ -1010,7 +1093,86 @@
                     <i class="fa fa-hourglass-half text-warning me-2"/> طلبات معلقة بانتظار قرارك (<t t-esc="pending_count"/>)
                 </h5>
 
-                <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-5">
+                <!-- Mobile Responsive Leave Cards (Visible on phones only: d-block d-md-none) -->
+                <div class="d-block d-md-none mb-4">
+                    <t t-if="not pending_leaves">
+                        <div class="card border-0 shadow-sm rounded-4 p-4 text-center text-muted bg-white mb-3">
+                            <i class="fa fa-check-circle-o fs-1 d-block mb-2 text-success"/>
+                            لا توجد أي طلبات إجازة معلقة حالياً. تم البت في كافة الطلبات!
+                        </div>
+                    </t>
+                    <t t-foreach="pending_leaves" t-as="pl">
+                        <div class="card border-0 shadow-sm rounded-4 p-3 mb-3 bg-white" style="border: 1px solid #edf2f7 !important;">
+                            <!-- Card Header: Avatar + Employee Name + Leave Type Badge -->
+                            <div class="d-flex align-items-start justify-content-between pb-3 border-bottom">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="rounded-circle bg-light border d-flex align-items-center justify-content-center text-primary fw-bold" style="width: 44px; height: 44px; font-size: 16px;">
+                                        <t t-esc="pl.employee_id.name[:1]"/>
+                                    </div>
+                                    <div>
+                                        <span class="fw-bold d-block text-dark fs-6"><t t-esc="pl.employee_id.name"/></span>
+                                        <small class="text-muted"><t t-esc="pl.employee_id.job_title or 'موظف ميداني'"/></small>
+                                    </div>
+                                </div>
+                                <span class="badge bg-primary text-white rounded-pill px-2.5 py-1 small">
+                                    <t t-esc="pl.holiday_status_id.name"/>
+                                </span>
+                            </div>
+
+                            <!-- Card Body: Date Range & Duration -->
+                            <div class="row g-2 py-3 text-center">
+                                <div class="col-7">
+                                    <div class="bg-light p-2 rounded-3 border">
+                                        <small class="text-muted d-block">الفترة المطلوبة:</small>
+                                        <span class="fw-bold text-dark small d-block">من <t t-esc="pl.request_date_from"/></span>
+                                        <span class="fw-bold text-dark small d-block">إلى <t t-esc="pl.request_date_to"/></span>
+                                    </div>
+                                </div>
+                                <div class="col-5">
+                                    <div class="bg-light p-2 rounded-3 border h-100 d-flex flex-column justify-content-center">
+                                        <small class="text-muted d-block">المدة الإجمالية:</small>
+                                        <span class="fw-bold text-primary fs-5"><t t-esc="pl.number_of_days"/> يوم</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Notes if any -->
+                            <t t-if="pl.name">
+                                <div class="p-2 mb-3 rounded-3 bg-warning text-dark small" style="background-color: #fff3cd !important;">
+                                    <i class="fa fa-commenting-o me-1 text-warning"/>
+                                    <span class="fw-bold">ملاحظة الموظف:</span> <t t-esc="pl.name"/>
+                                </div>
+                            </t>
+
+                            <!-- Action Buttons: Full Width Touch Friendly -->
+                            <div class="row g-2 pt-1">
+                                <div class="col-6">
+                                    <form action="/my/team/leaves/action" method="post" class="w-100">
+                                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                        <input type="hidden" name="leave_id" t-att-value="pl.id"/>
+                                        <input type="hidden" name="action" value="approve"/>
+                                        <button type="submit" class="btn btn-success w-100 rounded-pill py-2.5 fw-bold shadow-sm" onclick="return confirm('هل أنت متأكد من اعتماد طلب الإجازة؟');">
+                                            <i class="fa fa-check me-1"/> اعتماد الطلب
+                                        </button>
+                                    </form>
+                                </div>
+                                <div class="col-6">
+                                    <form action="/my/team/leaves/action" method="post" class="w-100">
+                                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                        <input type="hidden" name="leave_id" t-att-value="pl.id"/>
+                                        <input type="hidden" name="action" value="refuse"/>
+                                        <button type="submit" class="btn btn-outline-danger w-100 rounded-pill py-2.5 fw-bold" onclick="return confirm('هل أنت متأكد من رفض طلب الإجازة؟');">
+                                            <i class="fa fa-times me-1"/> رفض
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </div>
+
+                <!-- Desktop Pending Table (d-none d-md-block) -->
+                <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-5 d-none d-md-block">
                     <div class="table-responsive">
                         <table class="table table-hover align-middle mb-0 text-center">
                             <thead class="table-light">
@@ -1091,7 +1253,31 @@
                     <i class="fa fa-history text-secondary me-2"/> سجل القرارات السابقة لفريقك
                 </h5>
 
-                <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                <!-- Mobile History Cards (d-block d-md-none) -->
+                <div class="d-block d-md-none mb-3">
+                    <t t-if="not history_leaves">
+                        <div class="card border-0 shadow-sm rounded-4 p-3 text-center text-muted bg-white mb-3">
+                            لا توجد قرارات سابقة مسجلة.
+                        </div>
+                    </t>
+                    <t t-foreach="history_leaves" t-as="hl">
+                        <div class="card border-0 shadow-sm rounded-3 p-3 mb-2 bg-white">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="fw-bold text-dark"><t t-esc="hl.employee_id.name"/></span>
+                                <span t-if="hl.state == 'validate'" class="badge bg-success rounded-pill px-2 py-1">معتمدة</span>
+                                <span t-elif="hl.state == 'refuse'" class="badge bg-danger rounded-pill px-2 py-1">مرفوضة</span>
+                                <span t-else="" class="badge bg-secondary rounded-pill px-2 py-1"><t t-esc="hl.state"/></span>
+                            </div>
+                            <div class="d-flex justify-content-between text-muted small">
+                                <span><t t-esc="hl.holiday_status_id.name"/> (<t t-esc="hl.number_of_days"/> يوم)</span>
+                                <span><t t-esc="hl.request_date_from"/> إلى <t t-esc="hl.request_date_to"/></span>
+                            </div>
+                        </div>
+                    </t>
+                </div>
+
+                <!-- Desktop History Table (d-none d-md-block) -->
+                <div class="card border-0 shadow-sm rounded-4 overflow-hidden d-none d-md-block">
                     <div class="table-responsive">
                         <table class="table table-hover align-middle mb-0 text-center">
                             <thead class="table-light">
