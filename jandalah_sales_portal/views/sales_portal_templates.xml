@@ -44,7 +44,10 @@
                                 بوابة المبيعات الميدانية وسيارات التوزيع - بيع، تحصيل، وجرد حي
                             </p>
                         </div>
-                        <div class="d-flex gap-2">
+                        <div class="d-flex flex-wrap gap-2">
+                            <button type="button" class="btn btn-warning text-dark fw-bold rounded-pill px-3 py-2 shadow-sm" data-bs-toggle="modal" data-bs-target="#pwaSalesModal">
+                                <i class="fa fa-mobile me-1"/> تثبيت التطبيق على هاتفك
+                            </button>
                             <a href="/my/sales/order/new" class="btn btn-light text-success fw-bold rounded-pill px-4 py-2 shadow-sm">
                                 <i class="fa fa-plus-circle me-1"/> فاتورة بيع جديدة
                             </a>
@@ -207,6 +210,64 @@
                                 </t>
                             </tbody>
                         </table>
+                    </div>
+                </div>
+
+                <!-- Modal: Sales PWA Installation Guide -->
+                <div class="modal fade" id="pwaSalesModal" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content rounded-4 border-0 shadow">
+                            <div class="modal-header border-0 pb-0">
+                                <h5 class="modal-title fw-bold text-dark">
+                                    <i class="fa fa-mobile text-success me-2"/> تثبيت تطبيق المبيعات على هاتفك
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body text-center p-4">
+                                <img src="/jandalah_employee_portal/static/src/img/icon-192.png" alt="جندله" class="rounded-4 shadow-sm mb-3" style="width: 72px; height: 72px;"/>
+                                <h6 class="fw-bold text-dark mb-1">بوابة مبيعات وسيارات التوزيع</h6>
+                                <p class="text-muted small mb-4">يعمل كتطبيق جوال كامل ومستقل بملء الشاشة وبدون أي إعلانات أو شريط تصفح.</p>
+
+                                <ul class="nav nav-pills nav-fill mb-3 bg-light p-1 rounded-pill" role="tablist">
+                                    <li class="nav-item">
+                                        <button class="nav-link active rounded-pill py-2 small fw-bold" id="sales-tab-ios-btn" data-bs-toggle="pill" data-bs-target="#sales-tab-ios" type="button">
+                                            <i class="fa fa-apple me-1"/> أجهزة آيفون (iOS)
+                                        </button>
+                                    </li>
+                                    <li class="nav-item">
+                                        <button class="nav-link rounded-pill py-2 small fw-bold" id="sales-tab-android-btn" data-bs-toggle="pill" data-bs-target="#sales-tab-android" type="button">
+                                            <i class="fa fa-android me-1"/> أجهزة أندرويد
+                                        </button>
+                                    </li>
+                                </ul>
+
+                                <div class="tab-content text-start">
+                                    <div class="tab-pane fade show active" id="sales-tab-ios">
+                                        <div class="bg-light p-3 rounded-3 border mb-2 small">
+                                            <span class="badge bg-primary rounded-circle me-1">1</span>
+                                            اضغط على زر المشاركة في أسفل شاشة سفاري (المربع الذي يخرج منه سهم لأعلى).
+                                        </div>
+                                        <div class="bg-light p-3 rounded-3 border small">
+                                            <span class="badge bg-primary rounded-circle me-1">2</span>
+                                            انزل في القائمة واضغط على: <b>إضافة إلى الصفحة الرئيسية (Add to Home Screen)</b>.
+                                        </div>
+                                    </div>
+                                    <div class="tab-pane fade" id="sales-tab-android">
+                                        <div class="bg-light p-3 rounded-3 border mb-2 small">
+                                            <span class="badge bg-success rounded-circle me-1">1</span>
+                                            اضغط على زر النقاط الثلاث (⋮) في أعلى زاوية المتصفح (Chrome).
+                                        </div>
+                                        <div class="bg-light p-3 rounded-3 border small">
+                                            <span class="badge bg-success rounded-circle me-1">2</span>
+                                            اختر: <b>تثبيت التطبيق (Install App)</b> أو <b>إضافة إلى الشاشة الرئيسية</b>.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer border-0 pt-0 justify-content-center">
+                                <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">إغلاق</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
