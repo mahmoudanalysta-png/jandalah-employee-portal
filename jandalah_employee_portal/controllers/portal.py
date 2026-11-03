@@ -169,7 +169,7 @@ class JandalahCustomerPortal(CustomerPortal):
     def _get_employee(self):
         # Helper to find the employee record linked to current user with comprehensive fallbacks
         user = request.env.user
-        emp = request.env['hr.employee'].sudo().search([('user_id', '=', user.id)], limit=1)
+        emp = request.env['hr.employee'].sudo().search([('user_id', '=', user.id)], order='id desc', limit=1)
         if not emp:
             user_email = (user.email or '').strip()
             user_login = (user.login or '').strip()
@@ -180,18 +180,24 @@ class JandalahCustomerPortal(CustomerPortal):
                 ('private_email', '=ilike', user_email),
                 ('work_contact_id', '=', user.partner_id.id),
             ]
-            emp = request.env['hr.employee'].sudo().search(domain, limit=1)
+            emp = request.env['hr.employee'].sudo().search(domain, order='id desc', limit=1)
             if emp and not emp.user_id:
-                emp.sudo().write({'user_id': user.id})
+                try:
+                    emp.sudo().write({'user_id': user.id})
+                except Exception as e:
+                    _logger.warning("Could not auto-link user_id to employee %s: %s", emp.id, e)
 
-        # Dynamically sync detected timezone to employee & user
+        # Dynamically sync detected timezone to employee & user with safety try/except
         if emp:
-            detected_tz = get_current_user_tz()
-            if detected_tz:
-                if emp.tz != detected_tz:
-                    emp.sudo().write({'tz': detected_tz})
-                if user and user.tz != detected_tz:
-                    user.sudo().write({'tz': detected_tz})
+            try:
+                detected_tz = get_current_user_tz()
+                if detected_tz:
+                    if emp.tz != detected_tz:
+                        emp.sudo().write({'tz': detected_tz})
+                    if user and user.tz != detected_tz:
+                        user.sudo().write({'tz': detected_tz})
+            except Exception as e:
+                _logger.warning("Could not sync timezone to employee %s: %s", emp.id, e)
 
         return emp
 
