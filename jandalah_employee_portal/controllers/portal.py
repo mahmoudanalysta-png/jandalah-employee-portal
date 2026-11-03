@@ -16,8 +16,38 @@ ENTERPRISE_DB = 'jandalah_dev'
 ENTERPRISE_USER = 'admin'
 ENTERPRISE_PWD = 'admin'
 
-def format_tz_saudi(dt, tz_name='Asia/Riyadh'):
-    """Converts naive or UTC datetime to Saudi Arabia timezone (UTC+3) and formats cleanly."""
+def get_current_user_tz(tz_name=None):
+    """Dynamically resolves the current employee/user timezone from request cookie or user profile."""
+    if tz_name:
+        try:
+            pytz.timezone(tz_name)
+            return tz_name
+        except Exception:
+            pass
+
+    # 1. Check client browser timezone cookie
+    if request and hasattr(request, 'httprequest'):
+        try:
+            cookie_tz = request.httprequest.cookies.get('user_tz')
+            if cookie_tz:
+                pytz.timezone(cookie_tz)
+                return cookie_tz
+        except Exception:
+            pass
+
+    # 2. Check user profile in Odoo
+    if request and hasattr(request, 'env') and request.env.user and request.env.user.tz:
+        try:
+            pytz.timezone(request.env.user.tz)
+            return request.env.user.tz
+        except Exception:
+            pass
+
+    # 3. Default fallback to Saudi Arabia
+    return 'Asia/Riyadh'
+
+def format_tz_dynamic(dt, tz_name=None):
+    """Converts naive or UTC datetime to user's dynamic local timezone and formats cleanly."""
     if not dt:
         return '-'
     if isinstance(dt, str):
@@ -25,11 +55,11 @@ def format_tz_saudi(dt, tz_name='Asia/Riyadh'):
             dt = fields.Datetime.from_string(dt)
         except Exception:
             return dt
-    
+
+    resolved_tz = get_current_user_tz(tz_name)
     local_dt = None
     try:
-        import pytz
-        user_tz = pytz.timezone(tz_name or 'Asia/Riyadh')
+        user_tz = pytz.timezone(resolved_tz)
         if not getattr(dt, 'tzinfo', None):
             dt = pytz.utc.localize(dt)
         local_dt = dt.astimezone(user_tz)
@@ -38,7 +68,7 @@ def format_tz_saudi(dt, tz_name='Asia/Riyadh'):
 
     if local_dt is None:
         try:
-            # Saudi Arabia is permanently UTC+3 (no DST)
+            # Fallback calculation if timezone lookup fails
             local_dt = dt + timedelta(hours=3)
         except Exception:
             local_dt = dt
@@ -48,6 +78,8 @@ def format_tz_saudi(dt, tz_name='Asia/Riyadh'):
         return f"{local_dt.strftime('%Y/%m/%d %I:%M')} {am_pm}"
     except Exception:
         return local_dt.strftime('%Y/%m/%d %I:%M %p')
+
+format_tz_saudi = format_tz_dynamic
 
 def sync_attendance_to_enterprise(employee_name, employee_email, employee_barcode, action, check_time, lat=None, lon=None, ip=None, browser=None):
     # Syncs attendance punch to Enterprise instance via XML-RPC API
@@ -152,12 +184,14 @@ class JandalahCustomerPortal(CustomerPortal):
             if emp and not emp.user_id:
                 emp.sudo().write({'user_id': user.id})
 
-        # Ensure Asia/Riyadh timezone is consistently set
+        # Dynamically sync detected timezone to employee & user
         if emp:
-            if not emp.tz:
-                emp.sudo().write({'tz': 'Asia/Riyadh'})
-            if user and not user.tz:
-                user.sudo().write({'tz': 'Asia/Riyadh'})
+            detected_tz = get_current_user_tz()
+            if detected_tz:
+                if emp.tz != detected_tz:
+                    emp.sudo().write({'tz': detected_tz})
+                if user and user.tz != detected_tz:
+                    user.sudo().write({'tz': detected_tz})
 
         return emp
 
@@ -208,7 +242,7 @@ class JandalahCustomerPortal(CustomerPortal):
                 'last_attendance': last_att,
                 'attendance_count': request.env['hr.attendance'].sudo().search_count([('employee_id', '=', emp.id)]),
                 'leaves_count': request.env['hr.leave'].sudo().search_count([('employee_id', '=', emp.id)]),
-                'format_tz': format_tz_saudi,
+                'format_tz': format_tz_dynamic,
                 # Supervisor values
                 'is_supervisor': is_supervisor,
                 'subordinates_count': len(subordinates),
@@ -278,7 +312,7 @@ self.addEventListener('fetch', event => {
         )
 
     @http.route('/my/attendance/toggle', type='json', auth='user', methods=['POST'], csrf=False)
-    def attendance_toggle(self, latitude=None, longitude=None, browser=None, **kw):
+    def attendance_toggle(self, latitude=None, longitude=None, browser=None, tz=None, **kw):
         # Handles 1-tap Check-In and Check-Out with GPS, IP, and Browser capture
         emp = self._get_employee()
         if not emp:
@@ -293,7 +327,7 @@ self.addEventListener('fetch', event => {
             ip_addr = ip_addr.split(',')[0].strip()
 
         now_utc = fields.Datetime.now()
-        formatted_time = format_tz_saudi(now_utc)
+        formatted_time = format_tz_dynamic(now_utc, tz_name=tz)
 
         # Check for open attendance
         open_att = request.env['hr.attendance'].sudo().search([
@@ -417,7 +451,7 @@ self.addEventListener('fetch', event => {
             'total_hours': total_hours,
             'page_name': 'attendance',
             'pager': pager,
-            'format_tz': format_tz_saudi,
+            'format_tz': format_tz_dynamic,
             'default_url': '/my/attendance',
         })
         return request.render('jandalah_employee_portal.portal_my_attendance_view', values)
@@ -455,7 +489,7 @@ self.addEventListener('fetch', event => {
             'pager': pager,
             'success': success,
             'error': error,
-            'format_tz': format_tz_saudi,
+            'format_tz': format_tz_dynamic,
             'default_url': '/my/leaves',
         })
         return request.render('jandalah_employee_portal.portal_my_leaves_view', values)
@@ -538,7 +572,7 @@ self.addEventListener('fetch', event => {
             'total_subordinates': len(subordinates),
             'checked_in_count': checked_in_count,
             'page_name': 'team_attendance',
-            'format_tz': format_tz_saudi,
+            'format_tz': format_tz_dynamic,
             'default_url': '/my/team',
         })
         return request.render('jandalah_employee_portal.portal_team_attendance_view', values)
@@ -578,7 +612,7 @@ self.addEventListener('fetch', event => {
             'page_name': 'team_leaves',
             'success': success,
             'error': error,
-            'format_tz': format_tz_saudi,
+            'format_tz': format_tz_dynamic,
             'default_url': '/my/team/leaves',
         })
         return request.render('jandalah_employee_portal.portal_team_leaves_view', values)

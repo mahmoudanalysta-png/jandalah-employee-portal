@@ -14,6 +14,24 @@
             <link rel="apple-touch-icon" sizes="192x192" href="/jandalah_employee_portal/static/src/img/icon-192.png"/>
             <link rel="apple-touch-icon" sizes="512x512" href="/jandalah_employee_portal/static/src/img/icon-512.png"/>
             <meta name="theme-color" content="#0d6efd"/>
+            <script type="text/javascript">
+                (function() {
+                    try {
+                        var tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                        if (tz) {
+                            var match = document.cookie.match(/(?:^|;\s*)user_tz=([^;]+)/);
+                            var currentTz = match ? decodeURIComponent(match[1]) : null;
+                            if (currentTz !== tz) {
+                                document.cookie = "user_tz=" + encodeURIComponent(tz) + "; path=/; max-age=31536000; SameSite=Lax";
+                                if (!sessionStorage.getItem('jandalah_tz_synced')) {
+                                    sessionStorage.setItem('jandalah_tz_synced', '1');
+                                    window.location.reload();
+                                }
+                            }
+                        }
+                    } catch(e) {}
+                })();
+            </script>
         </xpath>
     </template>
 
@@ -192,7 +210,7 @@
                                                 <small class="text-muted" id="ess_live_clock"></small>
                                             </div>
                                             <p class="text-muted small mb-3">
-                                                تسجيل الحضور والانصراف الذكي بالبصمة والموقع الجغرافي (GPS) بتوقيت المملكة.
+                                                تسجيل الحضور والانصراف الذكي بالبصمة والموقع الجغرافي (GPS) بالتوقيت المحلي.
                                             </p>
                                         </div>
 
@@ -396,7 +414,7 @@
                     // 1. Live Saudi Clock
                     function updateClock() {
                         const now = new Date();
-                        const options = { timeZone: 'Asia/Riyadh', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
+                        const options = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
                         const clockEl = document.getElementById('ess_live_clock');
                         if (clockEl) {
                             clockEl.innerText = now.toLocaleTimeString('ar-SA', options);
@@ -524,7 +542,8 @@
                                 params: {
                                     latitude: lat,
                                     longitude: lon,
-                                    browser: navigator.userAgent
+                                    browser: navigator.userAgent,
+                                    tz: Intl.DateTimeFormat().resolvedOptions().timeZone
                                 }
                             })
                         })
@@ -584,8 +603,8 @@
                             <thead class="table-light">
                                 <tr>
                                     <th class="py-3">#</th>
-                                    <th class="py-3">وقت الحضور (بتوقيت الرياض)</th>
-                                    <th class="py-3">وقت الانصراف (بتوقيت الرياض)</th>
+                                    <th class="py-3">وقت الحضور (التوقيت المحلي)</th>
+                                    <th class="py-3">وقت الانصراف (التوقيت المحلي)</th>
                                     <th class="py-3">ساعات العمل</th>
                                     <th class="py-3">موقع الحضور (GPS)</th>
                                     <th class="py-3">موقع الانصراف (GPS)</th>
@@ -849,7 +868,7 @@
                                     <th class="py-3">#</th>
                                     <th class="py-3 text-start ps-4">الموظف</th>
                                     <th class="py-3">الحالة الحالية</th>
-                                    <th class="py-3">وقت الحضور (بتوقيت الرياض)</th>
+                                    <th class="py-3">وقت الحضور (التوقيت المحلي)</th>
                                     <th class="py-3">موقع الحضور (GPS)</th>
                                     <th class="py-3">ساعات عمل اليوم</th>
                                     <th class="py-3">بيانات الاتصال</th>
