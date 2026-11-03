@@ -491,7 +491,7 @@
 
                 <!-- Client Side Script -->
                 <script type="text/javascript">
-                    function onProductSelect(selectEl) {
+                    window.onProductSelect = function(selectEl) {
                         const row = selectEl.closest('.product-row');
                         const selectedOpt = selectEl.options[selectEl.selectedIndex];
                         const price = selectedOpt.getAttribute('data-price') || 0.0;
@@ -499,10 +499,10 @@
                         if (priceInput) {
                             priceInput.value = parseFloat(price).toFixed(2);
                         }
-                        calculateTotals();
-                    }
+                        window.calculateTotals();
+                    };
 
-                    function calculateTotals() {
+                    window.calculateTotals = function() {
                         let subtotal = 0;
                         document.querySelectorAll('.product-row').forEach(row => {
                             const qty = parseFloat(row.querySelector('.qty-input')?.value || 0);
@@ -515,12 +515,15 @@
                         const tax = subtotal * 0.15;
                         const grandTotal = subtotal + tax;
 
-                        document.getElementById('subtotal_display').innerText = subtotal.toFixed(2) + ' ر.س';
-                        document.getElementById('tax_display').innerText = tax.toFixed(2) + ' ر.س';
-                        document.getElementById('total_display').innerText = grandTotal.toFixed(2) + ' ر.س';
-                    }
+                        const subEl = document.getElementById('subtotal_display');
+                        const taxEl = document.getElementById('tax_display');
+                        const totEl = document.getElementById('total_display');
+                        if (subEl) subEl.innerText = subtotal.toFixed(2) + ' ر.س';
+                        if (taxEl) taxEl.innerText = tax.toFixed(2) + ' ر.س';
+                        if (totEl) totEl.innerText = grandTotal.toFixed(2) + ' ر.س';
+                    };
 
-                    function addProductRow() {
+                    window.addProductRow = function() {
                         const container = document.getElementById('products_container');
                         const firstRow = container.querySelector('.product-row');
                         const newRow = firstRow.cloneNode(true);
@@ -529,22 +532,22 @@
                         newRow.querySelector('.disc-input').value = 0;
                         newRow.querySelector('.product-select').selectedIndex = 0;
                         container.appendChild(newRow);
-                    }
+                    };
 
-                    function removeProductRow(btn) {
+                    window.removeProductRow = function(btn) {
                         const rows = document.querySelectorAll('.product-row');
                         if (rows.length > 1) {
                             btn.closest('.product-row').remove();
-                            calculateTotals();
+                            window.calculateTotals();
                         } else {
                             alert('يجب أن تحتوي الفاتورة على صنف واحد على الأقل.');
                         }
-                    }
+                    };
 
-                    function onCustomerChange(partnerId) {
+                    window.onCustomerChange = function(partnerId) {
                         const box = document.getElementById('customer_credit_box');
                         if (!partnerId) {
-                            box.classList.add('d-none');
+                            if (box) box.classList.add('d-none');
                             return;
                         }
                         fetch('/api/sales/customer/info', {
@@ -554,30 +557,42 @@
                         })
                         .then(res => res.json())
                         .then(data => {
-                            if (data.result and data.result.status === 'success') {
+                            if (data &amp;&amp; data.result &amp;&amp; data.result.status === 'success') {
                                 const d = data.result.data;
-                                document.getElementById('cust_balance').innerText = d.balance.toFixed(2) + ' ر.س';
-                                document.getElementById('cust_limit').innerText = d.credit_limit.toFixed(2) + ' ر.س';
-                                document.getElementById('cust_available').innerText = d.available_credit.toFixed(2) + ' ر.س';
-                                box.classList.remove('d-none');
+                                const balEl = document.getElementById('cust_balance');
+                                const limEl = document.getElementById('cust_limit');
+                                const avaEl = document.getElementById('cust_available');
+                                if (balEl) balEl.innerText = d.balance.toFixed(2) + ' ر.س';
+                                if (limEl) limEl.innerText = d.credit_limit.toFixed(2) + ' ر.س';
+                                if (avaEl) avaEl.innerText = d.available_credit.toFixed(2) + ' ر.س';
+                                if (box) box.classList.remove('d-none');
                                 const warn = document.getElementById('cust_warning');
-                                if (d.is_over_limit) {
-                                    warn.classList.remove('d-none');
-                                } else {
-                                    warn.classList.add('d-none');
+                                if (warn) {
+                                    if (d.is_over_limit) {
+                                        warn.classList.remove('d-none');
+                                    } else {
+                                        warn.classList.add('d-none');
+                                    }
                                 }
                             }
+                        })
+                        .catch(err => {
+                            console.warn('Customer info error:', err);
                         });
-                    }
+                    };
 
                     // GPS Capture
                     if ("geolocation" in navigator) {
                         navigator.geolocation.getCurrentPosition(function(pos) {
-                            document.getElementById('order_latitude').value = pos.coords.latitude;
-                            document.getElementById('order_longitude').value = pos.coords.longitude;
-                            document.getElementById('gps_status').innerHTML = '<span class="text-success"><i class="fa fa-check-circle me-1"/> تم تحديد موقع البيع (GPS) بنجاح</span>';
+                            const latEl = document.getElementById('order_latitude');
+                            const lngEl = document.getElementById('order_longitude');
+                            const stEl = document.getElementById('gps_status');
+                            if (latEl) latEl.value = pos.coords.latitude;
+                            if (lngEl) lngEl.value = pos.coords.longitude;
+                            if (stEl) stEl.innerHTML = '<span class="text-success"><i class="fa fa-check-circle me-1"/> تم تحديد موقع البيع (GPS) بنجاح</span>';
                         }, function() {
-                            document.getElementById('gps_status').innerText = 'تعذر تحديد الـ GPS، سيتم الحفظ بدون إحداثيات.';
+                            const stEl = document.getElementById('gps_status');
+                            if (stEl) stEl.innerText = 'تعذر تحديد الـ GPS، سيتم الحفظ بدون إحداثيات.';
                         });
                     }
                 </script>
