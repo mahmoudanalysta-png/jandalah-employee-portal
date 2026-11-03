@@ -167,35 +167,62 @@ def sync_attendance_to_enterprise(employee_name, employee_email, employee_barcod
 class JandalahCustomerPortal(CustomerPortal):
 
     def _get_employee(self):
-        # Helper to find the employee record linked to current user with comprehensive fallbacks
+        # Helper to find the employee record linked to current user with comprehensive fallbacks & strict company isolation
         user = request.env.user
-        emp = request.env['hr.employee'].sudo().search([('user_id', '=', user.id)], order='id desc', limit=1)
+        company = request.env.company
+        # 1. Search in current active company first
+        emp = request.env['hr.employee'].sudo().search([
+            ('user_id', '=', user.id),
+            ('company_id', '=', company.id)
+        ], order='id desc', limit=1)
+
+        # 2. If not found in current company, search across all companies
+        if not emp:
+            emp = request.env['hr.employee'].sudo().search([('user_id', '=', user.id)], order='id desc', limit=1)
+
+        # 3. If still not found, search by email/login in current company first
         if not emp:
             user_email = (user.email or '').strip()
             user_login = (user.login or '').strip()
-            # Build search domain for work_email, login, private_email, or partner_id
             domain = ['|', '|', '|',
                 ('work_email', '=ilike', user_email),
                 ('work_email', '=ilike', user_login),
                 ('private_email', '=ilike', user_email),
                 ('work_contact_id', '=', user.partner_id.id),
             ]
-            emp = request.env['hr.employee'].sudo().search(domain, order='id desc', limit=1)
-            if emp and not emp.user_id:
-                try:
-                    emp.sudo().write({'user_id': user.id})
-                except Exception as e:
-                    _logger.warning("Could not auto-link user_id to employee %s: %s", emp.id, e)
+            emp = request.env['hr.employee'].sudo().search([('company_id', '=', company.id)] + domain, order='id desc', limit=1)
+            if not emp:
+                emp = request.env['hr.employee'].sudo().search(domain, order='id desc', limit=1)
 
-        # Dynamically sync detected timezone to employee & user with safety try/except
+            if emp and not emp.user_id:
+                existing = request.env['hr.employee'].sudo().search_count([
+                    ('user_id', '=', user.id),
+                    ('company_id', '=', emp.company_id.id)
+                ])
+                if existing == 0:
+                    try:
+                        with request.env.cr.savepoint():
+                            emp.sudo().write({'user_id': user.id})
+                    except Exception as e:
+                        _logger.warning("Could not auto-link user_id to employee %s: %s", emp.id, e)
+
+        # Dynamically sync detected timezone with safety savepoints (prevents constraint rollbacks)
         if emp:
             try:
                 detected_tz = get_current_user_tz()
                 if detected_tz:
                     if emp.tz != detected_tz:
-                        emp.sudo().write({'tz': detected_tz})
+                        try:
+                            with request.env.cr.savepoint():
+                                emp.sudo().write({'tz': detected_tz})
+                        except Exception:
+                            pass
                     if user and user.tz != detected_tz:
-                        user.sudo().write({'tz': detected_tz})
+                        try:
+                            with request.env.cr.savepoint():
+                                user.sudo().write({'tz': detected_tz})
+                        except Exception:
+                            pass
             except Exception as e:
                 _logger.warning("Could not sync timezone to employee %s: %s", emp.id, e)
 
@@ -260,10 +287,11 @@ class JandalahCustomerPortal(CustomerPortal):
     @http.route('/jandalah/manifest.json', type='http', auth='public', methods=['GET'], csrf=False)
     def portal_pwa_manifest(self, **kw):
         manifest_data = {
+            "id": "/my",
             "name": "بوابة موظفي جندله",
-            "short_name": "جندله",
+            "short_name": "موظفي جندله",
             "start_url": "/my",
-            "scope": "/",
+            "scope": "/my",
             "display": "standalone",
             "background_color": "#ffffff",
             "theme_color": "#0d6efd",

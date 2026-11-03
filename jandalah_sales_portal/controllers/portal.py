@@ -13,12 +13,87 @@ class JandalahSalesPortal(CustomerPortal):
     def _get_salesperson_employee(self):
         """Finds current employee and verifies sales privileges."""
         user = request.env.user
-        emp = request.env['hr.employee'].sudo().search([('user_id', '=', user.id)], order='id desc', limit=1)
+        company = request.env.company
+        # 1. Search in current company first
+        emp = request.env['hr.employee'].sudo().search([
+            ('user_id', '=', user.id),
+            ('company_id', '=', company.id)
+        ], order='id desc', limit=1)
+        if not emp:
+            emp = request.env['hr.employee'].sudo().search([('user_id', '=', user.id)], order='id desc', limit=1)
         if not emp:
             user_email = (user.email or '').strip()
-            domain = [('work_email', '=ilike', user_email)] if user_email else []
-            emp = request.env['hr.employee'].sudo().search(domain, order='id desc', limit=1) if domain else False
+            if user_email:
+                emp = request.env['hr.employee'].sudo().search([
+                    ('company_id', '=', company.id),
+                    ('work_email', '=ilike', user_email)
+                ], order='id desc', limit=1)
+                if not emp:
+                    emp = request.env['hr.employee'].sudo().search([
+                        ('work_email', '=ilike', user_email)
+                    ], order='id desc', limit=1)
         return emp
+
+    # PWA Manifest & ServiceWorker for Van Sales Portal
+    @http.route('/jandalah/sales/manifest.json', type='http', auth='public', methods=['GET'], csrf=False)
+    def sales_pwa_manifest(self, **kw):
+        manifest_data = {
+            "id": "/my/sales",
+            "name": "مبيعات جندله",
+            "short_name": "مبيعات جندله",
+            "start_url": "/my/sales",
+            "scope": "/my/sales",
+            "display": "standalone",
+            "background_color": "#ffffff",
+            "theme_color": "#198754",
+            "description": "بوابة مبيعات وتحصيل سيارات التوزيع وجرد المستودع الميداني - شركة جندله",
+            "orientation": "portrait-primary",
+            "icons": [
+                {
+                    "src": "/jandalah_sales_portal/static/src/img/sales-icon-192.png",
+                    "sizes": "192x192",
+                    "type": "image/png",
+                    "purpose": "any maskable"
+                },
+                {
+                    "src": "/jandalah_sales_portal/static/src/img/sales-icon-512.png",
+                    "sizes": "512x512",
+                    "type": "image/png",
+                    "purpose": "any maskable"
+                }
+            ]
+        }
+        return request.make_response(
+            json.dumps(manifest_data, ensure_ascii=False),
+            headers=[
+                ('Content-Type', 'application/manifest+json; charset=utf-8'),
+                ('Cache-Control', 'public, max-age=3600'),
+            ]
+        )
+
+    @http.route('/jandalah/sales/sw.js', type='http', auth='public', methods=['GET'], csrf=False)
+    def sales_pwa_sw(self, **kw):
+        sw_code = """
+const CACHE_NAME = 'jandalah-sales-v2';
+self.addEventListener('install', event => {
+    self.skipWaiting();
+});
+self.addEventListener('activate', event => {
+    event.waitUntil(clients.claim());
+});
+self.addEventListener('fetch', event => {
+    event.respondWith(
+        fetch(event.request).catch(() => caches.match(event.request))
+    );
+});
+"""
+        return request.make_response(
+            sw_code,
+            headers=[
+                ('Content-Type', 'application/javascript; charset=utf-8'),
+                ('Cache-Control', 'public, max-age=3600'),
+            ]
+        )
 
     def _get_user_company(self):
         """Resolves active company (Al-Qanadil Al-Mushriqa or Material Trading or Jandalah)."""

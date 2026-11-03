@@ -1,19 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
-    <!-- 0. Inject PWA Manifest & iOS Meta Tags into Head -->
+    <!-- 0. Inject PWA Manifest & iOS Meta Tags into Head (Isolated from Sales Portal) -->
     <template id="portal_pwa_head" inherit_id="portal.frontend_layout" priority="20">
         <xpath expr="//head" position="inside">
-            <link rel="manifest" href="/jandalah/manifest.json"/>
-            <meta name="mobile-web-app-capable" content="yes"/>
-            <meta name="apple-mobile-web-app-capable" content="yes"/>
-            <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-            <meta name="apple-mobile-web-app-title" content="جندله"/>
-            <link rel="apple-touch-icon" href="/jandalah_employee_portal/static/src/img/icon-192.png"/>
-            <link rel="apple-touch-icon" sizes="180x180" href="/jandalah_employee_portal/static/src/img/icon-192.png"/>
-            <link rel="apple-touch-icon" sizes="192x192" href="/jandalah_employee_portal/static/src/img/icon-192.png"/>
-            <link rel="apple-touch-icon" sizes="512x512" href="/jandalah_employee_portal/static/src/img/icon-512.png"/>
-            <meta name="theme-color" content="#0d6efd"/>
+            <t t-if="not request.httprequest.path.startswith('/my/sales')">
+                <link rel="manifest" href="/jandalah/manifest.json"/>
+                <meta name="mobile-web-app-capable" content="yes"/>
+                <meta name="apple-mobile-web-app-capable" content="yes"/>
+                <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+                <meta name="apple-mobile-web-app-title" content="موظفي جندله"/>
+                <link rel="apple-touch-icon" href="/jandalah_employee_portal/static/src/img/icon-192.png"/>
+                <link rel="apple-touch-icon" sizes="180x180" href="/jandalah_employee_portal/static/src/img/icon-192.png"/>
+                <link rel="apple-touch-icon" sizes="192x192" href="/jandalah_employee_portal/static/src/img/icon-192.png"/>
+                <link rel="apple-touch-icon" sizes="512x512" href="/jandalah_employee_portal/static/src/img/icon-512.png"/>
+                <meta name="theme-color" content="#0d6efd"/>
+            </t>
             <script type="text/javascript">
                 (function() {
                     try {
