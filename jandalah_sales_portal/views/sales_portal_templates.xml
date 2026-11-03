@@ -45,8 +45,8 @@
                             </p>
                         </div>
                         <div class="d-flex flex-wrap gap-2">
-                            <button type="button" class="btn btn-warning text-dark fw-bold rounded-pill px-3 py-2 shadow-sm" data-bs-toggle="modal" data-bs-target="#pwaSalesModal">
-                                <i class="fa fa-mobile me-1"/> تثبيت التطبيق على هاتفك
+                            <button type="button" id="btn_direct_install_pwa" class="btn btn-warning text-dark fw-bold rounded-pill px-3 py-2 shadow-sm" onclick="triggerDirectInstall();">
+                                <i class="fa fa-download me-1"/> تثبيت التطبيق الآن (Install)
                             </button>
                             <a href="/my/sales/order/new" class="btn btn-light text-success fw-bold rounded-pill px-4 py-2 shadow-sm">
                                 <i class="fa fa-plus-circle me-1"/> فاتورة بيع جديدة
@@ -226,7 +226,13 @@
                             <div class="modal-body text-center p-4">
                                 <img src="/jandalah_employee_portal/static/src/img/icon-192.png" alt="جندله" class="rounded-4 shadow-sm mb-3" style="width: 72px; height: 72px;"/>
                                 <h6 class="fw-bold text-dark mb-1">بوابة مبيعات وسيارات التوزيع</h6>
-                                <p class="text-muted small mb-4">يعمل كتطبيق جوال كامل ومستقل بملء الشاشة وبدون أي إعلانات أو شريط تصفح.</p>
+                                <p class="text-muted small mb-3">يعمل كتطبيق جوال كامل ومستقل بملء الشاشة وبدون أي إعلانات أو شريط تصفح.</p>
+
+                                <div class="mb-4">
+                                    <button type="button" class="btn btn-success btn-lg w-100 rounded-pill py-2.5 fw-bold shadow-sm" onclick="triggerDirectInstall();">
+                                        <i class="fa fa-download me-2"/> اضغط هنا للتثبيت المباشر الفوري (Install Now)
+                                    </button>
+                                </div>
 
                                 <ul class="nav nav-pills nav-fill mb-3 bg-light p-1 rounded-pill" role="tablist">
                                     <li class="nav-item">
@@ -271,6 +277,38 @@
                     </div>
                 </div>
 
+                <!-- Direct PWA Install Script -->
+                <script type="text/javascript">
+                    let deferredSalesPrompt = null;
+
+                    window.addEventListener('beforeinstallprompt', (e) => {
+                        e.preventDefault();
+                        deferredSalesPrompt = e;
+                    });
+
+                    function triggerDirectInstall() {
+                        if (deferredSalesPrompt) {
+                            deferredSalesPrompt.prompt();
+                            deferredSalesPrompt.userChoice.then((choiceResult) => {
+                                if (choiceResult.outcome === 'accepted') {
+                                    const btn = document.getElementById('btn_direct_install_pwa');
+                                    if (btn) {
+                                        btn.className = 'btn btn-success text-white fw-bold rounded-pill px-3 py-2 shadow-sm';
+                                        btn.innerHTML = '<i class="fa fa-check-circle me-1"></i> تم تثبيت التطبيق بنجاح';
+                                    }
+                                }
+                                deferredSalesPrompt = null;
+                            });
+                        } else {
+                            // If prompt is not ready or on iOS Safari, show modal
+                            const modalEl = document.getElementById('pwaSalesModal');
+                            if (modalEl &amp;&amp; typeof bootstrap !== 'undefined') {
+                                const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+                                modal.show();
+                            }
+                        }
+                    }
+                </script>
             </div>
         </t>
     </template>
