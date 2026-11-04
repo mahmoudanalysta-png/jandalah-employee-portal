@@ -1379,6 +1379,10 @@
                                 </div>
                                 <div class="col-6">
                                     <button type="button" class="btn btn-outline-danger w-100 rounded-pill py-2.5 fw-bold" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#refuseLeaveModal"
+                                            data-toggle="modal" 
+                                            data-target="#refuseLeaveModal"
                                             onclick="openRefuseModal(this)"
                                             t-att-data-leave-id="pl['id']"
                                             t-att-data-emp-name="pl['employee_name']"
@@ -1460,6 +1464,10 @@
                                                     </button>
                                                 </form>
                                                 <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-bold" 
+                                                        data-bs-toggle="modal" 
+                                                        data-bs-target="#refuseLeaveModal"
+                                                        data-toggle="modal" 
+                                                        data-target="#refuseLeaveModal"
                                                         onclick="openRefuseModal(this)"
                                                         t-att-data-leave-id="pl['id']"
                                                         t-att-data-emp-name="pl['employee_name']"
@@ -1584,7 +1592,7 @@
                                     <h5 class="modal-title fw-bold text-danger" id="refuseLeaveModalLabel">
                                         <i class="fa fa-times-circle me-2"/> رفض طلب الإجازة
                                     </h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" data-dismiss="modal" onclick="closeRefuseModal()" aria-label="Close"></button>
                                 </div>
                                 <div class="modal-body p-4">
                                     <div class="bg-light p-3 rounded-3 border mb-3 small">
@@ -1630,7 +1638,7 @@
                                     </div>
                                 </div>
                                 <div class="modal-footer border-0 pt-0">
-                                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">تراجع</button>
+                                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal" data-dismiss="modal" onclick="closeRefuseModal()">تراجع</button>
                                     <button type="submit" class="btn btn-danger rounded-pill px-4 fw-bold">
                                         <i class="fa fa-times me-1"/> تأكيد رفض الإجازة
                                     </button>
@@ -1642,21 +1650,85 @@
 
                 <script type="text/javascript">
                     function openRefuseModal(btn) {
-                        var leaveId = btn.getAttribute('data-leave-id');
-                        var empName = btn.getAttribute('data-emp-name');
-                        var leaveType = btn.getAttribute('data-leave-type');
-                        var leaveDays = btn.getAttribute('data-leave-days');
+                        try {
+                            var leaveId = btn.getAttribute('data-leave-id') || '';
+                            var empName = btn.getAttribute('data-emp-name') || '';
+                            var leaveType = btn.getAttribute('data-leave-type') || '';
+                            var leaveDays = btn.getAttribute('data-leave-days') || '';
 
-                        document.getElementById('modal_refuse_leave_id').value = leaveId;
-                        document.getElementById('modal_refuse_emp_name').innerText = empName;
-                        document.getElementById('modal_refuse_leave_type').innerText = leaveType;
-                        document.getElementById('modal_refuse_leave_days').innerText = leaveDays + ' يوم';
-                        document.getElementById('modal_refusal_reason').value = '';
+                            var idInput = document.getElementById('modal_refuse_leave_id');
+                            if (idInput) idInput.value = leaveId;
 
-                        var modalEl = document.getElementById('refuseLeaveModal');
-                        if (modalEl &amp;&amp; typeof bootstrap !== 'undefined') {
-                            var modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
-                            modal.show();
+                            var nameEl = document.getElementById('modal_refuse_emp_name');
+                            if (nameEl) nameEl.innerText = empName;
+
+                            var typeEl = document.getElementById('modal_refuse_leave_type');
+                            if (typeEl) typeEl.innerText = leaveType;
+
+                            var daysEl = document.getElementById('modal_refuse_leave_days');
+                            if (daysEl) daysEl.innerText = leaveDays + ' يوم';
+
+                            var reasonInput = document.getElementById('modal_refusal_reason');
+                            if (reasonInput) reasonInput.value = '';
+
+                            var modalEl = document.getElementById('refuseLeaveModal');
+                            if (!modalEl) return;
+
+                            // 1. Try native Bootstrap 5
+                            if (typeof window.bootstrap !== 'undefined' &amp;&amp; window.bootstrap.Modal) {
+                                try {
+                                    var modal = window.bootstrap.Modal.getInstance(modalEl) || new window.bootstrap.Modal(modalEl);
+                                    modal.show();
+                                } catch(e) {}
+                            }
+                            // 2. Try jQuery / Bootstrap 4
+                            else if (typeof window.$ !== 'undefined' &amp;&amp; typeof window.$.fn.modal !== 'undefined') {
+                                try {
+                                    window.$(modalEl).modal('show');
+                                } catch(e) {}
+                            }
+
+                            // 3. Robust fallback: Force modal visibility if not displayed yet
+                            setTimeout(function() {
+                                if (modalEl.style.display !== 'block') {
+                                    modalEl.classList.add('show');
+                                    modalEl.style.display = 'block';
+                                    modalEl.style.backgroundColor = 'rgba(0,0,0,0.5)';
+                                    modalEl.removeAttribute('aria-hidden');
+                                    modalEl.setAttribute('aria-modal', 'true');
+                                    document.body.classList.add('modal-open');
+                                }
+                            }, 50);
+                        } catch (err) {
+                            console.error('openRefuseModal error:', err);
+                        }
+                    }
+
+                    function closeRefuseModal() {
+                        try {
+                            var modalEl = document.getElementById('refuseLeaveModal');
+                            if (!modalEl) return;
+
+                            if (typeof window.bootstrap !== 'undefined' &amp;&amp; window.bootstrap.Modal) {
+                                try {
+                                    var modal = window.bootstrap.Modal.getInstance(modalEl);
+                                    if (modal) modal.hide();
+                                } catch(e) {}
+                            }
+                            if (typeof window.$ !== 'undefined' &amp;&amp; typeof window.$.fn.modal !== 'undefined') {
+                                try {
+                                    window.$(modalEl).modal('hide');
+                                } catch(e) {}
+                            }
+
+                            modalEl.classList.remove('show');
+                            modalEl.style.display = 'none';
+                            modalEl.style.backgroundColor = '';
+                            modalEl.setAttribute('aria-hidden', 'true');
+                            modalEl.removeAttribute('aria-modal');
+                            document.body.classList.remove('modal-open');
+                        } catch (err) {
+                            console.error('closeRefuseModal error:', err);
                         }
                     }
 
@@ -1667,6 +1739,18 @@
                             ta.focus();
                         }
                     }
+
+                    // Close modal when clicking outside modal dialog
+                    document.addEventListener('DOMContentLoaded', function() {
+                        var modalEl = document.getElementById('refuseLeaveModal');
+                        if (modalEl) {
+                            modalEl.addEventListener('click', function(e) {
+                                if (e.target === modalEl) {
+                                    closeRefuseModal();
+                                }
+                            });
+                        }
+                    });
                 </script>
 
             </div>
