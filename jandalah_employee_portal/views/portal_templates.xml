@@ -683,105 +683,7 @@
                     </t>
                 </div>
 
-                <!-- Modal: Refusal Reason with Quick Chips -->
-                <div class="modal fade" id="refuseLeaveModal" tabindex="-1" aria-labelledby="refuseLeaveModalLabel" aria-hidden="true">
-                    <div class="modal-dialog modal-dialog-centered">
-                        <div class="modal-content border-0 shadow rounded-4">
-                            <form action="/my/team/leaves/action" method="post" id="refuse_leave_form">
-                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
-                                <input type="hidden" name="action" value="refuse"/>
-                                <input type="hidden" name="leave_id" id="modal_refuse_leave_id"/>
-
-                                <div class="modal-header border-0 pb-0">
-                                    <h5 class="modal-title fw-bold text-danger" id="refuseLeaveModalLabel">
-                                        <i class="fa fa-times-circle me-2"/> رفض طلب الإجازة
-                                    </h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                </div>
-                                <div class="modal-body p-4">
-                                    <div class="bg-light p-3 rounded-3 border mb-3 small">
-                                        <div class="d-flex justify-content-between mb-1">
-                                            <span class="text-muted">الموظف:</span>
-                                            <span class="fw-bold text-dark" id="modal_refuse_emp_name">-</span>
-                                        </div>
-                                        <div class="d-flex justify-content-between mb-1">
-                                            <span class="text-muted">نوع الإجازة:</span>
-                                            <span class="fw-bold text-primary" id="modal_refuse_leave_type">-</span>
-                                        </div>
-                                        <div class="d-flex justify-content-between">
-                                            <span class="text-muted">المدة:</span>
-                                            <span class="fw-bold text-dark" id="modal_refuse_leave_days">-</span>
-                                        </div>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <label class="form-label fw-bold text-dark">
-                                            سبب الرفض <span class="text-danger">*</span>
-                                            <small class="text-muted fw-normal">(سيظهر للموظف في إشعارات البوابة)</small>
-                                        </label>
-                                        <textarea name="refusal_reason" id="modal_refusal_reason" class="form-control rounded-3" rows="3" required="required" placeholder="يرجى كتابة سبب رفض الطلب بالتفصيل..."></textarea>
-                                    </div>
-
-                                    <!-- Quick Reasons Chips -->
-                                    <div class="mb-2">
-                                        <small class="text-muted d-block mb-1.5 fw-bold">أسباب سريعة مقترحة (اضغط للاختيار الفوري):</small>
-                                        <div class="d-flex flex-wrap gap-1">
-                                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill py-1 px-2.5 small" onclick="setRefusalReason('ضغط العمل الميداني والمشاريع الحالية لا يسمح بالإجازة في هذا التوقيت')">
-                                                ضغط العمل الميداني
-                                            </button>
-                                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill py-1 px-2.5 small" onclick="setRefusalReason('تعارض مع إجازة زميل آخر في نفس القسم/المسار')">
-                                                تعارض مع زميل
-                                            </button>
-                                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill py-1 px-2.5 small" onclick="setRefusalReason('عدم إرفاق التقرير الطبي أو المستند الرسمي المعتمد')">
-                                                عدم إرفاق تقرير طبي
-                                            </button>
-                                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill py-1 px-2.5 small" onclick="setRefusalReason('استنفاد رصيد الإجازات السنوي المتاح')">
-                                                استنفاد الرصيد
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="modal-footer border-0 pt-0">
-                                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">تراجع</button>
-                                    <button type="submit" class="btn btn-danger rounded-pill px-4 fw-bold">
-                                        <i class="fa fa-times me-1"/> تأكيد رفض الإجازة
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
                 </div>
-
-                <script type="text/javascript">
-                    function openRefuseModal(btn) {
-                        var leaveId = btn.getAttribute('data-leave-id');
-                        var empName = btn.getAttribute('data-emp-name');
-                        var leaveType = btn.getAttribute('data-leave-type');
-                        var leaveDays = btn.getAttribute('data-leave-days');
-
-                        document.getElementById('modal_refuse_leave_id').value = leaveId;
-                        document.getElementById('modal_refuse_emp_name').innerText = empName;
-                        document.getElementById('modal_refuse_leave_type').innerText = leaveType;
-                        document.getElementById('modal_refuse_leave_days').innerText = leaveDays + ' يوم';
-                        document.getElementById('modal_refusal_reason').value = '';
-
-                        var modalEl = document.getElementById('refuseLeaveModal');
-                        if (modalEl &amp;&amp; typeof bootstrap !== 'undefined') {
-                            var modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
-                            modal.show();
-                        }
-                    }
-
-                    function setRefusalReason(text) {
-                        var ta = document.getElementById('modal_refusal_reason');
-                        if (ta) {
-                            ta.value = text;
-                            ta.focus();
-                        }
-                    }
-                </script>
-
-            </div>
         </t>
     </template>
 
@@ -1362,11 +1264,11 @@
             <div class="container-fluid py-3">
                 <!-- Notifications -->
                 <div t-if="success == 'approved'" class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm" role="alert">
-                    <i class="fa fa-check-circle me-2"/> تم اعتماد طلب الإجازة بنجاح وتحديث السجل في النظام.
+                    <i class="fa fa-check-circle me-2"/> تم اعتماد طلب الإجازة بنجاح، وتحديث رصيد الموظف.
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
                 <div t-if="success == 'refused'" class="alert alert-warning alert-dismissible fade show rounded-3 shadow-sm" role="alert">
-                    <i class="fa fa-info-circle me-2"/> تم رفض طلب الإجازة.
+                    <i class="fa fa-info-circle me-2"/> تم رفض طلب الإجازة وتدوين سبب الرفض للموظف بنجاح.
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
                 <div t-if="error" class="alert alert-danger alert-dismissible fade show rounded-3 shadow-sm" role="alert">
@@ -1378,14 +1280,14 @@
                     <div class="col-md-7">
                         <div class="d-flex align-items-center gap-2 mb-1">
                             <h3 class="fw-bold mb-0 text-dark">
-                                <i class="fa fa-check-square-o text-purple me-2" style="color: #6f42c1;"/> اعتمادات إجازات الفريق الميداني
+                                <i class="fa fa-check-square-o text-purple me-2" style="color: #6f42c1;"/> اعتمادات إجازات الفريق
                             </h3>
-                            <span class="badge bg-warning text-dark rounded-pill px-2">
-                                بانتظار الاعتماد: <t t-esc="pending_count"/>
+                            <span class="badge bg-warning text-dark rounded-pill px-2.5 py-1">
+                                معلقة: <t t-esc="pending_count"/>
                             </span>
                         </div>
                         <p class="text-muted small mb-0">
-                            مراجعة واعتماد أو رفض طلبات الإجازات المقدمة من موظفيك التابعين لإشرافك مباشرة من هاتفك وبدون تراخيص مدفوعة.
+                            مراجعة واعتماد أو رفض طلبات الإجازات المقدمة من الموظفين التابعين لإشرافك.
                         </p>
                     </div>
                     <div class="col-md-5 text-md-end mt-3 mt-md-0">
@@ -1400,7 +1302,7 @@
 
                 <!-- Section: Pending Requests Awaiting Action -->
                 <h5 class="fw-bold text-dark mb-3">
-                    <i class="fa fa-hourglass-half text-warning me-2"/> طلبات معلقة بانتظار قرارك (<t t-esc="pending_count"/>)
+                    <i class="fa fa-hourglass-half text-warning me-2"/> طلبات معلقة بانتظار الاعتماد (<t t-esc="pending_count"/>)
                 </h5>
 
                 <!-- Mobile Responsive Leave Cards (Visible on phones only: d-block d-md-none) -->
@@ -1417,15 +1319,15 @@
                             <div class="d-flex align-items-start justify-content-between pb-3 border-bottom">
                                 <div class="d-flex align-items-center gap-2">
                                     <div class="rounded-circle bg-light border d-flex align-items-center justify-content-center text-primary fw-bold" style="width: 44px; height: 44px; font-size: 16px;">
-                                        <t t-esc="pl.employee_id.name[:1]"/>
+                                        <t t-esc="pl['avatar_char']"/>
                                     </div>
                                     <div>
-                                        <span class="fw-bold d-block text-dark fs-6"><t t-esc="pl.employee_id.name"/></span>
-                                        <small class="text-muted"><t t-esc="pl.employee_id.job_title or 'موظف ميداني'"/></small>
+                                        <span class="fw-bold d-block text-dark fs-6"><t t-esc="pl['employee_name']"/></span>
+                                        <small class="text-muted"><t t-esc="pl['job_title']"/></small>
                                     </div>
                                 </div>
                                 <span class="badge bg-primary text-white rounded-pill px-2.5 py-1 small">
-                                    <t t-esc="pl.holiday_status_id.name"/>
+                                    <t t-esc="pl['holiday_type']"/>
                                 </span>
                             </div>
 
@@ -1434,30 +1336,30 @@
                                 <div class="col-7">
                                     <div class="bg-light p-2 rounded-3 border">
                                         <small class="text-muted d-block">الفترة المطلوبة:</small>
-                                        <span class="fw-bold text-dark small d-block">من <t t-esc="pl.request_date_from"/></span>
-                                        <span class="fw-bold text-dark small d-block">إلى <t t-esc="pl.request_date_to"/></span>
+                                        <span class="fw-bold text-dark small d-block">من <t t-esc="pl['request_date_from']"/></span>
+                                        <span class="fw-bold text-dark small d-block">إلى <t t-esc="pl['request_date_to']"/></span>
                                     </div>
                                 </div>
                                 <div class="col-5">
                                     <div class="bg-light p-2 rounded-3 border h-100 d-flex flex-column justify-content-center">
                                         <small class="text-muted d-block">المدة الإجمالية:</small>
-                                        <span class="fw-bold text-primary fs-5"><t t-esc="pl.number_of_days"/> يوم</span>
+                                        <span class="fw-bold text-primary fs-5"><t t-esc="pl['number_of_days']"/> يوم</span>
                                     </div>
                                 </div>
                             </div>
 
                             <!-- Notes if any -->
-                            <t t-if="pl.name">
+                            <t t-if="pl['name']">
                                 <div class="p-2 mb-2 rounded-3 bg-warning text-dark small" style="background-color: #fff3cd !important;">
                                     <i class="fa fa-commenting-o me-1 text-warning"/>
-                                    <span class="fw-bold">ملاحظة الموظف:</span> <t t-esc="pl.name"/>
+                                    <span class="fw-bold">ملاحظة الموظف:</span> <t t-esc="pl['name']"/>
                                 </div>
                             </t>
 
                             <!-- Medical Report / Attachment Button if present -->
-                            <t t-if="pl.supported_attachment_ids or pl.message_main_attachment_id">
+                            <t t-if="pl['has_attachment']">
                                 <div class="mb-3">
-                                    <a t-attf-href="/my/leaves/attachment/#{pl.id}" target="_blank" class="btn btn-sm btn-info text-white rounded-pill px-3 py-1.5 fw-bold shadow-sm w-100">
+                                    <a t-attf-href="/my/leaves/attachment/#{pl['id']}" target="_blank" class="btn btn-sm btn-info text-white rounded-pill px-3 py-1.5 fw-bold shadow-sm w-100">
                                         <i class="fa fa-paperclip me-1"/> معاينة التقرير الطبي / المستند المرفق
                                     </a>
                                 </div>
@@ -1468,7 +1370,7 @@
                                 <div class="col-6">
                                     <form action="/my/team/leaves/action" method="post" class="w-100">
                                         <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
-                                        <input type="hidden" name="leave_id" t-att-value="pl.id"/>
+                                        <input type="hidden" name="leave_id" t-att-value="pl['id']"/>
                                         <input type="hidden" name="action" value="approve"/>
                                         <button type="submit" class="btn btn-success w-100 rounded-pill py-2.5 fw-bold shadow-sm" onclick="return confirm('هل أنت متأكد من اعتماد طلب الإجازة؟');">
                                             <i class="fa fa-check me-1"/> اعتماد الطلب
@@ -1478,10 +1380,10 @@
                                 <div class="col-6">
                                     <button type="button" class="btn btn-outline-danger w-100 rounded-pill py-2.5 fw-bold" 
                                             onclick="openRefuseModal(this)"
-                                            t-att-data-leave-id="pl.id"
-                                            t-att-data-emp-name="pl.employee_id.name"
-                                            t-att-data-leave-type="pl.holiday_status_id.name"
-                                            t-att-data-leave-days="pl.number_of_days">
+                                            t-att-data-leave-id="pl['id']"
+                                            t-att-data-emp-name="pl['employee_name']"
+                                            t-att-data-leave-type="pl['holiday_type']"
+                                            t-att-data-leave-days="pl['number_of_days']">
                                         <i class="fa fa-times me-1"/> رفض
                                     </button>
                                 </div>
@@ -1502,7 +1404,7 @@
                                     <th class="py-3">من تاريخ</th>
                                     <th class="py-3">إلى تاريخ</th>
                                     <th class="py-3">المدة (أيام)</th>
-                                    <th class="py-3">ملاحظات الطلب</th>
+                                    <th class="py-3">ملاحظات ومرفقات</th>
                                     <th class="py-3">إجراء المشرف / المدير</th>
                                 </tr>
                             </thead>
@@ -1521,27 +1423,27 @@
                                         <td class="text-start ps-4">
                                             <div class="d-flex align-items-center">
                                                 <div class="rounded-circle bg-light d-flex align-items-center justify-content-center text-primary fw-bold me-2 border" style="width: 36px; height: 36px;">
-                                                    <t t-esc="pl.employee_id.name[:1]"/>
+                                                    <t t-esc="pl['avatar_char']"/>
                                                 </div>
                                                 <div>
-                                                    <span class="fw-bold d-block text-dark"><t t-esc="pl.employee_id.name"/></span>
-                                                    <small class="text-muted"><t t-esc="pl.employee_id.job_title or ''"/></small>
+                                                    <span class="fw-bold d-block text-dark"><t t-esc="pl['employee_name']"/></span>
+                                                    <small class="text-muted"><t t-esc="pl['job_title']"/></small>
                                                 </div>
                                             </div>
                                         </td>
                                         <td class="fw-bold text-dark">
-                                            <t t-esc="pl.holiday_status_id.name"/>
+                                            <t t-esc="pl['holiday_type']"/>
                                         </td>
-                                        <td><t t-esc="pl.request_date_from"/></td>
-                                        <td><t t-esc="pl.request_date_to"/></td>
+                                        <td><t t-esc="pl['request_date_from']"/></td>
+                                        <td><t t-esc="pl['request_date_to']"/></td>
                                         <td class="fw-bold text-primary">
-                                            <t t-esc="pl.number_of_days"/> يوم
+                                            <t t-esc="pl['number_of_days']"/> يوم
                                         </td>
                                         <td class="text-muted small">
-                                            <t t-esc="pl.name or '-'"/>
-                                            <t t-if="pl.supported_attachment_ids or pl.message_main_attachment_id">
+                                            <t t-esc="pl['name'] or '-'"/>
+                                            <t t-if="pl['has_attachment']">
                                                 <div class="mt-1">
-                                                    <a t-attf-href="/my/leaves/attachment/#{pl.id}" target="_blank" class="btn btn-sm btn-info text-white rounded-pill px-2.5 py-0.5 small fw-bold">
+                                                    <a t-attf-href="/my/leaves/attachment/#{pl['id']}" target="_blank" class="btn btn-sm btn-info text-white rounded-pill px-2.5 py-0.5 small fw-bold">
                                                         <i class="fa fa-paperclip me-1"/> التقرير الطبي
                                                     </a>
                                                 </div>
@@ -1551,7 +1453,7 @@
                                             <div class="d-flex justify-content-center gap-2">
                                                 <form action="/my/team/leaves/action" method="post" class="d-inline">
                                                     <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
-                                                    <input type="hidden" name="leave_id" t-att-value="pl.id"/>
+                                                    <input type="hidden" name="leave_id" t-att-value="pl['id']"/>
                                                     <input type="hidden" name="action" value="approve"/>
                                                     <button type="submit" class="btn btn-sm btn-success rounded-pill px-3 fw-bold shadow-sm" onclick="return confirm('هل أنت متأكد من اعتماد طلب الإجازة؟');">
                                                         <i class="fa fa-check me-1"/> اعتماد
@@ -1559,10 +1461,10 @@
                                                 </form>
                                                 <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-bold" 
                                                         onclick="openRefuseModal(this)"
-                                                        t-att-data-leave-id="pl.id"
-                                                        t-att-data-emp-name="pl.employee_id.name"
-                                                        t-att-data-leave-type="pl.holiday_status_id.name"
-                                                        t-att-data-leave-days="pl.number_of_days">
+                                                        t-att-data-leave-id="pl['id']"
+                                                        t-att-data-emp-name="pl['employee_name']"
+                                                        t-att-data-leave-type="pl['holiday_type']"
+                                                        t-att-data-leave-days="pl['number_of_days']">
                                                     <i class="fa fa-times me-1"/> رفض
                                                 </button>
                                             </div>
@@ -1589,24 +1491,24 @@
                     <t t-foreach="history_leaves" t-as="hl">
                         <div class="card border-0 shadow-sm rounded-3 p-3 mb-2 bg-white">
                             <div class="d-flex justify-content-between align-items-center mb-1">
-                                <span class="fw-bold text-dark"><t t-esc="hl.employee_id.name"/></span>
-                                <span t-if="hl.state == 'validate'" class="badge bg-success rounded-pill px-2 py-1">معتمدة</span>
-                                <span t-elif="hl.state == 'refuse'" class="badge bg-danger rounded-pill px-2 py-1">مرفوضة</span>
-                                <span t-else="" class="badge bg-secondary rounded-pill px-2 py-1"><t t-esc="hl.state"/></span>
+                                <span class="fw-bold text-dark"><t t-esc="hl['employee_name']"/></span>
+                                <span t-if="hl['state'] == 'validate'" class="badge bg-success rounded-pill px-2 py-1">معتمدة</span>
+                                <span t-elif="hl['state'] == 'refuse'" class="badge bg-danger rounded-pill px-2 py-1">مرفوضة</span>
+                                <span t-else="" class="badge bg-secondary rounded-pill px-2 py-1"><t t-esc="hl['state']"/></span>
                             </div>
                             <div class="d-flex justify-content-between text-muted small">
-                                <span><t t-esc="hl.holiday_status_id.name"/> (<t t-esc="hl.number_of_days"/> يوم)</span>
-                                <span><t t-esc="hl.request_date_from"/> إلى <t t-esc="hl.request_date_to"/></span>
+                                <span><t t-esc="hl['holiday_type']"/> (<t t-esc="hl['number_of_days']"/> يوم)</span>
+                                <span><t t-esc="hl['request_date_from']"/> إلى <t t-esc="hl['request_date_to']"/></span>
                             </div>
-                            <t t-if="hl.state == 'refuse' and (hl.report_note or hl.notes)">
+                            <t t-if="hl['state'] == 'refuse' and hl['refusal_reason']">
                                 <div class="alert alert-danger py-1 px-2 mt-2 mb-0 rounded-3 small text-start" style="font-size: 11px;">
                                     <i class="fa fa-times-circle me-1 text-danger"/>
-                                    <b>سبب الرفض:</b> <t t-esc="hl.report_note or hl.notes"/>
+                                    <b>سبب الرفض:</b> <t t-esc="hl['refusal_reason']"/>
                                 </div>
                             </t>
-                            <t t-if="hl.supported_attachment_ids or hl.message_main_attachment_id">
+                            <t t-if="hl['has_attachment']">
                                 <div class="mt-2 text-end">
-                                    <a t-attf-href="/my/leaves/attachment/#{hl.id}" target="_blank" class="small text-primary text-decoration-none">
+                                    <a t-attf-href="/my/leaves/attachment/#{hl['id']}" target="_blank" class="small text-primary text-decoration-none">
                                         <i class="fa fa-paperclip me-1"/> عرض المستند المرفق
                                     </a>
                                 </div>
@@ -1616,7 +1518,7 @@
                 </div>
 
                 <!-- Desktop History Table (d-none d-md-block) -->
-                <div class="card border-0 shadow-sm rounded-4 overflow-hidden d-none d-md-block">
+                <div class="card border-0 shadow-sm rounded-4 overflow-hidden d-none d-md-block mb-4">
                     <div class="table-responsive">
                         <table class="table table-hover align-middle mb-0 text-center">
                             <thead class="table-light">
@@ -1626,13 +1528,14 @@
                                     <th class="py-3">نوع الإجازة</th>
                                     <th class="py-3">الفترة</th>
                                     <th class="py-3">المدة</th>
+                                    <th class="py-3">مرفقات وملاحظات</th>
                                     <th class="py-3">القرار والحالة</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <t t-if="not history_leaves">
                                     <tr>
-                                        <td colspan="6" class="py-4 text-muted">
+                                        <td colspan="7" class="py-4 text-muted">
                                             لا توجد قرارات سابقة مسجلة.
                                         </td>
                                     </tr>
@@ -1640,14 +1543,26 @@
                                 <t t-foreach="history_leaves" t-as="hl">
                                     <tr>
                                         <td class="text-muted"><t t-esc="hl_index + 1"/></td>
-                                        <td class="text-start ps-4 fw-bold text-dark"><t t-esc="hl.employee_id.name"/></td>
-                                        <td><t t-esc="hl.holiday_status_id.name"/></td>
-                                        <td class="small text-muted"><t t-esc="hl.request_date_from"/> إلى <t t-esc="hl.request_date_to"/></td>
-                                        <td class="fw-bold text-primary"><t t-esc="hl.number_of_days"/> يوم</td>
+                                        <td class="text-start ps-4 fw-bold text-dark"><t t-esc="hl['employee_name']"/></td>
+                                        <td><t t-esc="hl['holiday_type']"/></td>
+                                        <td class="small text-muted"><t t-esc="hl['request_date_from']"/> إلى <t t-esc="hl['request_date_to']"/></td>
+                                        <td class="fw-bold text-primary"><t t-esc="hl['number_of_days']"/> يوم</td>
+                                        <td class="small">
+                                            <t t-if="hl['has_attachment']">
+                                                <a t-attf-href="/my/leaves/attachment/#{hl['id']}" target="_blank" class="small text-primary text-decoration-none me-2">
+                                                    <i class="fa fa-paperclip me-1"/> المرفق
+                                                </a>
+                                            </t>
+                                            <t t-if="hl['refusal_reason']">
+                                                <span class="text-danger small d-block">
+                                                    سبب الرفض: <t t-esc="hl['refusal_reason']"/>
+                                                </span>
+                                            </t>
+                                        </td>
                                         <td>
-                                            <span t-if="hl.state == 'validate'" class="badge bg-success rounded-pill px-3 py-1">معتمدة</span>
-                                            <span t-elif="hl.state == 'refuse'" class="badge bg-danger rounded-pill px-3 py-1">مرفوضة</span>
-                                            <span t-else="" class="badge bg-secondary rounded-pill px-3 py-1"><t t-esc="hl.state"/></span>
+                                            <span t-if="hl['state'] == 'validate'" class="badge bg-success rounded-pill px-3 py-1">معتمدة</span>
+                                            <span t-elif="hl['state'] == 'refuse'" class="badge bg-danger rounded-pill px-3 py-1">مرفوضة</span>
+                                            <span t-else="" class="badge bg-secondary rounded-pill px-3 py-1"><t t-esc="hl['state']"/></span>
                                         </td>
                                     </tr>
                                 </t>
@@ -1655,6 +1570,105 @@
                         </table>
                     </div>
                 </div>
+
+                <!-- Modal: Refusal Reason with Quick Chips -->
+                <div class="modal fade" id="refuseLeaveModal" tabindex="-1" aria-labelledby="refuseLeaveModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content border-0 shadow rounded-4">
+                            <form action="/my/team/leaves/action" method="post" id="refuse_leave_form">
+                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                <input type="hidden" name="action" value="refuse"/>
+                                <input type="hidden" name="leave_id" id="modal_refuse_leave_id"/>
+
+                                <div class="modal-header border-0 pb-0">
+                                    <h5 class="modal-title fw-bold text-danger" id="refuseLeaveModalLabel">
+                                        <i class="fa fa-times-circle me-2"/> رفض طلب الإجازة
+                                    </h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body p-4">
+                                    <div class="bg-light p-3 rounded-3 border mb-3 small">
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <span class="text-muted">الموظف:</span>
+                                            <span class="fw-bold text-dark" id="modal_refuse_emp_name">-</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <span class="text-muted">نوع الإجازة:</span>
+                                            <span class="fw-bold text-primary" id="modal_refuse_leave_type">-</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between">
+                                            <span class="text-muted">المدة:</span>
+                                            <span class="fw-bold text-dark" id="modal_refuse_leave_days">-</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold text-dark">
+                                            سبب الرفض <span class="text-danger">*</span>
+                                            <small class="text-muted fw-normal">(سيظهر للموظف في إشعارات البوابة)</small>
+                                        </label>
+                                        <textarea name="refusal_reason" id="modal_refusal_reason" class="form-control rounded-3" rows="3" required="required" placeholder="يرجى كتابة سبب رفض الطلب بالتفصيل..."></textarea>
+                                    </div>
+
+                                    <!-- Quick Reasons Chips -->
+                                    <div class="mb-2">
+                                        <small class="text-muted d-block mb-1.5 fw-bold">أسباب سريعة مقترحة (اضغط للاختيار الفوري):</small>
+                                        <div class="d-flex flex-wrap gap-1">
+                                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill py-1 px-2.5 small" onclick="setRefusalReason('ضغط العمل الميداني والمشاريع الحالية لا يسمح بالإجازة في هذا التوقيت')">
+                                                ضغط العمل الميداني
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill py-1 px-2.5 small" onclick="setRefusalReason('تعارض مع إجازة زميل آخر في نفس القسم/المسار')">
+                                                تعارض مع زميل
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill py-1 px-2.5 small" onclick="setRefusalReason('عدم إرفاق التقرير الطبي أو المستند الرسمي المعتمد')">
+                                                عدم إرفاق تقرير طبي
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill py-1 px-2.5 small" onclick="setRefusalReason('استنفاد رصيد الإجازات السنوي المتاح')">
+                                                استنفاد الرصيد
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="modal-footer border-0 pt-0">
+                                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">تراجع</button>
+                                    <button type="submit" class="btn btn-danger rounded-pill px-4 fw-bold">
+                                        <i class="fa fa-times me-1"/> تأكيد رفض الإجازة
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <script type="text/javascript">
+                    function openRefuseModal(btn) {
+                        var leaveId = btn.getAttribute('data-leave-id');
+                        var empName = btn.getAttribute('data-emp-name');
+                        var leaveType = btn.getAttribute('data-leave-type');
+                        var leaveDays = btn.getAttribute('data-leave-days');
+
+                        document.getElementById('modal_refuse_leave_id').value = leaveId;
+                        document.getElementById('modal_refuse_emp_name').innerText = empName;
+                        document.getElementById('modal_refuse_leave_type').innerText = leaveType;
+                        document.getElementById('modal_refuse_leave_days').innerText = leaveDays + ' يوم';
+                        document.getElementById('modal_refusal_reason').value = '';
+
+                        var modalEl = document.getElementById('refuseLeaveModal');
+                        if (modalEl &amp;&amp; typeof bootstrap !== 'undefined') {
+                            var modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+                            modal.show();
+                        }
+                    }
+
+                    function setRefusalReason(text) {
+                        var ta = document.getElementById('modal_refusal_reason');
+                        if (ta) {
+                            ta.value = text;
+                            ta.focus();
+                        }
+                    }
+                </script>
+
             </div>
         </t>
     </template>

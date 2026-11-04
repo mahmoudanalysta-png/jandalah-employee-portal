@@ -230,12 +230,27 @@ class JandalahCustomerPortal(CustomerPortal):
         return emp
 
     def _get_subordinates(self, emp):
-        # Finds all subordinates where the current employee is Direct Manager (parent_id) or Coach/Supervisor (coach_id)
+        """Finds all subordinates where the current employee is Direct Manager (parent_id) or Coach (coach_id),
+        with smart executive/HR admin fallback so company leaders can approve team leaves seamlessly."""
         if not emp:
             return request.env['hr.employee'].sudo().browse()
-        return request.env['hr.employee'].sudo().search([
+        subs = request.env['hr.employee'].sudo().search([
             '|', ('parent_id', '=', emp.id), ('coach_id', '=', emp.id)
         ])
+        if not subs:
+            user = request.env.user
+            is_hr_admin = (
+                user.has_group('hr_holidays.group_hr_holidays_user') or
+                user.has_group('hr_holidays.group_hr_holidays_manager') or
+                user.has_group('base.group_system') or
+                user._is_admin()
+            )
+            if is_hr_admin:
+                subs = request.env['hr.employee'].sudo().search([
+                    ('company_id', '=', request.env.company.id),
+                    ('id', '!=', emp.id)
+                ])
+        return subs
 
     def _prepare_home_portal_values(self, counters):
         values = super()._prepare_home_portal_values(counters)
@@ -758,34 +773,124 @@ self.addEventListener('fetch', event => {
         """Displays pending leave requests submitted by subordinates for supervisor/manager approval."""
         emp = self._get_employee()
         if not emp:
-            return request.render('portal.portal_my_home', {'error_message': 'لا يوجد ملف موظف مرتبط'})
+            return request.redirect('/my?error=no_employee')
 
         subordinates = self._get_subordinates(emp)
         if not subordinates:
-            return request.render('portal.portal_my_home', {
-                'error_message': 'ليس لديك موظفون تابعون للإشراف الميداني أو الإدارة المباشرة'
+            values = self._prepare_portal_layout_values()
+            values.update({
+                'employee': emp,
+                'pending_leaves': [],
+                'history_leaves': [],
+                'pending_count': 0,
+                'page_name': 'team_leaves',
+                'no_subordinates': True,
+                'success': success,
+                'error': error,
+                'format_tz': format_tz_dynamic,
+                'default_url': '/my/team/leaves',
             })
+            return request.render('jandalah_employee_portal.portal_team_leaves_view', values)
 
         sub_ids = subordinates.ids
         Leave = request.env['hr.leave'].sudo()
 
-        pending_leaves = Leave.search([
+        # Find leaves in confirm or validate1
+        raw_pending = Leave.search([
             ('employee_id', 'in', sub_ids),
-            ('state', '=', 'confirm')
+            ('state', 'in', ['confirm', 'validate1'])
         ], order='date_from desc')
 
-        history_leaves = Leave.search([
+        raw_history = Leave.search([
             ('employee_id', 'in', sub_ids),
             ('state', 'in', ['validate', 'refuse'])
-        ], order='date_from desc', limit=20)
+        ], order='date_from desc', limit=30)
+
+        # Pre-extract all data into clean Python dicts to eliminate QWeb crashes & AccessErrors
+        pending_leaves_data = []
+        for l in raw_pending:
+            emp_rec = l.employee_id
+            emp_name = emp_rec.name if emp_rec else 'موظف'
+            avatar_char = emp_name[:1] if emp_name else 'م'
+            job_title = emp_rec.job_title if emp_rec and emp_rec.job_title else 'موظف ميداني'
+            leave_type = l.holiday_status_id.name if l.holiday_status_id else 'إجازة'
+
+            has_attachment = False
+            try:
+                if 'supported_attachment_ids' in l._fields and l.supported_attachment_ids:
+                    has_attachment = True
+                elif 'message_main_attachment_id' in l._fields and l.message_main_attachment_id:
+                    has_attachment = True
+                elif request.env['ir.attachment'].sudo().search_count([('res_model', '=', 'hr.leave'), ('res_id', '=', l.id)]) > 0:
+                    has_attachment = True
+            except Exception:
+                pass
+
+            date_from_val = l.request_date_from or (l.date_from.date() if l.date_from else '')
+            date_to_val = l.request_date_to or (l.date_to.date() if l.date_to else '')
+
+            pending_leaves_data.append({
+                'id': l.id,
+                'employee_name': emp_name,
+                'avatar_char': avatar_char,
+                'job_title': job_title,
+                'holiday_type': leave_type,
+                'request_date_from': str(date_from_val or '-'),
+                'request_date_to': str(date_to_val or '-'),
+                'number_of_days': l.number_of_days or 1.0,
+                'name': l.name or '',
+                'has_attachment': has_attachment,
+            })
+
+        history_leaves_data = []
+        for l in raw_history:
+            emp_rec = l.employee_id
+            emp_name = emp_rec.name if emp_rec else 'موظف'
+            job_title = emp_rec.job_title if emp_rec and emp_rec.job_title else 'موظف ميداني'
+            leave_type = l.holiday_status_id.name if l.holiday_status_id else 'إجازة'
+
+            has_attachment = False
+            try:
+                if 'supported_attachment_ids' in l._fields and l.supported_attachment_ids:
+                    has_attachment = True
+                elif 'message_main_attachment_id' in l._fields and l.message_main_attachment_id:
+                    has_attachment = True
+                elif request.env['ir.attachment'].sudo().search_count([('res_model', '=', 'hr.leave'), ('res_id', '=', l.id)]) > 0:
+                    has_attachment = True
+            except Exception:
+                pass
+
+            refusal_reason = ''
+            if l.state == 'refuse':
+                if 'report_note' in l._fields and l.report_note:
+                    refusal_reason = l.report_note
+                elif 'notes' in l._fields and l.notes:
+                    refusal_reason = l.notes
+
+            date_from_val = l.request_date_from or (l.date_from.date() if l.date_from else '')
+            date_to_val = l.request_date_to or (l.date_to.date() if l.date_to else '')
+
+            history_leaves_data.append({
+                'id': l.id,
+                'employee_name': emp_name,
+                'job_title': job_title,
+                'holiday_type': leave_type,
+                'request_date_from': str(date_from_val or '-'),
+                'request_date_to': str(date_to_val or '-'),
+                'number_of_days': l.number_of_days or 1.0,
+                'state': l.state,
+                'refusal_reason': refusal_reason,
+                'has_attachment': has_attachment,
+            })
 
         values = self._prepare_portal_layout_values()
         values.update({
             'employee': emp,
-            'pending_leaves': pending_leaves,
-            'history_leaves': history_leaves,
-            'pending_count': len(pending_leaves),
+            'pending_leaves': pending_leaves_data,
+            'history_leaves': history_leaves_data,
+            'pending_count': len(pending_leaves_data),
             'page_name': 'team_leaves',
+            'no_subordinates': False,
             'success': success,
             'error': error,
             'format_tz': format_tz_dynamic,
@@ -804,7 +909,17 @@ self.addEventListener('fetch', event => {
         sub_ids = subordinates.ids
 
         leave = request.env['hr.leave'].sudo().browse(int(leave_id))
-        if not leave.exists() or leave.employee_id.id not in sub_ids:
+        if not leave.exists():
+            return request.redirect('/my/team/leaves?error=not_found')
+
+        user = request.env.user
+        is_hr_admin = (
+            user.has_group('hr_holidays.group_hr_holidays_user') or
+            user.has_group('hr_holidays.group_hr_holidays_manager') or
+            user.has_group('base.group_system') or
+            user._is_admin()
+        )
+        if leave.employee_id.id not in sub_ids and not is_hr_admin:
             return request.redirect('/my/team/leaves?error=unauthorized')
 
         try:
