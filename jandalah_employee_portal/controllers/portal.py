@@ -4,7 +4,8 @@ from odoo.http import request
 from odoo.addons.portal.controllers.portal import CustomerPortal, pager as portal_pager
 import json
 import pytz
-from datetime import datetime, timedelta
+import base64
+from datetime import datetime, timedelta, date
 import xmlrpc.client
 import logging
 
@@ -546,17 +547,80 @@ self.addEventListener('fetch', event => {
                 'name': name.strip() if name else 'طلب إجازة من البوابة',
             }
             new_leave = request.env['hr.leave'].sudo().create(leave_vals)
+
+            # Handle file attachment (Medical report / excuse document)
+            attachment_file = request.httprequest.files.get('attachment')
+            if attachment_file and attachment_file.filename:
+                file_content = attachment_file.read()
+                if file_content:
+                    att_vals = {
+                        'name': attachment_file.filename,
+                        'type': 'binary',
+                        'datas': base64.b64encode(file_content),
+                        'res_model': 'hr.leave',
+                        'res_id': new_leave.id,
+                        'mimetype': attachment_file.content_type or 'application/octet-stream',
+                    }
+                    att = request.env['ir.attachment'].sudo().create(att_vals)
+                    write_vals = {}
+                    if 'supported_attachment_ids' in new_leave._fields:
+                        write_vals['supported_attachment_ids'] = [(4, att.id)]
+                    if 'message_main_attachment_id' in new_leave._fields:
+                        write_vals['message_main_attachment_id'] = att.id
+                    if write_vals:
+                        new_leave.sudo().write(write_vals)
+
+                    try:
+                        new_leave.sudo().message_post(
+                            body=f"تم إرفاق مستند / تقرير طبي مع طلب الإجازة: {attachment_file.filename}",
+                            attachment_ids=[att.id]
+                        )
+                    except Exception:
+                        pass
+
             return request.redirect('/my/leaves?success=1')
         except Exception as e:
             return request.redirect(f'/my/leaves?error={str(e)}')
+
+    @http.route('/my/leaves/attachment/<int:leave_id>', type='http', auth='user', website=True)
+    def portal_leave_attachment(self, leave_id, **kw):
+        """Allows employee and direct supervisor to view/download leave attachments securely."""
+        emp = self._get_employee()
+        if not emp:
+            return request.redirect('/my/leaves')
+
+        leave = request.env['hr.leave'].sudo().browse(leave_id)
+        if not leave.exists():
+            return request.not_found()
+
+        # Authorization: Must be own leave or employee must be a direct subordinate
+        subordinates = self._get_subordinates(emp)
+        if leave.employee_id.id != emp.id and leave.employee_id.id not in subordinates.ids:
+            return request.redirect('/my/leaves?error=unauthorized')
+
+        # Find attachment
+        att = None
+        if 'supported_attachment_ids' in leave._fields and leave.supported_attachment_ids:
+            att = leave.supported_attachment_ids[0]
+        elif 'message_main_attachment_id' in leave._fields and leave.message_main_attachment_id:
+            att = leave.message_main_attachment_id
+        if not att:
+            att = request.env['ir.attachment'].sudo().search([
+                ('res_model', '=', 'hr.leave'),
+                ('res_id', '=', leave.id)
+            ], order='id desc', limit=1)
+
+        if att:
+            return request.redirect(f'/web/content/{att.id}')
+        return request.redirect('/my/leaves?error=no_attachment')
 
     # =========================================================================
     # SUPERVISOR & DIRECT MANAGER PORTAL SUITE (Zero License Overhead)
     # =========================================================================
 
     @http.route('/my/team', type='http', auth='user', website=True)
-    def portal_my_team_attendance(self, **kw):
-        """Displays live attendance and status of subordinates for supervisors/direct managers."""
+    def portal_my_team_attendance(self, filter_type=None, date_from=None, date_to=None, active_tab='live', **kw):
+        """Displays live attendance and periodic historical report of subordinates for supervisors/direct managers."""
         emp = self._get_employee()
         if not emp:
             return request.render('portal.portal_my_home', {'error_message': 'لا يوجد ملف موظف مرتبط'})
@@ -568,7 +632,41 @@ self.addEventListener('fetch', event => {
             })
 
         Attendance = request.env['hr.attendance'].sudo()
+        today = date.today()
+
+        # 1. Resolve Date Range based on filter_type
+        if not filter_type:
+            filter_type = 'today'
+
+        if filter_type == 'yesterday':
+            d_start = today - timedelta(days=1)
+            d_end = today - timedelta(days=1)
+        elif filter_type == 'this_week':
+            # Saudi work week starts Saturday (weekday 5) or Sunday (weekday 6)
+            days_since_sat = (today.weekday() + 2) % 7
+            d_start = today - timedelta(days=days_since_sat)
+            d_end = today
+        elif filter_type == 'this_month':
+            d_start = today.replace(day=1)
+            d_end = today
+        elif filter_type == 'custom' and date_from and date_to:
+            try:
+                d_start = datetime.strptime(date_from, '%Y-%m-%d').date()
+                d_end = datetime.strptime(date_to, '%Y-%m-%d').date()
+            except Exception:
+                d_start = today
+                d_end = today
+        else:
+            filter_type = 'today'
+            d_start = today
+            d_end = today
+
+        start_dt = datetime.combine(d_start, datetime.min.time())
+        end_dt = datetime.combine(d_end, datetime.max.time())
+
+        # 2. Live Today Status (Radar)
         team_data = []
+        today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
 
         for sub in subordinates:
             open_att = Attendance.search([
@@ -580,7 +678,6 @@ self.addEventListener('fetch', event => {
                 ('employee_id', '=', sub.id)
             ], order='check_in desc', limit=1)
 
-            today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
             today_atts = Attendance.search([
                 ('employee_id', '=', sub.id),
                 ('check_in', '>=', today_start)
@@ -593,18 +690,63 @@ self.addEventListener('fetch', event => {
                 'open_attendance': open_att,
                 'last_attendance': last_att,
                 'today_hours': today_hours,
-                'check_in_time_str': format_tz_saudi(open_att.check_in) if open_att else (format_tz_saudi(last_att.check_in) if last_att else '-'),
-                'check_out_time_str': format_tz_saudi(last_att.check_out) if last_att and last_att.check_out else ('متواجد بالعمل' if open_att else '-'),
+                'check_in_time_str': format_tz_dynamic(open_att.check_in) if open_att else (format_tz_dynamic(last_att.check_in) if last_att else '-'),
+                'check_out_time_str': format_tz_dynamic(last_att.check_out) if last_att and last_att.check_out else ('متواجد بالعمل' if open_att else '-'),
             })
 
         checked_in_count = sum(1 for m in team_data if m['is_checked_in'])
+
+        # 3. Periodic Attendance Report (History & Analytics for Date Range)
+        period_data = []
+        for sub in subordinates:
+            period_atts = Attendance.search([
+                ('employee_id', '=', sub.id),
+                ('check_in', '>=', start_dt),
+                ('check_in', '<=', end_dt)
+            ], order='check_in desc')
+
+            tot_hours = round(sum(a.worked_hours for a in period_atts if a.worked_hours), 2)
+            days_attended = len(set(a.check_in.date() for a in period_atts if a.check_in))
+
+            logs = []
+            for a in period_atts:
+                logs.append({
+                    'id': a.id,
+                    'date_str': a.check_in.strftime('%Y-%m-%d') if a.check_in else '-',
+                    'day_name': a.check_in.strftime('%A') if a.check_in else '',
+                    'check_in_str': format_tz_dynamic(a.check_in),
+                    'check_out_str': format_tz_dynamic(a.check_out) if a.check_out else 'ما زال متواجداً',
+                    'hours': round(a.worked_hours, 2) if a.worked_hours else 0.0,
+                    'in_lat': a.in_latitude if hasattr(a, 'in_latitude') else False,
+                    'in_lng': a.in_longitude if hasattr(a, 'in_longitude') else False,
+                })
+
+            period_data.append({
+                'employee': sub,
+                'total_hours': tot_hours,
+                'days_attended': days_attended,
+                'records_count': len(period_atts),
+                'logs': logs,
+            })
+
+        period_total_hours = round(sum(p['total_hours'] for p in period_data), 2)
+        period_avg_hours = round(period_total_hours / len(subordinates), 2) if subordinates else 0.0
+        period_days_span = (d_end - d_start).days + 1
 
         values = self._prepare_portal_layout_values()
         values.update({
             'employee': emp,
             'team_data': team_data,
+            'period_data': period_data,
             'total_subordinates': len(subordinates),
             'checked_in_count': checked_in_count,
+            'period_total_hours': period_total_hours,
+            'period_avg_hours': period_avg_hours,
+            'period_days_span': period_days_span,
+            'filter_type': filter_type,
+            'date_from': d_start.strftime('%Y-%m-%d'),
+            'date_to': d_end.strftime('%Y-%m-%d'),
+            'active_tab': active_tab if active_tab in ['live', 'report'] else ('report' if filter_type != 'today' else 'live'),
             'page_name': 'team_attendance',
             'format_tz': format_tz_dynamic,
             'default_url': '/my/team',
@@ -652,8 +794,8 @@ self.addEventListener('fetch', event => {
         return request.render('jandalah_employee_portal.portal_team_leaves_view', values)
 
     @http.route('/my/team/leaves/action', type='http', auth='user', methods=['POST'], website=True, csrf=True)
-    def portal_team_leave_action(self, leave_id=None, action=None, **kw):
-        """Executes Approve or Refuse on subordinate leave requests."""
+    def portal_team_leave_action(self, leave_id=None, action=None, refusal_reason=None, **kw):
+        """Executes Approve or Refuse on subordinate leave requests with mandatory refusal notes."""
         emp = self._get_employee()
         if not emp or not leave_id or action not in ['approve', 'refuse']:
             return request.redirect('/my/team/leaves?error=invalid_request')
@@ -673,6 +815,22 @@ self.addEventListener('fetch', event => {
                     leave.sudo().action_validate()
                 return request.redirect('/my/team/leaves?success=approved')
             elif action == 'refuse':
+                reason = (refusal_reason or kw.get('reason') or '').strip()
+                write_vals = {}
+                if 'report_note' in leave._fields:
+                    write_vals['report_note'] = reason
+                if 'notes' in leave._fields:
+                    write_vals['notes'] = reason
+                if write_vals:
+                    leave.sudo().write(write_vals)
+
+                try:
+                    leave.sudo().message_post(
+                        body=f"تم رفض طلب الإجازة من قبل المشرف المباشر ({emp.name}). سبب الرفض: {reason or 'لم يحدد'}"
+                    )
+                except Exception:
+                    pass
+
                 if hasattr(leave, 'action_refuse'):
                     leave.sudo().action_refuse()
                 return request.redirect('/my/team/leaves?success=refused')

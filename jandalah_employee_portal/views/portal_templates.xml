@@ -682,6 +682,105 @@
                         </div>
                     </t>
                 </div>
+
+                <!-- Modal: Refusal Reason with Quick Chips -->
+                <div class="modal fade" id="refuseLeaveModal" tabindex="-1" aria-labelledby="refuseLeaveModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content border-0 shadow rounded-4">
+                            <form action="/my/team/leaves/action" method="post" id="refuse_leave_form">
+                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                <input type="hidden" name="action" value="refuse"/>
+                                <input type="hidden" name="leave_id" id="modal_refuse_leave_id"/>
+
+                                <div class="modal-header border-0 pb-0">
+                                    <h5 class="modal-title fw-bold text-danger" id="refuseLeaveModalLabel">
+                                        <i class="fa fa-times-circle me-2"/> رفض طلب الإجازة
+                                    </h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body p-4">
+                                    <div class="bg-light p-3 rounded-3 border mb-3 small">
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <span class="text-muted">الموظف:</span>
+                                            <span class="fw-bold text-dark" id="modal_refuse_emp_name">-</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <span class="text-muted">نوع الإجازة:</span>
+                                            <span class="fw-bold text-primary" id="modal_refuse_leave_type">-</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between">
+                                            <span class="text-muted">المدة:</span>
+                                            <span class="fw-bold text-dark" id="modal_refuse_leave_days">-</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold text-dark">
+                                            سبب الرفض <span class="text-danger">*</span>
+                                            <small class="text-muted fw-normal">(سيظهر للموظف في إشعارات البوابة)</small>
+                                        </label>
+                                        <textarea name="refusal_reason" id="modal_refusal_reason" class="form-control rounded-3" rows="3" required="required" placeholder="يرجى كتابة سبب رفض الطلب بالتفصيل..."></textarea>
+                                    </div>
+
+                                    <!-- Quick Reasons Chips -->
+                                    <div class="mb-2">
+                                        <small class="text-muted d-block mb-1.5 fw-bold">أسباب سريعة مقترحة (اضغط للاختيار الفوري):</small>
+                                        <div class="d-flex flex-wrap gap-1">
+                                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill py-1 px-2.5 small" onclick="setRefusalReason('ضغط العمل الميداني والمشاريع الحالية لا يسمح بالإجازة في هذا التوقيت')">
+                                                ضغط العمل الميداني
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill py-1 px-2.5 small" onclick="setRefusalReason('تعارض مع إجازة زميل آخر في نفس القسم/المسار')">
+                                                تعارض مع زميل
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill py-1 px-2.5 small" onclick="setRefusalReason('عدم إرفاق التقرير الطبي أو المستند الرسمي المعتمد')">
+                                                عدم إرفاق تقرير طبي
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill py-1 px-2.5 small" onclick="setRefusalReason('استنفاد رصيد الإجازات السنوي المتاح')">
+                                                استنفاد الرصيد
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="modal-footer border-0 pt-0">
+                                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">تراجع</button>
+                                    <button type="submit" class="btn btn-danger rounded-pill px-4 fw-bold">
+                                        <i class="fa fa-times me-1"/> تأكيد رفض الإجازة
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <script type="text/javascript">
+                    function openRefuseModal(btn) {
+                        var leaveId = btn.getAttribute('data-leave-id');
+                        var empName = btn.getAttribute('data-emp-name');
+                        var leaveType = btn.getAttribute('data-leave-type');
+                        var leaveDays = btn.getAttribute('data-leave-days');
+
+                        document.getElementById('modal_refuse_leave_id').value = leaveId;
+                        document.getElementById('modal_refuse_emp_name').innerText = empName;
+                        document.getElementById('modal_refuse_leave_type').innerText = leaveType;
+                        document.getElementById('modal_refuse_leave_days').innerText = leaveDays + ' يوم';
+                        document.getElementById('modal_refusal_reason').value = '';
+
+                        var modalEl = document.getElementById('refuseLeaveModal');
+                        if (modalEl &amp;&amp; typeof bootstrap !== 'undefined') {
+                            var modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+                            modal.show();
+                        }
+                    }
+
+                    function setRefusalReason(text) {
+                        var ta = document.getElementById('modal_refusal_reason');
+                        if (ta) {
+                            ta.value = text;
+                            ta.focus();
+                        }
+                    }
+                </script>
+
             </div>
         </t>
     </template>
@@ -759,12 +858,25 @@
                                         </td>
                                         <td class="text-muted small">
                                             <t t-esc="l.name or '-'"/>
+                                            <t t-if="l.supported_attachment_ids or l.message_main_attachment_id">
+                                                <div class="mt-1">
+                                                    <a t-attf-href="/my/leaves/attachment/#{l.id}" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill px-2.5 py-0.5 small">
+                                                        <i class="fa fa-paperclip me-1"/> المرفق
+                                                    </a>
+                                                </div>
+                                            </t>
                                         </td>
                                         <td>
                                             <span t-if="l.state == 'validate'" class="badge bg-success rounded-pill px-3 py-2">معتمدة</span>
                                             <span t-elif="l.state == 'confirm'" class="badge bg-warning text-dark rounded-pill px-3 py-2">قيد الاعتماد</span>
                                             <span t-elif="l.state == 'refuse'" class="badge bg-danger rounded-pill px-3 py-2">مرفوضة</span>
                                             <span t-else="" class="badge bg-secondary rounded-pill px-3 py-2"><t t-esc="l.state"/></span>
+                                            <t t-if="l.state == 'refuse' and (l.report_note or l.notes)">
+                                                <div class="alert alert-danger py-1 px-2 mt-1 mb-0 rounded-3 small text-start" style="font-size: 11px;">
+                                                    <i class="fa fa-times-circle me-1 text-danger"/>
+                                                    <b>سبب الرفض:</b> <t t-esc="l.report_note or l.notes"/>
+                                                </div>
+                                            </t>
                                         </td>
                                     </tr>
                                 </t>
@@ -784,7 +896,7 @@
                 <div class="modal fade" id="newLeaveModal" tabindex="-1" aria-labelledby="newLeaveModalLabel" aria-hidden="true">
                     <div class="modal-dialog modal-dialog-centered">
                         <div class="modal-content border-0 shadow rounded-4">
-                            <form action="/my/leaves/submit" method="post">
+                            <form action="/my/leaves/submit" method="post" enctype="multipart/form-data">
                                 <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
                                 <div class="modal-header border-0 pb-0">
                                     <h5 class="modal-title fw-bold text-success" id="newLeaveModalLabel">
@@ -814,7 +926,18 @@
                                     </div>
                                     <div class="mb-3">
                                         <label class="form-label fw-bold">ملاحظات / سبب الإجازة</label>
-                                        <textarea name="name" class="form-control rounded-3" rows="3" placeholder="اكتب هنا أي تفاصيل إضافية..."></textarea>
+                                        <textarea name="name" class="form-control rounded-3" rows="2" placeholder="اكتب هنا أي تفاصيل إضافية..."></textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold d-flex justify-content-between align-items-center mb-1">
+                                            <span><i class="fa fa-paperclip text-success me-1"/> إرفاق تقرير طبي أو مستند (اختياري)</span>
+                                            <small class="text-muted">صور أو PDF</small>
+                                        </label>
+                                        <input type="file" name="attachment" id="leave_attachment_input" class="form-control rounded-3" accept="image/*,application/pdf" capture="environment"/>
+                                        <div id="sick_leave_alert" class="alert alert-info py-2 px-3 mt-2 rounded-3 small d-none" style="background-color: #e7f1ff; border: 1px solid #b6d4fe;">
+                                            <i class="fa fa-stethoscope me-1 text-primary"/>
+                                            <b>تنبيه الإجازة المرضية:</b> يرجى إرفاق صورة التقرير الطبي أو العذر المعتمد لضمان سرعة اعتماد الطلب من المشرف المباشر.
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="modal-footer border-0 pt-0">
@@ -827,6 +950,25 @@
                         </div>
                     </div>
                 </div>
+
+                <script type="text/javascript">
+                    document.addEventListener('DOMContentLoaded', function() {
+                        var sel = document.querySelector('select[name="holiday_status_id"]');
+                        if (sel) {
+                            sel.addEventListener('change', function() {
+                                var txt = sel.options[sel.selectedIndex].text;
+                                var alertBox = document.getElementById('sick_leave_alert');
+                                if (alertBox) {
+                                    if (txt.indexOf('مرض') !== -1 || txt.toLowerCase().indexOf('sick') !== -1) {
+                                        alertBox.classList.remove('d-none');
+                                    } else {
+                                        alertBox.classList.add('d-none');
+                                    }
+                                }
+                            });
+                        }
+                    });
+                </script>
 
             </div>
         </t>
@@ -861,185 +1003,351 @@
                     </div>
                 </div>
 
-                <!-- Team Cards / Table -->
-                <!-- Mobile Team Attendance Cards (d-block d-md-none) -->
-                <div class="d-block d-md-none mb-4">
-                    <t t-if="not team_data">
-                        <div class="card border-0 shadow-sm rounded-4 p-4 text-center text-muted bg-white">
-                            <i class="fa fa-users fs-1 d-block mb-2 text-secondary"/>
-                            لا يوجد موظفون مسجلون تحت إشرافك المباشر حالياً.
-                        </div>
-                    </t>
-                    <t t-foreach="team_data" t-as="item">
-                        <t t-set="sub_emp" t-value="item['employee']"/>
-                        <div class="card border-0 shadow-sm rounded-4 p-3 mb-3 bg-white" style="border: 1px solid #edf2f7 !important;">
-                            <div class="d-flex align-items-start justify-content-between pb-2 border-bottom">
-                                <div class="d-flex align-items-center gap-2">
-                                    <div class="rounded-circle bg-light border d-flex align-items-center justify-content-center text-primary fw-bold" style="width: 42px; height: 42px; font-size: 15px;">
-                                        <t t-esc="sub_emp.name[:1]"/>
-                                    </div>
-                                    <div>
-                                        <span class="fw-bold d-block text-dark fs-6"><t t-esc="sub_emp.name"/></span>
-                                        <small class="text-muted"><t t-esc="sub_emp.job_title or 'موظف ميداني'"/></small>
-                                    </div>
-                                </div>
-                                <span t-if="item['is_checked_in']" class="badge bg-success rounded-pill px-2.5 py-1.5">
-                                    <i class="fa fa-circle me-1 small"/> متواجد الآن
-                                </span>
-                                <span t-else="" class="badge bg-secondary rounded-pill px-2.5 py-1.5">
-                                    غير متواجد
-                                </span>
-                            </div>
+                <!-- Navigation Tabs: Live Attendance vs Periodic Report -->
+                <ul class="nav nav-pills nav-fill mb-4 bg-white p-2 rounded-4 shadow-sm border" id="teamAttTabs" role="tablist">
+                    <li class="nav-item">
+                        <a t-attf-class="nav-link rounded-pill py-2.5 fw-bold #{'active' if active_tab == 'live' else ''}" 
+                           id="tab-live-btn" data-bs-toggle="pill" href="#tab-live" role="tab">
+                            <i class="fa fa-dot-circle-o text-danger me-1"/> الرادار اللحظي اليوم (Live)
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a t-attf-class="nav-link rounded-pill py-2.5 fw-bold #{'active' if active_tab == 'report' else ''}" 
+                           id="tab-report-btn" data-bs-toggle="pill" href="#tab-report" role="tab">
+                            <i class="fa fa-bar-chart text-primary me-1"/> تقرير الفترة والساعات المجمعة
+                        </a>
+                    </li>
+                </ul>
 
-                            <div class="row g-2 py-2 text-center small">
-                                <div class="col-6">
-                                    <div class="bg-light p-2 rounded-3 border">
-                                        <small class="text-muted d-block">وقت الحضور:</small>
-                                        <span class="fw-bold text-success"><t t-esc="item['check_in_time_str']"/></span>
-                                    </div>
-                                </div>
-                                <div class="col-6">
-                                    <div class="bg-light p-2 rounded-3 border">
-                                        <small class="text-muted d-block">ساعات اليوم:</small>
-                                        <span class="fw-bold text-primary"><t t-esc="item['today_hours']"/> س</span>
-                                    </div>
-                                </div>
-                            </div>
+                <div class="tab-content" id="teamAttTabsContent">
 
-                            <div class="d-flex justify-content-between align-items-center pt-2">
-                                <div>
-                                    <t t-if="item['open_attendance'] and item['open_attendance'].in_latitude and item['open_attendance'].in_longitude">
-                                        <a t-attf-href="https://www.google.com/maps?q=#{item['open_attendance'].in_latitude},#{item['open_attendance'].in_longitude}" 
-                                           target="_blank" class="btn btn-sm btn-outline-primary rounded-pill px-3">
-                                            <i class="fa fa-map-marker me-1"/> الخريطة (GPS)
-                                        </a>
-                                    </t>
-                                    <t t-elif="item['last_attendance'] and item['last_attendance'].in_latitude and item['last_attendance'].in_longitude">
-                                        <a t-attf-href="https://www.google.com/maps?q=#{item['last_attendance'].in_latitude},#{item['last_attendance'].in_longitude}" 
-                                           target="_blank" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
-                                            <i class="fa fa-map-marker me-1"/> آخر موقع (GPS)
-                                        </a>
-                                    </t>
-                                    <t t-else="">
-                                        <span class="text-muted small"><i class="fa fa-map-marker me-1"/> بدون GPS</span>
-                                    </t>
-                                </div>
-                                <div class="d-flex gap-1">
-                                    <t t-if="sub_emp.work_phone or sub_emp.mobile_phone">
-                                        <a t-attf-href="tel:#{sub_emp.work_phone or sub_emp.mobile_phone}" class="btn btn-sm btn-light border rounded-circle" title="اتصال">
-                                            <i class="fa fa-phone text-success"/>
-                                        </a>
-                                        <a t-attf-href="'https://wa.me/' + (sub_emp.mobile_phone or sub_emp.work_phone or '').replace('+', '').replace(' ', '')" target="_blank" class="btn btn-sm btn-light border rounded-circle" title="واتساب">
-                                            <i class="fa fa-whatsapp text-success"/>
-                                        </a>
-                                    </t>
-                                    <t t-if="sub_emp.work_email">
-                                        <a t-attf-href="'mailto:' + sub_emp.work_email" class="btn btn-sm btn-light border rounded-circle" title="إرسال بريد">
-                                            <i class="fa fa-envelope text-primary"/>
-                                        </a>
-                                    </t>
-                                </div>
-                            </div>
-                        </div>
-                    </t>
-                </div>
+                    <!-- ======================================================== -->
+                    <!-- TAB 1: Live Today Radar (Mobile Cards & Desktop Table)   -->
+                    <!-- ======================================================== -->
+                    <div t-attf-class="tab-pane fade #{'show active' if active_tab == 'live' else ''}" id="tab-live" role="tabpanel">
 
-                <!-- Desktop Team Table (d-none d-md-block) -->
-                <div class="card border-0 shadow-sm rounded-4 overflow-hidden d-none d-md-block">
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0 text-center">
-                            <thead class="table-light">
-                                <tr>
-                                    <th class="py-3">#</th>
-                                    <th class="py-3 text-start ps-4">الموظف</th>
-                                    <th class="py-3">الحالة الحالية</th>
-                                    <th class="py-3">وقت الحضور (التوقيت المحلي)</th>
-                                    <th class="py-3">موقع الحضور (GPS)</th>
-                                    <th class="py-3">ساعات عمل اليوم</th>
-                                    <th class="py-3">بيانات الاتصال</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <t t-if="not team_data">
-                                    <tr>
-                                        <td colspan="7" class="py-5 text-muted">
-                                            <i class="fa fa-users fs-1 d-block mb-2 text-secondary"/>
-                                            لا يوجد موظفون مسجلون تحت إشرافك المباشر حالياً.
-                                        </td>
-                                    </tr>
-                                </t>
-                                <t t-foreach="team_data" t-as="item">
-                                    <t t-set="sub_emp" t-value="item['employee']"/>
-                                    <tr>
-                                        <td class="text-muted"><t t-esc="item_index + 1"/></td>
-                                        <td class="text-start ps-4">
-                                            <div class="d-flex align-items-center">
-                                                <div class="rounded-circle bg-light d-flex align-items-center justify-content-center text-primary fw-bold me-2 border" style="width: 38px; height: 38px;">
-                                                    <t t-esc="sub_emp.name[:1]"/>
-                                                </div>
-                                                <div>
-                                                    <span class="fw-bold d-block text-dark"><t t-esc="sub_emp.name"/></span>
-                                                    <small class="text-muted">
-                                                        <t t-if="sub_emp.job_title"><t t-esc="sub_emp.job_title"/> | </t>
-                                                        <t t-if="sub_emp.department_id"><t t-esc="sub_emp.department_id.name"/></t>
-                                                    </small>
-                                                </div>
+                        <!-- Mobile Team Attendance Cards (d-block d-md-none) -->
+                        <div class="d-block d-md-none mb-4">
+                            <t t-if="not team_data">
+                                <div class="card border-0 shadow-sm rounded-4 p-4 text-center text-muted bg-white">
+                                    <i class="fa fa-users fs-1 d-block mb-2 text-secondary"/>
+                                    لا يوجد موظفون مسجلون تحت إشرافك المباشر حالياً.
+                                </div>
+                            </t>
+                            <t t-foreach="team_data" t-as="item">
+                                <t t-set="sub_emp" t-value="item['employee']"/>
+                                <div class="card border-0 shadow-sm rounded-4 p-3 mb-3 bg-white" style="border: 1px solid #edf2f7 !important;">
+                                    <div class="d-flex align-items-start justify-content-between pb-2 border-bottom">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="rounded-circle bg-light border d-flex align-items-center justify-content-center text-primary fw-bold" style="width: 42px; height: 42px; font-size: 15px;">
+                                                <t t-esc="sub_emp.name[:1]"/>
                                             </div>
-                                        </td>
-                                        <td>
-                                            <t t-if="item['is_checked_in']">
-                                                <span class="badge bg-success rounded-pill px-3 py-2">
-                                                    <i class="fa fa-circle me-1"/> متواجد بالعمل
-                                                </span>
-                                            </t>
-                                            <t t-else="">
-                                                <span class="badge bg-secondary rounded-pill px-3 py-2">
-                                                    <i class="fa fa-circle-o me-1"/> غير متواجد / انصرف
-                                                </span>
-                                            </t>
-                                        </td>
-                                        <td class="fw-bold">
-                                            <span t-attf-class="#{ 'text-success' if item['is_checked_in'] else 'text-muted' }">
-                                                <t t-esc="item['check_in_time_str']"/>
-                                            </span>
-                                        </td>
-                                        <td>
+                                            <div>
+                                                <span class="fw-bold d-block text-dark fs-6"><t t-esc="sub_emp.name"/></span>
+                                                <small class="text-muted"><t t-esc="sub_emp.job_title or 'موظف ميداني'"/></small>
+                                            </div>
+                                        </div>
+                                        <span t-if="item['is_checked_in']" class="badge bg-success rounded-pill px-2.5 py-1.5">
+                                            <i class="fa fa-circle me-1 small"/> متواجد الآن
+                                        </span>
+                                        <span t-else="" class="badge bg-secondary rounded-pill px-2.5 py-1.5">
+                                            غير متواجد
+                                        </span>
+                                    </div>
+
+                                    <div class="row g-2 py-2 text-center small">
+                                        <div class="col-6">
+                                            <div class="bg-light p-2 rounded-3 border">
+                                                <small class="text-muted d-block">وقت الحضور:</small>
+                                                <span class="fw-bold text-success"><t t-esc="item['check_in_time_str']"/></span>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="bg-light p-2 rounded-3 border">
+                                                <small class="text-muted d-block">ساعات اليوم:</small>
+                                                <span class="fw-bold text-primary"><t t-esc="item['today_hours']"/> س</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="d-flex justify-content-between align-items-center pt-2">
+                                        <div>
                                             <t t-if="item['open_attendance'] and item['open_attendance'].in_latitude and item['open_attendance'].in_longitude">
                                                 <a t-attf-href="https://www.google.com/maps?q=#{item['open_attendance'].in_latitude},#{item['open_attendance'].in_longitude}" 
-                                                   target="_blank" class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-sm">
-                                                    <i class="fa fa-map-marker text-danger me-1"/> خريطة الموقع
+                                                   target="_blank" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                                                    <i class="fa fa-map-marker me-1"/> الخريطة (GPS)
                                                 </a>
                                             </t>
                                             <t t-elif="item['last_attendance'] and item['last_attendance'].in_latitude and item['last_attendance'].in_longitude">
                                                 <a t-attf-href="https://www.google.com/maps?q=#{item['last_attendance'].in_latitude},#{item['last_attendance'].in_longitude}" 
-                                                   target="_blank" class="badge bg-light text-secondary border text-decoration-none">
-                                                    <i class="fa fa-map-marker me-1"/> آخر موقع
+                                                   target="_blank" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
+                                                    <i class="fa fa-map-marker me-1"/> آخر موقع (GPS)
                                                 </a>
                                             </t>
                                             <t t-else="">
-                                                <span class="text-muted small">-</span>
+                                                <span class="text-muted small"><i class="fa fa-map-marker me-1"/> بدون GPS</span>
                                             </t>
-                                        </td>
-                                        <td class="fw-bold text-primary">
-                                            <t t-esc="item['today_hours']"/> س
-                                        </td>
-                                        <td>
-                                            <t t-if="sub_emp.mobile_phone or sub_emp.work_phone">
-                                                <a t-attf-href="tel:#{sub_emp.mobile_phone or sub_emp.work_phone}" class="btn btn-sm btn-light border rounded-circle me-1" title="اتصال">
+                                        </div>
+                                        <div class="d-flex gap-1">
+                                            <t t-if="sub_emp.work_phone or sub_emp.mobile_phone">
+                                                <a t-attf-href="tel:#{sub_emp.work_phone or sub_emp.mobile_phone}" class="btn btn-sm btn-light border rounded-circle" title="اتصال">
                                                     <i class="fa fa-phone text-success"/>
+                                                </a>
+                                                <a t-attf-href="'https://wa.me/' + (sub_emp.mobile_phone or sub_emp.work_phone or '').replace('+', '').replace(' ', '')" target="_blank" class="btn btn-sm btn-light border rounded-circle" title="واتساب">
+                                                    <i class="fa fa-whatsapp text-success"/>
                                                 </a>
                                             </t>
                                             <t t-if="sub_emp.work_email">
-                                                <a t-attf-href="mailto:#{sub_emp.work_email}" class="btn btn-sm btn-light border rounded-circle" title="إرسال بريد">
+                                                <a t-attf-href="'mailto:' + sub_emp.work_email" class="btn btn-sm btn-light border rounded-circle" title="إرسال بريد">
                                                     <i class="fa fa-envelope text-primary"/>
                                                 </a>
                                             </t>
-                                        </td>
-                                    </tr>
-                                </t>
-                            </tbody>
-                        </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </t>
+                        </div>
+
+                        <!-- Desktop Team Table (d-none d-md-block) -->
+                        <div class="card border-0 shadow-sm rounded-4 overflow-hidden d-none d-md-block">
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0 text-center">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th class="py-3">#</th>
+                                            <th class="py-3 text-start ps-4">الموظف</th>
+                                            <th class="py-3">الحالة اللحظية</th>
+                                            <th class="py-3">وقت الحضور</th>
+                                            <th class="py-3">وقت الانصراف</th>
+                                            <th class="py-3">الموقع الجغرافي</th>
+                                            <th class="py-3">ساعات اليوم</th>
+                                            <th class="py-3">تواصل</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <t t-if="not team_data">
+                                            <tr>
+                                                <td colspan="8" class="py-5 text-muted">
+                                                    <i class="fa fa-users fs-1 d-block mb-2 text-secondary"/>
+                                                    لا يوجد موظفون مسجلون تحت إشرافك المباشر حالياً.
+                                                </td>
+                                            </tr>
+                                        </t>
+                                        <t t-foreach="team_data" t-as="item">
+                                            <t t-set="sub_emp" t-value="item['employee']"/>
+                                            <tr>
+                                                <td class="text-muted"><t t-esc="item_index + 1"/></td>
+                                                <td class="text-start ps-4">
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="rounded-circle bg-light d-flex align-items-center justify-content-center text-primary fw-bold me-2 border" style="width: 36px; height: 36px;">
+                                                            <t t-esc="sub_emp.name[:1]"/>
+                                                        </div>
+                                                        <div>
+                                                            <span class="fw-bold d-block text-dark"><t t-esc="sub_emp.name"/></span>
+                                                            <small class="text-muted"><t t-esc="sub_emp.job_title or 'موظف ميداني'"/></small>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <span t-if="item['is_checked_in']" class="badge bg-success rounded-pill px-3 py-2">
+                                                        <i class="fa fa-circle me-1 small"/> متواجد الآن
+                                                    </span>
+                                                    <span t-else="" class="badge bg-secondary rounded-pill px-3 py-2">
+                                                        غير متواجد
+                                                    </span>
+                                                </td>
+                                                <td><t t-esc="item['check_in_time_str']"/></td>
+                                                <td><t t-esc="item['check_out_time_str']"/></td>
+                                                <td>
+                                                    <t t-if="item['open_attendance'] and item['open_attendance'].in_latitude and item['open_attendance'].in_longitude">
+                                                        <a t-attf-href="https://www.google.com/maps?q=#{item['open_attendance'].in_latitude},#{item['open_attendance'].in_longitude}" 
+                                                           target="_blank" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                                                            <i class="fa fa-map-marker me-1"/> موقع الحضور
+                                                        </a>
+                                                    </t>
+                                                    <t t-elif="item['last_attendance'] and item['last_attendance'].in_latitude and item['last_attendance'].in_longitude">
+                                                        <a t-attf-href="https://www.google.com/maps?q=#{item['last_attendance'].in_latitude},#{item['last_attendance'].in_longitude}" 
+                                                           target="_blank" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
+                                                            <i class="fa fa-map-marker me-1"/> آخر موقع
+                                                        </a>
+                                                    </t>
+                                                    <t t-else="">
+                                                        <span class="text-muted small">-</span>
+                                                    </t>
+                                                </td>
+                                                <td class="fw-bold text-primary">
+                                                    <t t-esc="item['today_hours']"/> س
+                                                </td>
+                                                <td>
+                                                    <t t-if="sub_emp.mobile_phone or sub_emp.work_phone">
+                                                        <a t-attf-href="tel:#{sub_emp.mobile_phone or sub_emp.work_phone}" class="btn btn-sm btn-light border rounded-circle me-1" title="اتصال">
+                                                            <i class="fa fa-phone text-success"/>
+                                                        </a>
+                                                    </t>
+                                                    <t t-if="sub_emp.work_email">
+                                                        <a t-attf-href="mailto:#{sub_emp.work_email}" class="btn btn-sm btn-light border rounded-circle" title="إرسال بريد">
+                                                            <i class="fa fa-envelope text-primary"/>
+                                                        </a>
+                                                    </t>
+                                                </td>
+                                            </tr>
+                                        </t>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
                     </div>
+
+                    <!-- ======================================================== -->
+                    <!-- TAB 2: Date Range Report & Periodic Hours Analytics      -->
+                    <!-- ======================================================== -->
+                    <div t-attf-class="tab-pane fade #{'show active' if active_tab == 'report' else ''}" id="tab-report" role="tabpanel">
+
+                        <!-- Filter Controls & Date Pickers -->
+                        <div class="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-white">
+                            <div class="d-flex flex-wrap gap-2 mb-3">
+                                <a t-attf-href="/my/team?filter_type=today&amp;active_tab=report" 
+                                   t-attf-class="btn btn-sm rounded-pill px-3 fw-bold #{'btn-primary' if filter_type == 'today' else 'btn-light border text-dark'}">
+                                    اليوم
+                                </a>
+                                <a t-attf-href="/my/team?filter_type=yesterday&amp;active_tab=report" 
+                                   t-attf-class="btn btn-sm rounded-pill px-3 fw-bold #{'btn-primary' if filter_type == 'yesterday' else 'btn-light border text-dark'}">
+                                    أمس
+                                </a>
+                                <a t-attf-href="/my/team?filter_type=this_week&amp;active_tab=report" 
+                                   t-attf-class="btn btn-sm rounded-pill px-3 fw-bold #{'btn-primary' if filter_type == 'this_week' else 'btn-light border text-dark'}">
+                                    هذا الأسبوع
+                                </a>
+                                <a t-attf-href="/my/team?filter_type=this_month&amp;active_tab=report" 
+                                   t-attf-class="btn btn-sm rounded-pill px-3 fw-bold #{'btn-primary' if filter_type == 'this_month' else 'btn-light border text-dark'}">
+                                    هذا الشهر
+                                </a>
+                            </div>
+
+                            <form action="/my/team" method="get" class="row g-2 align-items-end">
+                                <input type="hidden" name="filter_type" value="custom"/>
+                                <input type="hidden" name="active_tab" value="report"/>
+                                <div class="col-md-4 col-6">
+                                    <label class="form-label small fw-bold text-muted mb-1">من تاريخ:</label>
+                                    <input type="date" name="date_from" t-att-value="date_from" class="form-control rounded-3" required="required"/>
+                                </div>
+                                <div class="col-md-4 col-6">
+                                    <label class="form-label small fw-bold text-muted mb-1">إلى تاريخ:</label>
+                                    <input type="date" name="date_to" t-att-value="date_to" class="form-control rounded-3" required="required"/>
+                                </div>
+                                <div class="col-md-4 col-12">
+                                    <button type="submit" class="btn btn-primary rounded-pill w-100 py-2 fw-bold shadow-sm">
+                                        <i class="fa fa-filter me-1"/> تصفية وعرض التقرير
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Period KPI Summary Cards -->
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-4 col-12">
+                                <div class="card border-0 shadow-sm rounded-4 p-3 bg-white text-center" style="border-right: 4px solid #0d6efd !important;">
+                                    <small class="text-muted d-block">إجمالي ساعات عمل الفريق بالفترة:</small>
+                                    <h3 class="fw-bold text-primary mb-0"><t t-esc="period_total_hours"/> س</h3>
+                                </div>
+                            </div>
+                            <div class="col-md-4 col-6">
+                                <div class="card border-0 shadow-sm rounded-4 p-3 bg-white text-center" style="border-right: 4px solid #198754 !important;">
+                                    <small class="text-muted d-block">متوسط ساعات الموظف:</small>
+                                    <h4 class="fw-bold text-success mb-0"><t t-esc="period_avg_hours"/> س</h4>
+                                </div>
+                            </div>
+                            <div class="col-md-4 col-6">
+                                <div class="card border-0 shadow-sm rounded-4 p-3 bg-white text-center" style="border-right: 4px solid #6f42c1 !important;">
+                                    <small class="text-muted d-block">نطاق التقرير الزمني:</small>
+                                    <span class="fw-bold text-dark small d-block"><t t-esc="date_from"/> إلى <t t-esc="date_to"/></span>
+                                    <span class="badge bg-light text-dark border rounded-pill mt-1"><t t-esc="period_days_span"/> يوم</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Periodic Subordinates Cards (Mobile & Desktop) -->
+                        <div class="mb-4">
+                            <t t-if="not period_data">
+                                <div class="card border-0 shadow-sm rounded-4 p-4 text-center text-muted bg-white">
+                                    لا توجد بيانات حضور مسجلة للفترة المحددة.
+                                </div>
+                            </t>
+                            <t t-foreach="period_data" t-as="p">
+                                <t t-set="sub_emp" t-value="p['employee']"/>
+                                <div class="card border-0 shadow-sm rounded-4 p-3 mb-3 bg-white" style="border: 1px solid #edf2f7 !important;">
+                                    <div class="d-flex align-items-center justify-content-between pb-2 border-bottom">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="rounded-circle bg-light border d-flex align-items-center justify-content-center text-primary fw-bold" style="width: 44px; height: 44px; font-size: 16px;">
+                                                <t t-esc="sub_emp.name[:1]"/>
+                                            </div>
+                                            <div>
+                                                <span class="fw-bold d-block text-dark fs-6"><t t-esc="sub_emp.name"/></span>
+                                                <small class="text-muted"><t t-esc="sub_emp.job_title or 'موظف ميداني'"/></small>
+                                            </div>
+                                        </div>
+                                        <div class="text-end">
+                                            <span class="badge bg-primary fs-6 rounded-pill px-3 py-1.5"><t t-esc="p['total_hours']"/> س</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="row g-2 py-2 text-center small">
+                                        <div class="col-6">
+                                            <div class="bg-light p-2 rounded-3 border">
+                                                <small class="text-muted d-block">أيام الحضور الفعلية:</small>
+                                                <span class="fw-bold text-success fs-6"><t t-esc="p['days_attended']"/> يوم</span>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="bg-light p-2 rounded-3 border">
+                                                <small class="text-muted d-block">إجمالي بصمات العمل:</small>
+                                                <span class="fw-bold text-dark fs-6"><t t-esc="p['records_count']"/> بصمة</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Collapsible Daily Logs for this Employee -->
+                                    <t t-if="p['logs']">
+                                        <div class="pt-2">
+                                            <button class="btn btn-sm btn-light border rounded-pill w-100 py-1.5 text-primary fw-bold" 
+                                                    type="button" 
+                                                    data-bs-toggle="collapse" 
+                                                    t-attf-data-bs-target="#collapse_logs_#{sub_emp.id}">
+                                                <i class="fa fa-list-ul me-1"/> عرض سجل الأيام والتفاصيل (<t t-esc="len(p['logs'])"/>)
+                                            </button>
+                                            <div class="collapse mt-2" t-attf-id="collapse_logs_#{sub_emp.id}">
+                                                <div class="bg-light p-2 rounded-3 border">
+                                                    <t t-foreach="p['logs']" t-as="log">
+                                                        <div class="p-2 mb-1.5 bg-white rounded-2 border d-flex justify-content-between align-items-center small">
+                                                            <div>
+                                                                <span class="fw-bold text-dark d-block"><t t-esc="log['date_str']"/> (<t t-esc="log['day_name']"/>)</span>
+                                                                <small class="text-muted">
+                                                                    دخول: <t t-esc="log['check_in_str']"/> | خروج: <t t-esc="log['check_out_str']"/>
+                                                                </small>
+                                                            </div>
+                                                            <div class="text-end">
+                                                                <span class="badge bg-light text-primary border rounded-pill px-2 py-1 fw-bold">
+                                                                    <t t-esc="log['hours']"/> س
+                                                                </span>
+                                                                <t t-if="log['in_lat'] and log['in_lng']">
+                                                                    <a t-attf-href="https://www.google.com/maps?q=#{log['in_lat']},#{log['in_lng']}" target="_blank" class="small text-danger ms-1" title="موقع البصمة">
+                                                                        <i class="fa fa-map-marker"/>
+                                                                    </a>
+                                                                </t>
+                                                            </div>
+                                                        </div>
+                                                    </t>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </t>
+                                </div>
+                            </t>
+                        </div>
+
+                    </div>
+
                 </div>
             </div>
         </t>
@@ -1140,9 +1448,18 @@
 
                             <!-- Notes if any -->
                             <t t-if="pl.name">
-                                <div class="p-2 mb-3 rounded-3 bg-warning text-dark small" style="background-color: #fff3cd !important;">
+                                <div class="p-2 mb-2 rounded-3 bg-warning text-dark small" style="background-color: #fff3cd !important;">
                                     <i class="fa fa-commenting-o me-1 text-warning"/>
                                     <span class="fw-bold">ملاحظة الموظف:</span> <t t-esc="pl.name"/>
+                                </div>
+                            </t>
+
+                            <!-- Medical Report / Attachment Button if present -->
+                            <t t-if="pl.supported_attachment_ids or pl.message_main_attachment_id">
+                                <div class="mb-3">
+                                    <a t-attf-href="/my/leaves/attachment/#{pl.id}" target="_blank" class="btn btn-sm btn-info text-white rounded-pill px-3 py-1.5 fw-bold shadow-sm w-100">
+                                        <i class="fa fa-paperclip me-1"/> معاينة التقرير الطبي / المستند المرفق
+                                    </a>
                                 </div>
                             </t>
 
@@ -1159,14 +1476,14 @@
                                     </form>
                                 </div>
                                 <div class="col-6">
-                                    <form action="/my/team/leaves/action" method="post" class="w-100">
-                                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
-                                        <input type="hidden" name="leave_id" t-att-value="pl.id"/>
-                                        <input type="hidden" name="action" value="refuse"/>
-                                        <button type="submit" class="btn btn-outline-danger w-100 rounded-pill py-2.5 fw-bold" onclick="return confirm('هل أنت متأكد من رفض طلب الإجازة؟');">
-                                            <i class="fa fa-times me-1"/> رفض
-                                        </button>
-                                    </form>
+                                    <button type="button" class="btn btn-outline-danger w-100 rounded-pill py-2.5 fw-bold" 
+                                            onclick="openRefuseModal(this)"
+                                            t-att-data-leave-id="pl.id"
+                                            t-att-data-emp-name="pl.employee_id.name"
+                                            t-att-data-leave-type="pl.holiday_status_id.name"
+                                            t-att-data-leave-days="pl.number_of_days">
+                                        <i class="fa fa-times me-1"/> رفض
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -1222,6 +1539,13 @@
                                         </td>
                                         <td class="text-muted small">
                                             <t t-esc="pl.name or '-'"/>
+                                            <t t-if="pl.supported_attachment_ids or pl.message_main_attachment_id">
+                                                <div class="mt-1">
+                                                    <a t-attf-href="/my/leaves/attachment/#{pl.id}" target="_blank" class="btn btn-sm btn-info text-white rounded-pill px-2.5 py-0.5 small fw-bold">
+                                                        <i class="fa fa-paperclip me-1"/> التقرير الطبي
+                                                    </a>
+                                                </div>
+                                            </t>
                                         </td>
                                         <td>
                                             <div class="d-flex justify-content-center gap-2">
@@ -1233,14 +1557,14 @@
                                                         <i class="fa fa-check me-1"/> اعتماد
                                                     </button>
                                                 </form>
-                                                <form action="/my/team/leaves/action" method="post" class="d-inline">
-                                                    <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
-                                                    <input type="hidden" name="leave_id" t-att-value="pl.id"/>
-                                                    <input type="hidden" name="action" value="refuse"/>
-                                                    <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-bold" onclick="return confirm('هل أنت متأكد من رفض طلب الإجازة؟');">
-                                                        <i class="fa fa-times me-1"/> رفض
-                                                    </button>
-                                                </form>
+                                                <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-bold" 
+                                                        onclick="openRefuseModal(this)"
+                                                        t-att-data-leave-id="pl.id"
+                                                        t-att-data-emp-name="pl.employee_id.name"
+                                                        t-att-data-leave-type="pl.holiday_status_id.name"
+                                                        t-att-data-leave-days="pl.number_of_days">
+                                                    <i class="fa fa-times me-1"/> رفض
+                                                </button>
                                             </div>
                                         </td>
                                     </tr>
@@ -1274,6 +1598,19 @@
                                 <span><t t-esc="hl.holiday_status_id.name"/> (<t t-esc="hl.number_of_days"/> يوم)</span>
                                 <span><t t-esc="hl.request_date_from"/> إلى <t t-esc="hl.request_date_to"/></span>
                             </div>
+                            <t t-if="hl.state == 'refuse' and (hl.report_note or hl.notes)">
+                                <div class="alert alert-danger py-1 px-2 mt-2 mb-0 rounded-3 small text-start" style="font-size: 11px;">
+                                    <i class="fa fa-times-circle me-1 text-danger"/>
+                                    <b>سبب الرفض:</b> <t t-esc="hl.report_note or hl.notes"/>
+                                </div>
+                            </t>
+                            <t t-if="hl.supported_attachment_ids or hl.message_main_attachment_id">
+                                <div class="mt-2 text-end">
+                                    <a t-attf-href="/my/leaves/attachment/#{hl.id}" target="_blank" class="small text-primary text-decoration-none">
+                                        <i class="fa fa-paperclip me-1"/> عرض المستند المرفق
+                                    </a>
+                                </div>
+                            </t>
                         </div>
                     </t>
                 </div>
