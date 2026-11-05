@@ -327,8 +327,22 @@ class JandalahCustomerPortal(CustomerPortal):
             except Exception:
                 pass
 
+            # Check if this employee's job position is 'اخصائي مبيعات'
+            is_sales_employee = False
+            try:
+                job_title_str = (emp.sudo().job_title or '').strip()
+                job_name_str = (emp.sudo().job_id and emp.sudo().job_id.name or '').strip()
+                dept_name_str = (emp.sudo().department_id and emp.sudo().department_id.name or '').strip()
+                full_job_text = f"{job_title_str} {job_name_str} {dept_name_str}".lower()
+                sales_keywords = ['اخصائي مبيعات', 'أخصائي مبيعات', 'sales specialist', 'مبيعات', 'sales']
+                if any(kw in full_job_text for kw in sales_keywords):
+                    is_sales_employee = True
+            except Exception:
+                pass
+
             values.update({
                 'employee': emp,
+                'is_sales_employee': is_sales_employee,
                 'is_checked_in': bool(open_att),
                 'open_attendance': open_att,
                 'last_attendance': last_att,

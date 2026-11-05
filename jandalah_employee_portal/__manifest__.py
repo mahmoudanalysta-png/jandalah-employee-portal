@@ -10,6 +10,7 @@
     'depends': [
         'base',
         'portal',
+        'auth_signup',
         'hr',
         'hr_attendance',
         'hr_holidays',

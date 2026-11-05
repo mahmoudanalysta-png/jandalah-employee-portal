@@ -10,6 +10,21 @@ _logger = logging.getLogger(__name__)
 
 class JandalahSalesPortal(CustomerPortal):
 
+    def _prepare_home_portal_values(self, counters):
+        values = super()._prepare_home_portal_values(counters)
+        emp = self._get_salesperson_employee()
+        is_sales = False
+        if emp:
+            job_title_str = (emp.sudo().job_title or '').strip()
+            job_name_str = (emp.sudo().job_id and emp.sudo().job_id.name or '').strip()
+            dept_name_str = (emp.sudo().department_id and emp.sudo().department_id.name or '').strip()
+            combined = f"{job_title_str} {job_name_str} {dept_name_str}".lower()
+            sales_keywords = ['اخصائي مبيعات', 'أخصائي مبيعات', 'sales specialist', 'مبيعات', 'sales']
+            if any(k in combined for k in sales_keywords):
+                is_sales = True
+        values['is_sales_employee'] = is_sales
+        return values
+
     def _get_salesperson_employee(self):
         """Finds current employee and verifies sales privileges."""
         user = request.env.user

@@ -37,23 +37,25 @@
 
     <!-- 1. Extend Portal Home with Sales Portal Shortcut Card -->
     <template id="portal_my_home_sales_jandalah" inherit_id="portal.portal_my_home" priority="25">
-        <xpath expr="//div[hasclass('o_portal_my_home')]" position="inside">
-            <div class="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-white" style="border-right: 5px solid #198754 !important;">
-                <div class="d-flex align-items-center justify-content-between">
-                    <div class="d-flex align-items-center gap-3">
-                        <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center shadow-sm" style="width: 48px; height: 48px; font-size: 20px;">
-                            <i class="fa fa-truck"/>
+        <xpath expr="//div[hasclass('o_portal_my_home')]" position="before">
+            <t t-if="is_sales_employee">
+                <div class="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-white" style="border-right: 5px solid #198754 !important;">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center shadow-sm" style="width: 48px; height: 48px; font-size: 20px;">
+                                <i class="fa fa-truck"/>
+                            </div>
+                            <div>
+                                <h5 class="fw-bold mb-0 text-dark">بوابة المبيعات وسيارات التوزيع</h5>
+                                <small class="text-muted">إصدار الفواتير، التحصيل، رصيد العميل والحد الائتماني، وجرد مخزن السيارة</small>
+                            </div>
                         </div>
-                        <div>
-                            <h5 class="fw-bold mb-0 text-dark">بوابة المبيعات وسيارات التوزيع</h5>
-                            <small class="text-muted">إصدار الفواتير، التحصيل، رصيد العميل والحد الائتماني، وجرد مخزن السيارة</small>
-                        </div>
+                        <a href="/my/sales" class="btn btn-success rounded-pill px-4 fw-bold shadow-sm">
+                            دخول المبيعات <i class="fa fa-arrow-left ms-1"/>
+                        </a>
                     </div>
-                    <a href="/my/sales" class="btn btn-success rounded-pill px-4 fw-bold shadow-sm">
-                        دخول المبيعات <i class="fa fa-arrow-left ms-1"/>
-                    </a>
                 </div>
-            </div>
+            </t>
         </xpath>
     </template>
 

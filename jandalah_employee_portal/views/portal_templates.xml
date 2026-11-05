@@ -668,6 +668,9 @@
                 </script>
             </t>
         </xpath>
+        <xpath expr="//div[hasclass('o_portal_my_home')]" position="attributes">
+            <attribute name="class" add="d-none" separator=" "/>
+        </xpath>
     </template>
 
     <!-- 2. Attendance History Page (/my/attendance) -->
