@@ -527,13 +527,50 @@ self.addEventListener('fetch', event => {
         )
 
         offset = (page - 1) * items_per_page
-        leaves = Leave.search(domain, order='request_date_from desc', limit=items_per_page, offset=offset)
+        raw_leaves = Leave.search(domain, order='request_date_from desc', limit=items_per_page, offset=offset)
         leave_types = request.env['hr.leave.type'].sudo().search([('active', '=', True)])
+
+        # Pre-extract all leave data into pure safe Python dicts to eliminate QWeb AttributeError / AccessError
+        leaves_data = []
+        for l in raw_leaves:
+            leave_type = l.holiday_status_id.name if l.holiday_status_id else 'إجازة'
+            has_attachment = False
+            try:
+                if 'supported_attachment_ids' in l._fields and l.supported_attachment_ids:
+                    has_attachment = True
+                elif 'message_main_attachment_id' in l._fields and l.message_main_attachment_id:
+                    has_attachment = True
+                elif request.env['ir.attachment'].sudo().search_count([('res_model', '=', 'hr.leave'), ('res_id', '=', l.id)]) > 0:
+                    has_attachment = True
+            except Exception:
+                pass
+
+            refusal_reason = ''
+            if l.state == 'refuse':
+                if 'report_note' in l._fields and l.report_note:
+                    refusal_reason = l.report_note
+                elif 'notes' in l._fields and l.notes:
+                    refusal_reason = l.notes
+
+            date_from_val = l.request_date_from or (l.date_from.date() if l.date_from else '')
+            date_to_val = l.request_date_to or (l.date_to.date() if l.date_to else '')
+
+            leaves_data.append({
+                'id': l.id,
+                'holiday_type': leave_type,
+                'request_date_from': str(date_from_val or '-'),
+                'request_date_to': str(date_to_val or '-'),
+                'number_of_days': l.number_of_days or 1.0,
+                'name': l.name or '',
+                'state': l.state,
+                'refusal_reason': refusal_reason,
+                'has_attachment': has_attachment,
+            })
 
         values = self._prepare_portal_layout_values()
         values.update({
             'employee': emp,
-            'leaves': leaves,
+            'leaves': leaves_data,
             'leave_types': leave_types,
             'page_name': 'leaves',
             'pager': pager,

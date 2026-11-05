@@ -688,29 +688,29 @@
     </template>
 
     <!-- 3. Leaves & Requests Page (/my/leaves) -->
-    <template id="portal_my_leaves_view" name="طلبات الإجازات">
+    <template id="portal_my_leaves_view" name="إجازاتي وطلباتي">
         <t t-call="portal.portal_layout">
             <t t-set="breadcrumbs_searchbar" t-value="True"/>
-            <t t-set="title">طلبات الإجازات | جندله</t>
+            <t t-set="title">إجازاتي وطلباتي | جندله</t>
 
             <div class="container-fluid py-3">
                 <!-- Notifications -->
                 <div t-if="success" class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm" role="alert">
-                    <i class="fa fa-check-circle me-2"/> تم تقديم طلب الإجازة بنجاح، وهو قيد الاعتماد من الإدارة.
+                    <i class="fa fa-check-circle me-2"/> تم إرسال طلب الإجازة بنجاح، وهو الآن قيد المراجعة من المشرف.
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
                 <div t-if="error" class="alert alert-danger alert-dismissible fade show rounded-3 shadow-sm" role="alert">
-                    <i class="fa fa-exclamation-circle me-2"/> حدث خطأ أثناء تقديم الطلب: <t t-esc="error"/>
+                    <i class="fa fa-exclamation-circle me-2"/> حدث خطأ أثناء إرسال الطلب: <t t-esc="error"/>
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
 
                 <div class="row align-items-center mb-4">
                     <div class="col-md-6">
                         <h3 class="fw-bold mb-1 text-dark">
-                            <i class="fa fa-calendar-check-o text-success me-2"/> سجل ومتابعة الإجازات
+                            <i class="fa fa-calendar-check-o text-success me-2"/> سجل إجازاتي وطلباتي
                         </h3>
                         <p class="text-muted small mb-0">
-                            عرض ومتابعة رصيد الإجازات وتفاصيل الطلبات السابقة والحالية.
+                            متابعة حالة طلبات الإجازات المقدمة، أو تقديم طلب إجازة جديد مع المرفقات.
                         </p>
                     </div>
                     <div class="col-md-6 text-md-end mt-3 mt-md-0">
@@ -723,8 +723,76 @@
                     </div>
                 </div>
 
-                <!-- Leaves Table -->
-                <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                <!-- Mobile Responsive Leave Cards (Visible on phones only: d-block d-md-none) -->
+                <div class="d-block d-md-none mb-4">
+                    <t t-if="not leaves">
+                        <div class="card border-0 shadow-sm rounded-4 p-4 text-center text-muted bg-white mb-3">
+                            <i class="fa fa-calendar-times-o fs-1 d-block mb-2 text-secondary"/>
+                            لا توجد طلبات إجازات مسجلة حتى الآن.
+                        </div>
+                    </t>
+                    <t t-foreach="leaves" t-as="l">
+                        <div class="card border-0 shadow-sm rounded-4 p-3 mb-3 bg-white" style="border: 1px solid #edf2f7 !important;">
+                            <!-- Header: Leave Type + Status Badge -->
+                            <div class="d-flex align-items-center justify-content-between pb-2 border-bottom">
+                                <span class="fw-bold text-dark fs-6">
+                                    <i class="fa fa-calendar text-primary me-1.5"/> <t t-esc="l['holiday_type']"/>
+                                </span>
+                                <div>
+                                    <span t-if="l['state'] == 'validate'" class="badge bg-success rounded-pill px-2.5 py-1">معتمدة</span>
+                                    <span t-elif="l['state'] in ['confirm', 'validate1']" class="badge bg-warning text-dark rounded-pill px-2.5 py-1">قيد المراجعة</span>
+                                    <span t-elif="l['state'] == 'refuse'" class="badge bg-danger rounded-pill px-2.5 py-1">مرفوضة</span>
+                                    <span t-else="" class="badge bg-secondary rounded-pill px-2.5 py-1"><t t-esc="l['state']"/></span>
+                                </div>
+                            </div>
+
+                            <!-- Body: Dates and Duration -->
+                            <div class="row g-2 py-3 text-center">
+                                <div class="col-7">
+                                    <div class="bg-light p-2 rounded-3 border">
+                                        <small class="text-muted d-block">الفترة المطلوبة:</small>
+                                        <span class="fw-bold text-dark small d-block">من <t t-esc="l['request_date_from']"/></span>
+                                        <span class="fw-bold text-dark small d-block">إلى <t t-esc="l['request_date_to']"/></span>
+                                    </div>
+                                </div>
+                                <div class="col-5">
+                                    <div class="bg-light p-2 rounded-3 border h-100 d-flex flex-column justify-content-center">
+                                        <small class="text-muted d-block">المدة الإجمالية:</small>
+                                        <span class="fw-bold text-primary fs-5"><t t-esc="l['number_of_days']"/> يوم</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Notes if any -->
+                            <t t-if="l['name']">
+                                <div class="p-2 mb-2 rounded-3 bg-light text-muted small">
+                                    <i class="fa fa-comment-o me-1"/>
+                                    <b>ملاحظة:</b> <t t-esc="l['name']"/>
+                                </div>
+                            </t>
+
+                            <!-- Refusal Reason (Displayed clearly if refused) -->
+                            <t t-if="l['state'] == 'refuse' and l['refusal_reason']">
+                                <div class="alert alert-danger py-2 px-3 mb-2 rounded-3 small text-start">
+                                    <i class="fa fa-times-circle me-1.5 text-danger"/>
+                                    <b>سبب الرفض:</b> <t t-esc="l['refusal_reason']"/>
+                                </div>
+                            </t>
+
+                            <!-- Attachment button if exists -->
+                            <t t-if="l['has_attachment']">
+                                <div class="pt-1">
+                                    <a t-attf-href="/my/leaves/attachment/#{l['id']}" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1.5 fw-bold w-100">
+                                        <i class="fa fa-paperclip me-1"/> عرض التقرير الطبي / المرفق
+                                    </a>
+                                </div>
+                            </t>
+                        </div>
+                    </t>
+                </div>
+
+                <!-- Desktop Leaves Table (d-none d-md-block) -->
+                <div class="card border-0 shadow-sm rounded-4 overflow-hidden d-none d-md-block">
                     <div class="table-responsive">
                         <table class="table table-hover align-middle mb-0 text-center">
                             <thead class="table-light">
@@ -734,7 +802,7 @@
                                     <th class="py-3">من تاريخ</th>
                                     <th class="py-3">إلى تاريخ</th>
                                     <th class="py-3">المدة (أيام)</th>
-                                    <th class="py-3">البيان / السبب</th>
+                                    <th class="py-3">الملاحظات / المرفق</th>
                                     <th class="py-3">الحالة</th>
                                 </tr>
                             </thead>
@@ -743,7 +811,7 @@
                                     <tr>
                                         <td colspan="7" class="py-5 text-muted">
                                             <i class="fa fa-calendar-times-o fs-1 d-block mb-2 text-secondary"/>
-                                            لا توجد طلبات إجازة مقدمة حتى الآن.
+                                            لا توجد طلبات إجازات مسجلة حتى الآن.
                                         </td>
                                     </tr>
                                 </t>
@@ -751,32 +819,32 @@
                                     <tr>
                                         <td class="text-muted"><t t-esc="l_index + 1"/></td>
                                         <td class="fw-bold text-dark">
-                                            <t t-esc="l.holiday_status_id.name"/>
+                                            <t t-esc="l['holiday_type']"/>
                                         </td>
-                                        <td><t t-esc="l.request_date_from"/></td>
-                                        <td><t t-esc="l.request_date_to"/></td>
+                                        <td><t t-esc="l['request_date_from']"/></td>
+                                        <td><t t-esc="l['request_date_to']"/></td>
                                         <td class="fw-bold text-primary">
-                                            <t t-esc="l.number_of_days"/> يوم
+                                            <t t-esc="l['number_of_days']"/> يوم
                                         </td>
                                         <td class="text-muted small">
-                                            <t t-esc="l.name or '-'"/>
-                                            <t t-if="l.supported_attachment_ids or l.message_main_attachment_id">
+                                            <t t-esc="l['name'] or '-'"/>
+                                            <t t-if="l['has_attachment']">
                                                 <div class="mt-1">
-                                                    <a t-attf-href="/my/leaves/attachment/#{l.id}" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill px-2.5 py-0.5 small">
-                                                        <i class="fa fa-paperclip me-1"/> المرفق
+                                                    <a t-attf-href="/my/leaves/attachment/#{l['id']}" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill px-2.5 py-0.5 small">
+                                                        <i class="fa fa-paperclip me-1"/> مرفق
                                                     </a>
                                                 </div>
                                             </t>
                                         </td>
                                         <td>
-                                            <span t-if="l.state == 'validate'" class="badge bg-success rounded-pill px-3 py-2">معتمدة</span>
-                                            <span t-elif="l.state == 'confirm'" class="badge bg-warning text-dark rounded-pill px-3 py-2">قيد الاعتماد</span>
-                                            <span t-elif="l.state == 'refuse'" class="badge bg-danger rounded-pill px-3 py-2">مرفوضة</span>
-                                            <span t-else="" class="badge bg-secondary rounded-pill px-3 py-2"><t t-esc="l.state"/></span>
-                                            <t t-if="l.state == 'refuse' and (l.report_note or l.notes)">
+                                            <span t-if="l['state'] == 'validate'" class="badge bg-success rounded-pill px-3 py-2">معتمدة</span>
+                                            <span t-elif="l['state'] in ['confirm', 'validate1']" class="badge bg-warning text-dark rounded-pill px-3 py-2">قيد المراجعة</span>
+                                            <span t-elif="l['state'] == 'refuse'" class="badge bg-danger rounded-pill px-3 py-2">مرفوضة</span>
+                                            <span t-else="" class="badge bg-secondary rounded-pill px-3 py-2"><t t-esc="l['state']"/></span>
+                                            <t t-if="l['state'] == 'refuse' and l['refusal_reason']">
                                                 <div class="alert alert-danger py-1 px-2 mt-1 mb-0 rounded-3 small text-start" style="font-size: 11px;">
                                                     <i class="fa fa-times-circle me-1 text-danger"/>
-                                                    <b>سبب الرفض:</b> <t t-esc="l.report_note or l.notes"/>
+                                                    <b>سبب الرفض:</b> <t t-esc="l['refusal_reason']"/>
                                                 </div>
                                             </t>
                                         </td>
@@ -794,7 +862,7 @@
                     </t>
                 </div>
 
-                <!-- Modal for New Leave Request -->
+                <!-- Modal: Request New Leave with Attachment Support -->
                 <div class="modal fade" id="newLeaveModal" tabindex="-1" aria-labelledby="newLeaveModalLabel" aria-hidden="true">
                     <div class="modal-dialog modal-dialog-centered">
                         <div class="modal-content border-0 shadow rounded-4">
@@ -827,25 +895,25 @@
                                         </div>
                                     </div>
                                     <div class="mb-3">
-                                        <label class="form-label fw-bold">ملاحظات / سبب الإجازة</label>
-                                        <textarea name="name" class="form-control rounded-3" rows="2" placeholder="اكتب هنا أي تفاصيل إضافية..."></textarea>
+                                        <label class="form-label fw-bold">السبب / ملاحظات إضافية</label>
+                                        <textarea name="name" class="form-control rounded-3" rows="2" placeholder="اكتب سبب طلب الإجازة..."></textarea>
                                     </div>
                                     <div class="mb-3">
                                         <label class="form-label fw-bold d-flex justify-content-between align-items-center mb-1">
                                             <span><i class="fa fa-paperclip text-success me-1"/> إرفاق تقرير طبي أو مستند (اختياري)</span>
-                                            <small class="text-muted">صور أو PDF</small>
+                                            <small class="text-muted">صورة أو PDF</small>
                                         </label>
                                         <input type="file" name="attachment" id="leave_attachment_input" class="form-control rounded-3" accept="image/*,application/pdf" capture="environment"/>
                                         <div id="sick_leave_alert" class="alert alert-info py-2 px-3 mt-2 rounded-3 small d-none" style="background-color: #e7f1ff; border: 1px solid #b6d4fe;">
                                             <i class="fa fa-stethoscope me-1 text-primary"/>
-                                            <b>تنبيه الإجازة المرضية:</b> يرجى إرفاق صورة التقرير الطبي أو العذر المعتمد لضمان سرعة اعتماد الطلب من المشرف المباشر.
+                                            <b>تنبيه الإجازة المرضية:</b> يرجى إرفاق التقرير الطبي المعتمد لضمان سرعة اعتماد الطلب من الإدارة.
                                         </div>
                                     </div>
                                 </div>
                                 <div class="modal-footer border-0 pt-0">
                                     <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">إلغاء</button>
                                     <button type="submit" class="btn btn-success rounded-pill px-4 fw-bold">
-                                        <i class="fa fa-paper-plane me-1"/> إرسال الطلب
+                                        <i class="fa fa-paper-plane me-1"/> تأكيد الإرسال
                                     </button>
                                 </div>
                             </form>
