@@ -6,7 +6,7 @@ class HrEmployee(models.Model):
     _inherit = 'hr.employee'
 
     # Geofencing configuration
-    work_location_type = fields.Selection([
+    geofence_type = fields.Selection([
         ('office', 'مقر الشركة الرئيسي'),
         ('home', 'العمل عن بعد من المنزل'),
         ('field', 'عمل ميداني حر'),
@@ -60,12 +60,13 @@ class HrEmployee(models.Model):
                 'radius': active_req.temp_radius_meters or self.work_radius_meters or 500,
             }
 
+        geo_type = self.sudo().geofence_type or 'office'
         return {
             'is_temporary': False,
-            'location_name': 'الموقع المعتمد' if self.work_location_type != 'field' else 'ميداني حر',
-            'latitude': self.work_latitude or 0.0,
-            'longitude': self.work_longitude or 0.0,
-            'radius': self.work_radius_meters if self.work_location_type != 'field' else 0,
+            'location_name': 'ميداني حر (غير مقيد)' if geo_type == 'field' else ('العمل عن بعد من المنزل' if geo_type == 'home' else 'المقر المعتمد للشركة'),
+            'latitude': float(self.sudo().work_latitude or 0.0),
+            'longitude': float(self.sudo().work_longitude or 0.0),
+            'radius': int(self.sudo().work_radius_meters or 0) if geo_type != 'field' else 0,
         }
 
     @api.model

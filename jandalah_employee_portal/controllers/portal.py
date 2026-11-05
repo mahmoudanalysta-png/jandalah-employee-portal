@@ -491,8 +491,8 @@ self.addEventListener('fetch', event => {
                     in_vals['in_longitude'] = lon_f
 
                     # Check geofence against effective location (including approved temporary locations)
-                    if hasattr(emp, 'get_effective_work_location'):
-                        eff_loc = emp.get_effective_work_location()
+                    if hasattr(emp.sudo(), 'get_effective_work_location'):
+                        eff_loc = emp.sudo().get_effective_work_location()
                         effective_loc_name = eff_loc.get('location_name', 'المقر المعتمد')
                         work_lat = eff_loc.get('latitude', 0.0)
                         work_lon = eff_loc.get('longitude', 0.0)
@@ -1297,7 +1297,12 @@ self.addEventListener('fetch', event => {
             })
 
         # Effective current work location
-        effective_loc = emp.get_effective_work_location() if hasattr(emp, 'get_effective_work_location') else {}
+        effective_loc = {}
+        try:
+            if hasattr(emp.sudo(), 'get_effective_work_location'):
+                effective_loc = emp.sudo().get_effective_work_location()
+        except Exception as e:
+            _logger.error("Error retrieving effective work location: %s", e)
 
         values = self._prepare_portal_layout_values()
         values.update({

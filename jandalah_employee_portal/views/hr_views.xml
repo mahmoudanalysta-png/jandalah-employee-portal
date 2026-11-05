@@ -11,7 +11,7 @@
                 <page string="النطاق الجغرافي للحضور (Geofencing)" name="geofencing_settings" groups="hr.group_hr_user">
                     <group string="إعدادات الموقع المعتمد لتسجيل الحضور">
                         <group>
-                            <field name="work_location_type"/>
+                            <field name="geofence_type"/>
                             <field name="work_radius_meters"/>
                         </group>
                         <group>
