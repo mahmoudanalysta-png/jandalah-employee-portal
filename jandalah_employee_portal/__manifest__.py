@@ -17,6 +17,7 @@
     'data': [
         'security/ir.model.access.csv',
         'views/portal_templates.xml',
+        'views/hr_views.xml',
     ],
     'installable': True,
     'application': True,

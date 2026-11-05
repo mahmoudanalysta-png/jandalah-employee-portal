@@ -1,8 +1,72 @@
 # -*- coding: utf-8 -*-
+import math
 from odoo import models, fields, api
 
 class HrEmployee(models.Model):
     _inherit = 'hr.employee'
+
+    # Geofencing configuration
+    work_location_type = fields.Selection([
+        ('office', 'مقر الشركة الرئيسي'),
+        ('home', 'العمل عن بعد من المنزل'),
+        ('field', 'عمل ميداني حر'),
+    ], string='طبيعة موقع العمل', default='office')
+    
+    work_latitude = fields.Float(string='خط عرض موقع العمل المعتمد', digits=(10, 7))
+    work_longitude = fields.Float(string='خط طول موقع العمل المعتمد', digits=(10, 7))
+    work_radius_meters = fields.Integer(string='نطاق السماح الجغرافي (بالمتر)', default=500,
+                                       help='المسافة المسموح بها حول الموقع بالأمتار (0 = غير مقيد)')
+
+    def calculate_distance_meters(self, lat1, lon1, lat2, lon2):
+        """Calculates spherical distance in meters between two coordinates using Haversine formula."""
+        if not lat1 or not lon1 or not lat2 or not lon2:
+            return 0.0
+        try:
+            r = 6371000.0  # Earth radius in meters
+            phi1 = math.radians(lat1)
+            phi2 = math.radians(lat2)
+            delta_phi = math.radians(lat2 - lat1)
+            delta_lambda = math.radians(lon2 - lon1)
+
+            a = math.sin(delta_phi / 2.0) ** 2 + \
+                math.cos(phi1) * math.cos(phi2) * math.sin(delta_lambda / 2.0) ** 2
+            c = 2.0 * math.atan2(math.sqrt(a), math.sqrt(1.0 - a))
+            return r * c
+        except Exception:
+            return 0.0
+
+    def get_effective_work_location(self, target_date=None):
+        """Returns the active work location for this employee on target_date,
+        taking into account approved temporary location requests."""
+        self.ensure_one()
+        if not target_date:
+            target_date = fields.Date.today()
+        
+        # Check if there is an approved temporary location request for this date
+        Req = self.env['jandalah.location.request'].sudo()
+        active_req = Req.search([
+            ('employee_id', '=', self.id),
+            ('state', '=', 'approve'),
+            ('date_from', '<=', target_date),
+            ('date_to', '>=', target_date)
+        ], limit=1)
+
+        if active_req and active_req.temp_latitude and active_req.temp_longitude:
+            return {
+                'is_temporary': True,
+                'location_name': active_req.temp_location_name or 'موقع عمل مؤقت معتمد',
+                'latitude': active_req.temp_latitude,
+                'longitude': active_req.temp_longitude,
+                'radius': active_req.temp_radius_meters or self.work_radius_meters or 500,
+            }
+
+        return {
+            'is_temporary': False,
+            'location_name': 'الموقع المعتمد' if self.work_location_type != 'field' else 'ميداني حر',
+            'latitude': self.work_latitude or 0.0,
+            'longitude': self.work_longitude or 0.0,
+            'radius': self.work_radius_meters if self.work_location_type != 'field' else 0,
+        }
 
     @api.model
     def get_user_employee(self, user=None):
@@ -60,3 +124,10 @@ class HrEmployee(models.Model):
         return self.sudo().search([
             '|', ('parent_id', '=', self.id), ('coach_id', '=', self.id)
         ])
+
+
+class HrAttendance(models.Model):
+    _inherit = 'hr.attendance'
+
+    distance_from_work = fields.Float(string='المسافة عن موقع العمل (متر)', digits=(10, 2))
+    is_outside_geofence = fields.Boolean(string='خارج النطاق الجغرافي المسموح', default=False)

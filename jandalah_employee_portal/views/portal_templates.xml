@@ -275,6 +275,101 @@
                             </div>
                         </div>
 
+                        <!-- 4 Quick Employee Service Modules (Announcements, Assets, Penalties, Location Requests) -->
+                        <div class="row g-3 mb-4">
+                            <!-- Announcements & Circulars -->
+                            <div class="col-md-6 col-lg-3">
+                                <div class="card border-0 shadow-sm rounded-4 h-100 p-3 bg-white position-relative" style="border: 1px solid #edf2f7 !important;">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div class="rounded-circle bg-warning bg-opacity-10 p-2.5 text-warning d-flex align-items-center justify-content-center" style="width: 44px; height: 44px;">
+                                            <i class="fa fa-bullhorn fs-5"/>
+                                        </div>
+                                        <t t-if="unread_announcements &gt; 0">
+                                            <span class="badge bg-danger rounded-pill px-2.5 py-1">
+                                                <t t-esc="unread_announcements"/> غير مقروء
+                                            </span>
+                                        </t>
+                                    </div>
+                                    <h6 class="fw-bold text-dark mb-1">التعاميم والقرارات</h6>
+                                    <p class="text-muted small mb-3 flex-grow-1">
+                                        الاطلاع على التعاميم الرسمية واللوائح وتأكيد القراءة.
+                                    </p>
+                                    <a href="/my/announcements" class="btn btn-outline-warning w-100 rounded-pill py-2 small fw-bold">
+                                        عرض التعاميم <i class="fa fa-arrow-left ms-1"/>
+                                    </a>
+                                </div>
+                            </div>
+
+                            <!-- Assets & Custody -->
+                            <div class="col-md-6 col-lg-3">
+                                <div class="card border-0 shadow-sm rounded-4 h-100 p-3 bg-white position-relative" style="border: 1px solid #edf2f7 !important;">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div class="rounded-circle bg-info bg-opacity-10 p-2.5 text-info d-flex align-items-center justify-content-center" style="width: 44px; height: 44px;">
+                                            <i class="fa fa-laptop fs-5"/>
+                                        </div>
+                                        <t t-if="pending_assets &gt; 0">
+                                            <span class="badge bg-warning text-dark rounded-pill px-2.5 py-1">
+                                                <t t-esc="pending_assets"/> بانتظار الإقرار
+                                            </span>
+                                        </t>
+                                    </div>
+                                    <h6 class="fw-bold text-dark mb-1">العهد ومستلزمات العمل</h6>
+                                    <p class="text-muted small mb-3 flex-grow-1">
+                                        قائمة الأجهزة والسيارات والعهد وتأكيد استلامها.
+                                    </p>
+                                    <a href="/my/assets" class="btn btn-outline-info w-100 rounded-pill py-2 small fw-bold">
+                                        سجل العهد <i class="fa fa-arrow-left ms-1"/>
+                                    </a>
+                                </div>
+                            </div>
+
+                            <!-- Penalties & Disciplinary -->
+                            <div class="col-md-6 col-lg-3">
+                                <div class="card border-0 shadow-sm rounded-4 h-100 p-3 bg-white position-relative" style="border: 1px solid #edf2f7 !important;">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div class="rounded-circle bg-danger bg-opacity-10 p-2.5 text-danger d-flex align-items-center justify-content-center" style="width: 44px; height: 44px;">
+                                            <i class="fa fa-gavel fs-5"/>
+                                        </div>
+                                        <t t-if="pending_penalties &gt; 0">
+                                            <span class="badge bg-danger rounded-pill px-2.5 py-1">
+                                                <t t-esc="pending_penalties"/> مطلوب الرد
+                                            </span>
+                                        </t>
+                                    </div>
+                                    <h6 class="fw-bold text-dark mb-1">الجزاءات والتحقيقات</h6>
+                                    <p class="text-muted small mb-3 flex-grow-1">
+                                        متابعة القرارات الإدارية والرد بالقبول أو تسجيل إفادة.
+                                    </p>
+                                    <a href="/my/penalties" class="btn btn-outline-danger w-100 rounded-pill py-2 small fw-bold">
+                                        القرارات والإفادات <i class="fa fa-arrow-left ms-1"/>
+                                    </a>
+                                </div>
+                            </div>
+
+                            <!-- Temporary Location Requests -->
+                            <div class="col-md-6 col-lg-3">
+                                <div class="card border-0 shadow-sm rounded-4 h-100 p-3 bg-white position-relative" style="border: 1px solid #edf2f7 !important;">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div class="rounded-circle bg-primary bg-opacity-10 p-2.5 text-primary d-flex align-items-center justify-content-center" style="width: 44px; height: 44px;">
+                                            <i class="fa fa-map-marker fs-5"/>
+                                        </div>
+                                        <t t-if="pending_locations &gt; 0">
+                                            <span class="badge bg-info text-white rounded-pill px-2.5 py-1">
+                                                <t t-esc="pending_locations"/> قيد المراجعة
+                                            </span>
+                                        </t>
+                                    </div>
+                                    <h6 class="fw-bold text-dark mb-1">العمل من موقع مؤقت</h6>
+                                    <p class="text-muted small mb-3 flex-grow-1">
+                                        تقديم طلب استثناء للدوام من موقع آخر أو أثناء السفر.
+                                    </p>
+                                    <a href="/my/location-requests" class="btn btn-outline-primary w-100 rounded-pill py-2 small fw-bold">
+                                        إدارة المواقع <i class="fa fa-arrow-left ms-1"/>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- 3. Supervisor & Direct Manager Card (Visible only if is_supervisor) -->
                         <t t-if="is_supervisor">
                             <div class="card border-0 shadow-sm rounded-3 bg-white" style="border-right: 5px solid #6f42c1 !important;">
@@ -324,6 +419,9 @@
                                         </a>
                                         <a href="/my/team/leaves" class="btn rounded-pill px-4 flex-grow-1 fw-bold text-white" style="background-color: #6f42c1;">
                                             <i class="fa fa-check-square-o me-1"/> اعتمادات الإجازات (<t t-esc="team_pending_leaves_count"/>)
+                                        </a>
+                                        <a href="/my/team/location-requests" class="btn btn-outline-info rounded-pill px-3 flex-grow-1 fw-bold">
+                                            <i class="fa fa-map-marker me-1"/> مواقع الفريق
                                         </a>
                                     </div>
                                 </div>
@@ -1821,6 +1919,619 @@
                     });
                 </script>
 
+            </div>
+        </t>
+    </template>
+
+
+    <!-- ========================================================================= -->
+    <!-- 6. Announcements & Circulars View (/my/announcements)                    -->
+    <!-- ========================================================================= -->
+    <template id="portal_my_announcements_view" name="التعاميم والقرارات الإدارية">
+        <t t-call="portal.portal_layout">
+            <t t-set="breadcrumbs_searchbar" t-value="True"/>
+            <t t-set="title">التعاميم والقرارات الإدارية | جندله</t>
+
+            <div class="container-fluid py-3">
+                <div t-if="success == 'acknowledged'" class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm" role="alert">
+                    <i class="fa fa-check-circle me-2"/> تم تسجيل وتأكيد اطلاعك على التعميم بنجاح.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+
+                <div class="row align-items-center mb-4">
+                    <div class="col-md-7">
+                        <h3 class="fw-bold mb-1 text-dark">
+                            <i class="fa fa-bullhorn text-warning me-2"/> التعاميم والقرارات الإدارية
+                        </h3>
+                        <p class="text-muted small mb-0">
+                            استعراض كافة اللوائح والتعاميم الصادرة من إدارة الشركة والإقرار بقراءتها.
+                        </p>
+                    </div>
+                    <div class="col-md-5 text-md-end mt-3 mt-md-0">
+                        <a href="/my" class="btn btn-outline-secondary rounded-pill">
+                            <i class="fa fa-arrow-right me-1"/> العودة للرئيسية
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Filters -->
+                <div class="d-flex gap-2 mb-3">
+                    <a href="/my/announcements?filter=all" t-attf-class="btn btn-sm rounded-pill px-3 #{'btn-primary' if active_filter == 'all' else 'btn-outline-secondary'}">
+                        الكل (<t t-esc="len(announcements)"/>)
+                    </a>
+                    <a href="/my/announcements?filter=unread" t-attf-class="btn btn-sm rounded-pill px-3 #{'btn-danger' if active_filter == 'unread' else 'btn-outline-secondary'}">
+                        غير مقروءة
+                    </a>
+                    <a href="/my/announcements?filter=read" t-attf-class="btn btn-sm rounded-pill px-3 #{'btn-success' if active_filter == 'read' else 'btn-outline-secondary'}">
+                        تم الاطلاع
+                    </a>
+                </div>
+
+                <!-- Announcements Cards -->
+                <t t-if="not announcements">
+                    <div class="card border-0 shadow-sm rounded-4 p-5 text-center text-muted bg-white">
+                        <i class="fa fa-check-circle-o fs-1 d-block mb-2 text-success"/>
+                        لا توجد تعاميم أو قرارات إدارية جديدة في هذا القسم.
+                    </div>
+                </t>
+
+                <div class="row g-3">
+                    <t t-foreach="announcements" t-as="ann">
+                        <div class="col-12">
+                            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white" style="border: 1px solid #edf2f7 !important;">
+                                <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 pb-2 border-bottom">
+                                    <div>
+                                        <div class="d-flex align-items-center gap-2 mb-1">
+                                            <span class="badge bg-warning bg-opacity-25 text-dark rounded-pill px-2.5 py-1 small">
+                                                <t t-if="ann['announcement_type'] == 'circular'">تعميم إداري عام</t>
+                                                <t t-elif="ann['announcement_type'] == 'letter'">خطاب رسمي</t>
+                                                <t t-elif="ann['announcement_type'] == 'decision'">قرار إداري</t>
+                                                <t t-else="">لائحة وسياسة</t>
+                                            </span>
+                                            <small class="text-muted"><i class="fa fa-calendar me-1"/> <t t-esc="ann['date']"/></small>
+                                        </div>
+                                        <h5 class="fw-bold text-dark mb-0"><t t-esc="ann['name']"/></h5>
+                                    </div>
+                                    <div>
+                                        <t t-if="ann['is_read']">
+                                            <span class="badge bg-success rounded-pill px-3 py-1.5">
+                                                <i class="fa fa-check-circle me-1"/> تم تأكيد الاطلاع
+                                            </span>
+                                        </t>
+                                        <t t-else="">
+                                            <span class="badge bg-danger rounded-pill px-3 py-1.5">
+                                                <i class="fa fa-clock-o me-1"/> بانتظار تأكيد قراءتك
+                                            </span>
+                                        </t>
+                                    </div>
+                                </div>
+
+                                <div class="py-3 text-dark small" style="line-height: 1.8;">
+                                    <t t-raw="ann['content']"/>
+                                </div>
+
+                                <div class="d-flex flex-wrap justify-content-between align-items-center pt-2 border-top gap-2">
+                                    <div>
+                                        <t t-if="ann['has_attachment']">
+                                            <a t-attf-href="/web/content/#{ann['attachment_id']}?download=true" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                                                <i class="fa fa-file-pdf-o me-1"/> تحميل الخطاب الرسمي المرفق
+                                            </a>
+                                        </t>
+                                    </div>
+                                    <div>
+                                        <t t-if="not ann['is_read']">
+                                            <form t-attf-action="/my/announcements/ack/#{ann['id']}" method="post" class="d-inline">
+                                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                                <button type="submit" class="btn btn-success rounded-pill px-4 fw-bold shadow-sm">
+                                                    <i class="fa fa-check me-1"/> أقر بقراءة التعميم والالتزام به
+                                                </button>
+                                            </form>
+                                        </t>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <!-- ========================================================================= -->
+    <!-- 7. Penalties & Investigations View (/my/penalties)                       -->
+    <!-- ========================================================================= -->
+    <template id="portal_my_penalties_view" name="الجزاءات والتحقيقات الإدارية">
+        <t t-call="portal.portal_layout">
+            <t t-set="breadcrumbs_searchbar" t-value="True"/>
+            <t t-set="title">الجزاءات والتحقيقات الإدارية | جندله</t>
+
+            <div class="container-fluid py-3">
+                <div t-if="success == 'responded'" class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm" role="alert">
+                    <i class="fa fa-check-circle me-2"/> تم تسجيل ردك وإفادتك وتحديث حالة القرار بنجاح.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+
+                <div class="row align-items-center mb-4">
+                    <div class="col-md-7">
+                        <h3 class="fw-bold mb-1 text-dark">
+                            <i class="fa fa-gavel text-danger me-2"/> القرارات الإدارية والتحقيقات
+                        </h3>
+                        <p class="text-muted small mb-0">
+                            متابعة الإجراءات الإدارية والإنذارات الموجهة، وتدوين الرد الرسمي والإفادة.
+                        </p>
+                    </div>
+                    <div class="col-md-5 text-md-end mt-3 mt-md-0">
+                        <a href="/my" class="btn btn-outline-secondary rounded-pill">
+                            <i class="fa fa-arrow-right me-1"/> العودة للرئيسية
+                        </a>
+                    </div>
+                </div>
+
+                <t t-if="not penalties">
+                    <div class="card border-0 shadow-sm rounded-4 p-5 text-center text-muted bg-white">
+                        <i class="fa fa-shield fs-1 d-block mb-2 text-success"/>
+                        سجلك المهني نظيف، لا توجد أي جزاءات أو تحقيقات مسجلة.
+                    </div>
+                </t>
+
+                <div class="row g-3">
+                    <t t-foreach="penalties" t-as="p">
+                        <div class="col-12">
+                            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white" style="border: 1px solid #edf2f7 !important;">
+                                <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 pb-2 border-bottom">
+                                    <div>
+                                        <div class="d-flex align-items-center gap-2 mb-1">
+                                            <span class="badge bg-danger text-white rounded-pill px-2.5 py-1 small">
+                                                <t t-if="p['penalty_type'] == 'warning'">إنذار / لفت نظر</t>
+                                                <t t-elif="p['penalty_type'] == 'deduction'">خصم من الراتب (<t t-esc="p['deduction_days']"/> يوم)</t>
+                                                <t t-elif="p['penalty_type'] == 'investigation'">إحالة للتحقيق الإداري</t>
+                                                <t t-else="">إيقاف مؤقت</t>
+                                            </span>
+                                            <span class="fw-bold text-muted small">رقم: <t t-esc="p['name']"/></span>
+                                            <small class="text-muted"><i class="fa fa-calendar me-1"/> <t t-esc="p['date']"/></small>
+                                        </div>
+                                        <h6 class="fw-bold text-dark mt-2 mb-0">سبب وموضوع الإجراء:</h6>
+                                    </div>
+                                    <div>
+                                        <span t-if="p['state'] == 'issued'" class="badge bg-warning text-dark rounded-pill px-3 py-1.5">
+                                            <i class="fa fa-hourglass-half me-1"/> بانتظار ردك
+                                        </span>
+                                        <span t-elif="p['state'] == 'accepted'" class="badge bg-success rounded-pill px-3 py-1.5">
+                                            <i class="fa fa-check-circle me-1"/> تم القبول والإقرار
+                                        </span>
+                                        <span t-elif="p['state'] == 'objected'" class="badge bg-danger rounded-pill px-3 py-1.5">
+                                            <i class="fa fa-exclamation-triangle me-1"/> تم تقديم اعتراض وإفادة
+                                        </span>
+                                        <span t-else="" class="badge bg-secondary rounded-pill px-3 py-1.5">مغلق</span>
+                                    </div>
+                                </div>
+
+                                <div class="p-3 my-2 rounded-3 bg-light text-dark small" style="white-space: pre-wrap;">
+                                    <t t-esc="p['reason']"/>
+                                </div>
+
+                                <!-- Response Info if already answered -->
+                                <t t-if="p['employee_response']">
+                                    <div class="p-3 my-2 rounded-3 border bg-light small">
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <b>إفادتك المسجلة:</b>
+                                            <small class="text-muted"><t t-esc="p['response_date']"/></small>
+                                        </div>
+                                        <p class="mb-0 text-muted" style="white-space: pre-wrap;"><t t-esc="p['employee_comment'] or 'تمت الموافقة دون تعليق.'"/></p>
+                                    </div>
+                                </t>
+
+                                <div class="pt-2 border-top text-end">
+                                    <t t-if="p['state'] == 'issued'">
+                                        <button type="button" class="btn btn-danger rounded-pill px-4 fw-bold shadow-sm"
+                                                data-bs-toggle="modal" data-bs-target="#respondPenaltyModal"
+                                                t-att-data-penalty-id="p['id']"
+                                                onclick="openPenaltyModal(this)">
+                                            <i class="fa fa-reply me-1"/> تقديم الإفادة / الرد على القرار
+                                        </button>
+                                    </t>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </div>
+
+                <!-- Modal: Respond to Penalty -->
+                <div class="modal fade" id="respondPenaltyModal" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content border-0 shadow rounded-4">
+                            <form action="/my/penalties/respond" method="post">
+                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                <input type="hidden" name="penalty_id" id="modal_penalty_id"/>
+                                
+                                <div class="modal-header border-0 pb-0">
+                                    <h5 class="modal-title fw-bold text-dark">
+                                        <i class="fa fa-edit text-danger me-2"/> تدوين الإفادة الرسمية
+                                    </h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body p-4">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">موقفك من القرار <span class="text-danger">*</span></label>
+                                        <select name="response_type" class="form-select rounded-3" required="required">
+                                            <option value="">اختر الإفادة...</option>
+                                            <option value="accept">قبول وإقرار بمضمون القرار</option>
+                                            <option value="object">اعتراض رسمي على القرار وتقديم إفادة</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">نص الإفادة والتوضيح <span class="text-danger">*</span></label>
+                                        <textarea name="employee_comment" class="form-control rounded-3" rows="4" required="required" placeholder="يرجى كتابة كافة الأسباب والتوضيحات بالتفصيل..."></textarea>
+                                    </div>
+                                </div>
+                                <div class="modal-footer border-0 pt-0">
+                                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">إلغاء</button>
+                                    <button type="submit" class="btn btn-danger rounded-pill px-4 fw-bold">
+                                        تأكيد إرسال الإفادة
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <script type="text/javascript">
+                    function openPenaltyModal(btn) {
+                        var pId = btn.getAttribute('data-penalty-id');
+                        document.getElementById('modal_penalty_id').value = pId;
+                    }
+                </script>
+            </div>
+        </t>
+    </template>
+
+    <!-- ========================================================================= -->
+    <!-- 8. Assets & Custody View (/my/assets)                                     -->
+    <!-- ========================================================================= -->
+    <template id="portal_my_assets_view" name="العهد ومستلزمات العمل">
+        <t t-call="portal.portal_layout">
+            <t t-set="breadcrumbs_searchbar" t-value="True"/>
+            <t t-set="title">العهد ومستلزمات العمل | جندله</t>
+
+            <div class="container-fluid py-3">
+                <div t-if="success == 'acknowledged'" class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm" role="alert">
+                    <i class="fa fa-check-circle me-2"/> تم إقرار استلام العهدة رسمياً وحفظ الإقرار الإلكتروني.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+
+                <div class="row align-items-center mb-4">
+                    <div class="col-md-7">
+                        <h3 class="fw-bold mb-1 text-dark">
+                            <i class="fa fa-laptop text-info me-2"/> سجل العهد ومستلزمات العمل
+                        </h3>
+                        <p class="text-muted small mb-0">
+                            متابعة الأجهزة والمعدات والسيارات المسلمة لك بعهدة الشركة وتأكيد استلامها.
+                        </p>
+                    </div>
+                    <div class="col-md-5 text-md-end mt-3 mt-md-0">
+                        <a href="/my" class="btn btn-outline-secondary rounded-pill">
+                            <i class="fa fa-arrow-right me-1"/> العودة للرئيسية
+                        </a>
+                    </div>
+                </div>
+
+                <t t-if="not assets">
+                    <div class="card border-0 shadow-sm rounded-4 p-5 text-center text-muted bg-white">
+                        <i class="fa fa-archive fs-1 d-block mb-2 text-secondary"/>
+                        لا توجد عهد أو أجهزة مسجلة باسمك حالياً.
+                    </div>
+                </t>
+
+                <div class="row g-3">
+                    <t t-foreach="assets" t-as="ast">
+                        <div class="col-md-6">
+                            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white h-100 d-flex flex-column" style="border: 1px solid #edf2f7 !important;">
+                                <div class="d-flex justify-content-between align-items-start pb-2 border-bottom mb-3">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="rounded-circle bg-light border p-2 text-primary d-flex align-items-center justify-content-center" style="width: 44px; height: 44px;">
+                                            <i t-if="ast['category'] == 'laptop'" class="fa fa-laptop fs-5"/>
+                                            <i t-elif="ast['category'] == 'mobile'" class="fa fa-mobile fs-4"/>
+                                            <i t-elif="ast['category'] == 'car'" class="fa fa-car fs-5"/>
+                                            <i t-elif="ast['category'] == 'digital'" class="fa fa-envelope fs-5"/>
+                                            <i t-else="" class="fa fa-wrench fs-5"/>
+                                        </div>
+                                        <div>
+                                            <h6 class="fw-bold text-dark mb-0"><t t-esc="ast['name']"/></h6>
+                                            <small class="text-muted">كود: <t t-esc="ast['asset_code']"/></small>
+                                        </div>
+                                    </div>
+                                    <span t-if="ast['state'] == 'assigned'" class="badge bg-warning text-dark rounded-pill px-2.5 py-1 small">بانتظار الإقرار</span>
+                                    <span t-elif="ast['state'] == 'acknowledged'" class="badge bg-success rounded-pill px-2.5 py-1 small">تم الاستلام</span>
+                                    <span t-else="" class="badge bg-secondary rounded-pill px-2.5 py-1 small">مستردة</span>
+                                </div>
+
+                                <div class="small flex-grow-1">
+                                    <div class="d-flex justify-content-between py-1">
+                                        <span class="text-muted">تاريخ التسليم:</span>
+                                        <span class="fw-bold text-dark"><t t-esc="ast['handover_date']"/></span>
+                                    </div>
+                                    <t t-if="ast['notes']">
+                                        <div class="d-flex justify-content-between py-1">
+                                            <span class="text-muted">ملاحظات الحالة:</span>
+                                            <span class="text-dark"><t t-esc="ast['notes']"/></span>
+                                        </div>
+                                    </t>
+                                </div>
+
+                                <div class="pt-3 border-top mt-3">
+                                    <t t-if="ast['state'] == 'assigned'">
+                                        <form t-attf-action="/my/assets/ack/#{ast['id']}" method="post">
+                                            <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                            <button type="submit" class="btn btn-success w-100 rounded-pill py-2 fw-bold shadow-sm" onclick="return confirm('هل تؤكد استلام هذه العهدة بحالة جيدة؟');">
+                                                <i class="fa fa-check-square-o me-1"/> إقرار واستلام العهدة رسمياً
+                                            </button>
+                                        </form>
+                                    </t>
+                                    <t t-elif="ast['state'] == 'acknowledged'">
+                                        <small class="text-success d-block text-center fw-bold">
+                                            <i class="fa fa-check-circle me-1"/> تم الإقرار بالاستلام بتاريخ: <t t-esc="ast['ack_date']"/>
+                                        </small>
+                                    </t>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <!-- ========================================================================= -->
+    <!-- 9. Temporary Location Requests View (/my/location-requests)               -->
+    <!-- ========================================================================= -->
+    <template id="portal_my_location_requests_view" name="طلبات العمل من موقع مؤقت">
+        <t t-call="portal.portal_layout">
+            <t t-set="breadcrumbs_searchbar" t-value="True"/>
+            <t t-set="title">طلبات العمل من موقع مؤقت | جندله</t>
+
+            <div class="container-fluid py-3">
+                <div t-if="success == 'submitted'" class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm" role="alert">
+                    <i class="fa fa-check-circle me-2"/> تم إرسال طلب استثناء الموقع المؤقت بنجاح، وهو قيد مراجعة المشرف المباشر.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+
+                <div class="row align-items-center mb-4">
+                    <div class="col-md-7">
+                        <h3 class="fw-bold mb-1 text-dark">
+                            <i class="fa fa-map-marker text-primary me-2"/> طلبات العمل من موقع مؤقت
+                        </h3>
+                        <p class="text-muted small mb-0">
+                            طلب استثناء للدوام وتسجيل الحضور من موقع بديل (أثناء السفر العائلي أو الزيارات أو الطوارئ).
+                        </p>
+                    </div>
+                    <div class="col-md-5 text-md-end mt-3 mt-md-0">
+                        <button type="button" class="btn btn-primary rounded-pill px-4 shadow-sm fw-bold me-2" data-bs-toggle="modal" data-bs-target="#newLocationModal">
+                            <i class="fa fa-plus-circle me-1"/> طلب موقع مؤقت جديد
+                        </button>
+                        <a href="/my" class="btn btn-outline-secondary rounded-pill">
+                            <i class="fa fa-arrow-right me-1"/> العودة للرئيسية
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Active effective location banner -->
+                <div class="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-white" style="border-right: 5px solid #0d6efd !important;">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="rounded-circle bg-primary bg-opacity-10 p-2 text-primary d-flex align-items-center justify-content-center" style="width: 44px; height: 44px;">
+                            <i class="fa fa-crosshairs fs-4"/>
+                        </div>
+                        <div>
+                            <span class="text-muted small d-block">الموقع المعتمد الحالي لحضورك اليوم:</span>
+                            <h6 class="fw-bold text-dark mb-0">
+                                <t t-esc="effective_loc.get('location_name', 'المقر المعتمد')"/>
+                                <t t-if="effective_loc.get('is_temporary')">
+                                    <span class="badge bg-warning text-dark rounded-pill ms-2">استثناء مؤقت معتمد</span>
+                                </t>
+                            </h6>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Requests List -->
+                <t t-if="not location_requests">
+                    <div class="card border-0 shadow-sm rounded-4 p-5 text-center text-muted bg-white">
+                        <i class="fa fa-map-o fs-1 d-block mb-2 text-secondary"/>
+                        لا توجد طلبات مواقع مؤقتة مسجلة.
+                    </div>
+                </t>
+
+                <div class="row g-3">
+                    <t t-foreach="location_requests" t-as="req">
+                        <div class="col-12">
+                            <div class="card border-0 shadow-sm rounded-4 p-3 bg-white" style="border: 1px solid #edf2f7 !important;">
+                                <div class="d-flex flex-wrap justify-content-between align-items-center pb-2 border-bottom">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="fa fa-map-pin text-primary fs-5"/>
+                                        <h6 class="fw-bold text-dark mb-0"><t t-esc="req['temp_location_name']"/></h6>
+                                    </div>
+                                    <span t-if="req['state'] == 'approve'" class="badge bg-success rounded-pill px-3 py-1">معتمد</span>
+                                    <span t-elif="req['state'] == 'confirm'" class="badge bg-warning text-dark rounded-pill px-3 py-1">قيد المراجعة</span>
+                                    <span t-elif="req['state'] == 'refuse'" class="badge bg-danger rounded-pill px-3 py-1">مرفوض</span>
+                                    <span t-else="" class="badge bg-secondary rounded-pill px-3 py-1"><t t-esc="req['state']"/></span>
+                                </div>
+                                <div class="py-2 small text-muted">
+                                    <div class="row g-2">
+                                        <div class="col-md-6">
+                                            <b>الفترة:</b> من <t t-esc="req['date_from']"/> إلى <t t-esc="req['date_to']"/>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <b>السبب:</b> <t t-esc="req['reason']"/>
+                                        </div>
+                                    </div>
+                                    <t t-if="req['state'] == 'refuse' and req['refusal_reason']">
+                                        <div class="alert alert-danger py-1 px-2 mt-2 mb-0 rounded-3 small">
+                                            <b>سبب الرفض:</b> <t t-esc="req['refusal_reason']"/>
+                                        </div>
+                                    </t>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </div>
+
+                <!-- Modal: New Location Request -->
+                <div class="modal fade" id="newLocationModal" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content border-0 shadow rounded-4">
+                            <form action="/my/location-requests/submit" method="post">
+                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                <input type="hidden" name="temp_latitude" id="modal_temp_lat"/>
+                                <input type="hidden" name="temp_longitude" id="modal_temp_lon"/>
+
+                                <div class="modal-header border-0 pb-0">
+                                    <h5 class="modal-title fw-bold text-primary">
+                                        <i class="fa fa-map-marker me-2"/> طلب العمل من موقع بديل / مؤقت
+                                    </h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body p-4">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">اسم الموقع المؤقت (المدينة والحي) <span class="text-danger">*</span></label>
+                                        <input type="text" name="temp_location_name" class="form-control rounded-3" required="required" placeholder="مثلاً: منزل الوالد في جدة"/>
+                                    </div>
+                                    <div class="row g-2 mb-3">
+                                        <div class="col-6">
+                                            <label class="form-label fw-bold">من تاريخ <span class="text-danger">*</span></label>
+                                            <input type="date" name="date_from" class="form-control rounded-3" required="required"/>
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label fw-bold">إلى تاريخ <span class="text-danger">*</span></label>
+                                            <input type="date" name="date_to" class="form-control rounded-3" required="required"/>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">سبب الاستثناء <span class="text-danger">*</span></label>
+                                        <textarea name="reason" class="form-control rounded-3" rows="2" required="required" placeholder="اكتب سبب طلب العمل من هذا الموقع..."></textarea>
+                                    </div>
+                                    <div class="p-3 bg-light rounded-3 border small mb-2">
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <span class="fw-bold">إحداثيات الموقع (GPS):</span>
+                                            <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="captureTempLocation();">
+                                                <i class="fa fa-crosshairs me-1"/> تحديد موقعي الحالي
+                                            </button>
+                                        </div>
+                                        <div id="gps_status_text" class="text-muted">اضغط لتثبيت إحداثيات موقعك الحالي تلقائياً.</div>
+                                    </div>
+                                </div>
+                                <div class="modal-footer border-0 pt-0">
+                                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">إلغاء</button>
+                                    <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold">
+                                        إرسال الطلب للمشرف
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <script type="text/javascript">
+                    function captureTempLocation() {
+                        var status = document.getElementById('gps_status_text');
+                        status.innerText = 'جارٍ تحديد موقعك عبر GPS...';
+                        if ("geolocation" in navigator) {
+                            navigator.geolocation.getCurrentPosition(
+                                function(pos) {
+                                    document.getElementById('modal_temp_lat').value = pos.coords.latitude;
+                                    document.getElementById('modal_temp_lon').value = pos.coords.longitude;
+                                    status.innerHTML = '<span class="text-success fw-bold"><i class="fa fa-check me-1"/> تم التقاط الإحداثيات بنجاح (' + pos.coords.latitude.toFixed(4) + ', ' + pos.coords.longitude.toFixed(4) + ')</span>';
+                                },
+                                function(err) {
+                                    status.innerText = 'تعذر التقاط الموقع بدقة، سيتم المتابعة بالاسم.';
+                                },
+                                { enableHighAccuracy: true, timeout: 6000 }
+                            );
+                        }
+                    }
+                </script>
+            </div>
+        </t>
+    </template>
+
+    <!-- ========================================================================= -->
+    <!-- 10. Supervisor Team Location Requests (/my/team/location-requests)        -->
+    <!-- ========================================================================= -->
+    <template id="portal_team_location_requests_view" name="اعتمادات مواقع الفريق المؤقتة">
+        <t t-call="portal.portal_layout">
+            <t t-set="breadcrumbs_searchbar" t-value="True"/>
+            <t t-set="title">اعتمادات مواقع الفريق المؤقتة | جندله</t>
+
+            <div class="container-fluid py-3">
+                <div t-if="success == 'approved'" class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm" role="alert">
+                    <i class="fa fa-check-circle me-2"/> تم اعتماد موقع العمل المؤقت للموظف بنجاح.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                <div t-if="success == 'refused'" class="alert alert-warning alert-dismissible fade show rounded-3 shadow-sm" role="alert">
+                    <i class="fa fa-info-circle me-2"/> تم رفض طلب الموقع المؤقت.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+
+                <div class="row align-items-center mb-4">
+                    <div class="col-md-7">
+                        <h3 class="fw-bold mb-1 text-dark">
+                            <i class="fa fa-check-square-o text-purple me-2" style="color: #6f42c1;"/> اعتمادات مواقع الفريق المؤقتة
+                        </h3>
+                        <p class="text-muted small mb-0">
+                            مراجعة واعتماد أو رفض طلبات الاستثناء للعمل من مواقع مؤقتة لموظفيك.
+                        </p>
+                    </div>
+                    <div class="col-md-5 text-md-end mt-3 mt-md-0">
+                        <a href="/my/team" class="btn btn-outline-primary rounded-pill me-2">
+                            <i class="fa fa-users me-1"/> حضور الفريق
+                        </a>
+                        <a href="/my" class="btn btn-outline-secondary rounded-pill">
+                            <i class="fa fa-arrow-right me-1"/> الرئيسية
+                        </a>
+                    </div>
+                </div>
+
+                <h5 class="fw-bold text-dark mb-3">طلبات معلقة بانتظار الاعتماد (<t t-esc="pending_count"/>)</h5>
+
+                <t t-if="not pending_requests">
+                    <div class="card border-0 shadow-sm rounded-4 p-4 text-center text-muted bg-white mb-4">
+                        <i class="fa fa-check-circle-o fs-1 d-block mb-2 text-success"/>
+                        لا توجد طلبات مواقع معلقة بانتظار الاعتماد.
+                    </div>
+                </t>
+
+                <div class="row g-3 mb-4">
+                    <t t-foreach="pending_requests" t-as="pr">
+                        <div class="col-12">
+                            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white" style="border: 1px solid #edf2f7 !important;">
+                                <div class="d-flex justify-content-between align-items-center pb-2 border-bottom">
+                                    <h6 class="fw-bold text-dark mb-0"><t t-esc="pr['employee_name']"/></h6>
+                                    <span class="badge bg-primary rounded-pill px-2.5 py-1"><t t-esc="pr['temp_location_name']"/></span>
+                                </div>
+                                <div class="py-2 small text-muted">
+                                    <div><b>الفترة المطلوبة:</b> من <t t-esc="pr['date_from']"/> إلى <t t-esc="pr['date_to']"/></div>
+                                    <div><b>المبرر:</b> <t t-esc="pr['reason']"/></div>
+                                </div>
+                                <div class="d-flex justify-content-end gap-2 pt-2 border-top">
+                                    <form action="/my/team/location-requests/action" method="post" class="d-inline">
+                                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                        <input type="hidden" name="request_id" t-att-value="pr['id']"/>
+                                        <input type="hidden" name="action" value="approve"/>
+                                        <button type="submit" class="btn btn-sm btn-success rounded-pill px-4 fw-bold">
+                                            اعتماد
+                                        </button>
+                                    </form>
+                                    <form action="/my/team/location-requests/action" method="post" class="d-inline">
+                                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                        <input type="hidden" name="request_id" t-att-value="pr['id']"/>
+                                        <input type="hidden" name="action" value="refuse"/>
+                                        <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-4 fw-bold" onclick="return confirm('هل تريد بالتأكيد رفض هذا الطلب؟');">
+                                            رفض
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </div>
             </div>
         </t>
     </template>

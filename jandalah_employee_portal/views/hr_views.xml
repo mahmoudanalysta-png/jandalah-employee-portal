@@ -1,0 +1,322 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- HR Employee Form Inherit: Geofencing Coordinates -->
+    <record id="view_employee_form_inherit_geofence" model="ir.ui.view">
+        <field name="name">hr.employee.form.inherit.geofence</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="priority">50</field>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="النطاق الجغرافي للحضور (Geofencing)" name="geofencing_settings" groups="hr.group_hr_user">
+                    <group string="إعدادات الموقع المعتمد لتسجيل الحضور">
+                        <group>
+                            <field name="work_location_type"/>
+                            <field name="work_radius_meters"/>
+                        </group>
+                        <group>
+                            <field name="work_latitude"/>
+                            <field name="work_longitude"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Attendance Form Inherit: Distance and Geofence Status -->
+    <record id="hr_attendance_view_form_inherit_geofence" model="ir.ui.view">
+        <field name="name">hr.attendance.form.inherit.geofence</field>
+        <field name="model">hr.attendance</field>
+        <field name="inherit_id" ref="hr_attendance.hr_attendance_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='check_out']" position="after">
+                <field name="distance_from_work"/>
+                <field name="is_outside_geofence"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- ==================== 1. Announcements Views ==================== -->
+    <record id="view_jandalah_announcement_tree" model="ir.ui.view">
+        <field name="name">jandalah.announcement.tree</field>
+        <field name="model">jandalah.announcement</field>
+        <field name="arch" type="xml">
+            <list string="التعاميم والقرارات الإدارية">
+                <field name="date"/>
+                <field name="name"/>
+                <field name="announcement_type"/>
+                <field name="target_type"/>
+                <field name="department_id" optional="show"/>
+                <field name="ack_count"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_jandalah_announcement_form" model="ir.ui.view">
+        <field name="name">jandalah.announcement.form</field>
+        <field name="model">jandalah.announcement</field>
+        <field name="arch" type="xml">
+            <form string="تعميم أو قرار إداري">
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name" class="oe_edit_only" string="عنوان التعميم / القرار"/>
+                        <h1><field name="name" placeholder="مثال: تعميم مواعيد الدوام لشهر رمضان المبارك"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="announcement_type"/>
+                            <field name="date"/>
+                            <field name="attachment_id"/>
+                        </group>
+                        <group>
+                            <field name="target_type"/>
+                            <field name="department_id" invisible="target_type != 'department'"/>
+                            <field name="employee_ids" widget="many2many_tags" invisible="target_type != 'employees'"/>
+                            <field name="active" widget="boolean_toggle"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="نص التعميم / القرار">
+                            <field name="content" widget="html"/>
+                        </page>
+                        <page string="سجل إقرارات الاطلاع للموظفين">
+                            <field name="ack_ids" readonly="1">
+                                <list string="إقرارات الاطلاع">
+                                    <field name="employee_id"/>
+                                    <field name="ack_date"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_jandalah_announcements" model="ir.actions.act_window">
+        <field name="name">التعاميم والقرارات</field>
+        <field name="res_model">jandalah.announcement</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                أنشئ أول تعميم إداري أو خطاب رسمي ليظهر فوراً في بوابة الموظفين مع إشعار بالاطلاع.
+            </p>
+        </field>
+    </record>
+
+    <!-- ==================== 2. Penalties Views ==================== -->
+    <record id="view_jandalah_penalty_tree" model="ir.ui.view">
+        <field name="name">jandalah.hr.penalty.tree</field>
+        <field name="model">jandalah.hr.penalty</field>
+        <field name="arch" type="xml">
+            <list string="الجزاءات والتحقيقات الإدارية">
+                <field name="name"/>
+                <field name="employee_id"/>
+                <field name="penalty_type"/>
+                <field name="date"/>
+                <field name="deduction_days" optional="show"/>
+                <field name="state" widget="badge" decoration-info="state == 'issued'" decoration-success="state == 'accepted'" decoration-danger="state == 'objected'" decoration-muted="state == 'closed'"/>
+                <field name="employee_response" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_jandalah_penalty_form" model="ir.ui.view">
+        <field name="name">jandalah.hr.penalty.form</field>
+        <field name="model">jandalah.hr.penalty</field>
+        <field name="arch" type="xml">
+            <form string="إجراء جزائي / تحقيق إداري">
+                <header>
+                    <field name="state" widget="statusbar" statusbar_visible="issued,accepted,objected,closed"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name" class="oe_edit_only" string="مرجع القرار"/>
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="employee_id"/>
+                            <field name="penalty_type"/>
+                            <field name="date"/>
+                            <field name="deduction_days" invisible="penalty_type != 'deduction'"/>
+                            <field name="attachment_id"/>
+                        </group>
+                        <group>
+                            <field name="employee_response" readonly="1"/>
+                            <field name="response_date" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="تفاصيل الإجراء والمخالفة">
+                            <field name="reason" placeholder="اكتب تفاصيل المخالفة أو استدعاء التحقيق هنا..."/>
+                        </page>
+                        <page string="إفادة ورد الموظف" invisible="not employee_response">
+                            <group>
+                                <field name="employee_comment" readonly="1"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_jandalah_penalties" model="ir.actions.act_window">
+        <field name="name">الجزاءات والتحقيقات</field>
+        <field name="res_model">jandalah.hr.penalty</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- ==================== 3. Assets Views ==================== -->
+    <record id="view_jandalah_asset_tree" model="ir.ui.view">
+        <field name="name">jandalah.hr.asset.tree</field>
+        <field name="model">jandalah.hr.asset</field>
+        <field name="arch" type="xml">
+            <list string="العهد ومستلزمات العمل">
+                <field name="name"/>
+                <field name="asset_code"/>
+                <field name="category"/>
+                <field name="employee_id"/>
+                <field name="handover_date"/>
+                <field name="state" widget="badge" decoration-warning="state == 'assigned'" decoration-success="state == 'acknowledged'" decoration-muted="state == 'returned'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_jandalah_asset_form" model="ir.ui.view">
+        <field name="name">jandalah.hr.asset.form</field>
+        <field name="model">jandalah.hr.asset</field>
+        <field name="arch" type="xml">
+            <form string="عهدة موظف">
+                <header>
+                    <field name="state" widget="statusbar" statusbar_visible="assigned,acknowledged,returned"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name" class="oe_edit_only" string="اسم العهدة"/>
+                        <h1><field name="name" placeholder="مثال: لابتوب Dell XPS 15 أو سيارة كورولا 2024"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="employee_id"/>
+                            <field name="category"/>
+                            <field name="asset_code"/>
+                        </group>
+                        <group>
+                            <field name="handover_date"/>
+                            <field name="return_date"/>
+                            <field name="ack_date" readonly="1"/>
+                            <field name="ack_signature" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="مواصفات وحالة العهدة">
+                            <field name="notes" placeholder="ملاحظات الحالة الفنية أو الرقم التسلسلي أو المواصفات..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_jandalah_assets" model="ir.actions.act_window">
+        <field name="name">العهد ومستلزمات العمل</field>
+        <field name="res_model">jandalah.hr.asset</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- ==================== 4. Location Requests Views ==================== -->
+    <record id="view_jandalah_location_request_tree" model="ir.ui.view">
+        <field name="name">jandalah.location.request.tree</field>
+        <field name="model">jandalah.location.request</field>
+        <field name="arch" type="xml">
+            <list string="طلبات العمل من موقع مؤقت">
+                <field name="employee_id"/>
+                <field name="temp_location_name"/>
+                <field name="date_from"/>
+                <field name="date_to"/>
+                <field name="supervisor_id"/>
+                <field name="state" widget="badge" decoration-info="state == 'confirm'" decoration-success="state == 'approve'" decoration-danger="state == 'refuse'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_jandalah_location_request_form" model="ir.ui.view">
+        <field name="name">jandalah.location.request.form</field>
+        <field name="model">jandalah.location.request</field>
+        <field name="arch" type="xml">
+            <form string="طلب عمل من موقع مؤقت">
+                <header>
+                    <field name="state" widget="statusbar" statusbar_visible="confirm,approve,refuse"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="employee_id"/>
+                            <field name="temp_location_name"/>
+                            <field name="date_from"/>
+                            <field name="date_to"/>
+                        </group>
+                        <group>
+                            <field name="supervisor_id"/>
+                            <field name="temp_latitude"/>
+                            <field name="temp_longitude"/>
+                            <field name="temp_radius_meters"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="السبب والتبرير">
+                            <field name="reason"/>
+                        </page>
+                        <page string="ملاحظات الاعتماد والرفض" invisible="state == 'confirm'">
+                            <group>
+                                <field name="action_date" readonly="1"/>
+                                <field name="refusal_reason" readonly="1"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_jandalah_location_requests" model="ir.actions.act_window">
+        <field name="name">طلبات المواقع المؤقتة</field>
+        <field name="res_model">jandalah.location.request</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- ==================== Menus ==================== -->
+    <menuitem id="menu_jandalah_hr_portal_management"
+              name="بوابة الخدمات الذاتية"
+              parent="hr.menu_hr_root"
+              sequence="25"
+              groups="hr.group_hr_user"/>
+
+    <menuitem id="menu_jandalah_announcements_sub"
+              name="التعاميم والقرارات"
+              parent="menu_jandalah_hr_portal_management"
+              action="action_jandalah_announcements"
+              sequence="10"/>
+
+    <menuitem id="menu_jandalah_penalties_sub"
+              name="الجزاءات والتحقيقات"
+              parent="menu_jandalah_hr_portal_management"
+              action="action_jandalah_penalties"
+              sequence="20"/>
+
+    <menuitem id="menu_jandalah_assets_sub"
+              name="العهد ومستلزمات العمل"
+              parent="menu_jandalah_hr_portal_management"
+              action="action_jandalah_assets"
+              sequence="30"/>
+
+    <menuitem id="menu_jandalah_location_requests_sub"
+              name="طلبات المواقع المؤقتة"
+              parent="menu_jandalah_hr_portal_management"
+              action="action_jandalah_location_requests"
+              sequence="40"/>
+</odoo>

@@ -284,6 +284,49 @@ class JandalahCustomerPortal(CustomerPortal):
                     ('state', '=', 'confirm')
                 ])
 
+            # Counts for announcements, assets, penalties, and location requests
+            unread_announcements = 0
+            pending_assets = 0
+            pending_penalties = 0
+            pending_locations = 0
+
+            try:
+                # Announcements visible to this employee without ack
+                Ann = request.env['jandalah.announcement'].sudo()
+                Ack = request.env['jandalah.announcement.ack'].sudo()
+                my_acked_ids = Ack.search([('employee_id', '=', emp.id)]).mapped('announcement_id.id')
+                all_ann = Ann.search([('active', '=', True)])
+                unread_announcements = sum(1 for a in all_ann if a.is_visible_for(emp) and a.id not in my_acked_ids)
+            except Exception:
+                pass
+
+            try:
+                # Assets assigned to this employee awaiting acknowledgment
+                pending_assets = request.env['jandalah.hr.asset'].sudo().search_count([
+                    ('employee_id', '=', emp.id),
+                    ('state', '=', 'assigned')
+                ])
+            except Exception:
+                pass
+
+            try:
+                # Penalties issued awaiting employee response
+                pending_penalties = request.env['jandalah.hr.penalty'].sudo().search_count([
+                    ('employee_id', '=', emp.id),
+                    ('state', '=', 'issued')
+                ])
+            except Exception:
+                pass
+
+            try:
+                # Active/pending location requests
+                pending_locations = request.env['jandalah.location.request'].sudo().search_count([
+                    ('employee_id', '=', emp.id),
+                    ('state', '=', 'confirm')
+                ])
+            except Exception:
+                pass
+
             values.update({
                 'employee': emp,
                 'is_checked_in': bool(open_att),
@@ -291,6 +334,10 @@ class JandalahCustomerPortal(CustomerPortal):
                 'last_attendance': last_att,
                 'attendance_count': request.env['hr.attendance'].sudo().search_count([('employee_id', '=', emp.id)]),
                 'leaves_count': request.env['hr.leave'].sudo().search_count([('employee_id', '=', emp.id)]),
+                'unread_announcements': unread_announcements,
+                'pending_assets': pending_assets,
+                'pending_penalties': pending_penalties,
+                'pending_locations': pending_locations,
                 'format_tz': format_tz_dynamic,
                 # Supervisor values
                 'is_supervisor': is_supervisor,
@@ -424,17 +471,39 @@ self.addEventListener('fetch', event => {
                 'employee_name': emp.name,
             }
         else:
-            # CHECK IN LOCALLY
+            # CHECK IN LOCALLY WITH GEOFENCING
             in_vals = {
                 'employee_id': emp.id,
                 'check_in': now_utc,
                 'in_ip_address': ip_addr or 'N/A',
                 'in_browser': browser or 'Mobile/Web Portal',
             }
+
+            distance_m = 0.0
+            is_outside = False
+            effective_loc_name = 'المقر المعتمد'
+
             if latitude and longitude:
                 try:
-                    in_vals['in_latitude'] = float(latitude)
-                    in_vals['in_longitude'] = float(longitude)
+                    lat_f = float(latitude)
+                    lon_f = float(longitude)
+                    in_vals['in_latitude'] = lat_f
+                    in_vals['in_longitude'] = lon_f
+
+                    # Check geofence against effective location (including approved temporary locations)
+                    if hasattr(emp, 'get_effective_work_location'):
+                        eff_loc = emp.get_effective_work_location()
+                        effective_loc_name = eff_loc.get('location_name', 'المقر المعتمد')
+                        work_lat = eff_loc.get('latitude', 0.0)
+                        work_lon = eff_loc.get('longitude', 0.0)
+                        radius = eff_loc.get('radius', 0)
+
+                        if work_lat and work_lon and hasattr(emp, 'calculate_distance_meters'):
+                            distance_m = emp.calculate_distance_meters(lat_f, lon_f, work_lat, work_lon)
+                            in_vals['distance_from_work'] = round(distance_m, 1)
+                            if radius > 0 and distance_m > radius:
+                                is_outside = True
+                                in_vals['is_outside_geofence'] = True
                 except (ValueError, TypeError):
                     pass
 
@@ -989,3 +1058,382 @@ self.addEventListener('fetch', event => {
         except Exception as e:
             _logger.error("Error executing supervisor leave action: %s", e)
             return request.redirect(f'/my/team/leaves?error={str(e)}')
+
+
+    # =========================================================================
+    # 6. Announcements & Circulars (/my/announcements)
+    # =========================================================================
+    @http.route(['/my/announcements'], type='http', auth='user', website=True)
+    def portal_my_announcements(self, filter='all', success=None, error=None, **kw):
+        """Displays corporate announcements, circulars, and decisions for the employee."""
+        emp = self._get_employee()
+        if not emp:
+            return request.redirect('/my?error=no_employee')
+
+        Ann = request.env['jandalah.announcement'].sudo()
+        Ack = request.env['jandalah.announcement.ack'].sudo()
+
+        all_records = Ann.search([('active', '=', True)], order='date desc, id desc')
+        my_acked_ids = set(Ack.search([('employee_id', '=', emp.id)]).mapped('announcement_id.id'))
+
+        announcements_data = []
+        for a in all_records:
+            if not a.is_visible_for(emp):
+                continue
+            is_read = a.id in my_acked_ids
+            if filter == 'unread' and is_read:
+                continue
+            elif filter == 'read' and not is_read:
+                continue
+
+            announcements_data.append({
+                'id': a.id,
+                'name': a.name,
+                'announcement_type': a.announcement_type,
+                'date': str(a.date or ''),
+                'content': a.content or '',
+                'has_attachment': bool(a.attachment_id),
+                'attachment_id': a.attachment_id.id if a.attachment_id else None,
+                'is_read': is_read,
+                'ack_count': a.ack_count,
+            })
+
+        values = self._prepare_portal_layout_values()
+        values.update({
+            'employee': emp,
+            'announcements': announcements_data,
+            'active_filter': filter,
+            'page_name': 'announcements',
+            'success': success,
+            'error': error,
+            'format_tz': format_tz_dynamic,
+            'default_url': '/my/announcements',
+        })
+        return request.render('jandalah_employee_portal.portal_my_announcements_view', values)
+
+    @http.route('/my/announcements/ack/<int:announcement_id>', type='http', auth='user', methods=['POST'], website=True, csrf=True)
+    def portal_announcement_ack(self, announcement_id, **kw):
+        """Records employee electronic acknowledgment of reading a circular/letter."""
+        emp = self._get_employee()
+        if not emp:
+            return request.redirect('/my?error=no_employee')
+
+        ann = request.env['jandalah.announcement'].sudo().browse(int(announcement_id))
+        if not ann.exists() or not ann.is_visible_for(emp):
+            return request.redirect('/my/announcements?error=not_found')
+
+        Ack = request.env['jandalah.announcement.ack'].sudo()
+        existing = Ack.search([('announcement_id', '=', ann.id), ('employee_id', '=', emp.id)], limit=1)
+        if not existing:
+            try:
+                Ack.create({
+                    'announcement_id': ann.id,
+                    'employee_id': emp.id,
+                    'ack_date': fields.Datetime.now(),
+                })
+            except Exception as e:
+                _logger.error("Error saving announcement ack: %s", e)
+
+        return request.redirect('/my/announcements?success=acknowledged')
+
+
+    # =========================================================================
+    # 7. Penalties & Investigations (/my/penalties)
+    # =========================================================================
+    @http.route(['/my/penalties'], type='http', auth='user', website=True)
+    def portal_my_penalties(self, success=None, error=None, **kw):
+        """Displays disciplinary actions, deductions, warnings, and investigations."""
+        emp = self._get_employee()
+        if not emp:
+            return request.redirect('/my?error=no_employee')
+
+        Penalty = request.env['jandalah.hr.penalty'].sudo()
+        records = Penalty.search([('employee_id', '=', emp.id)], order='date desc, id desc')
+
+        penalties_data = []
+        for p in records:
+            penalties_data.append({
+                'id': p.id,
+                'name': p.name,
+                'penalty_type': p.penalty_type,
+                'date': str(p.date or ''),
+                'reason': p.reason or '',
+                'deduction_days': p.deduction_days or 0.0,
+                'state': p.state,
+                'employee_response': p.employee_response or '',
+                'employee_comment': p.employee_comment or '',
+                'response_date': str(p.response_date or ''),
+                'has_attachment': bool(p.attachment_id),
+            })
+
+        values = self._prepare_portal_layout_values()
+        values.update({
+            'employee': emp,
+            'penalties': penalties_data,
+            'page_name': 'penalties',
+            'success': success,
+            'error': error,
+            'format_tz': format_tz_dynamic,
+            'default_url': '/my/penalties',
+        })
+        return request.render('jandalah_employee_portal.portal_my_penalties_view', values)
+
+    @http.route('/my/penalties/respond', type='http', auth='user', methods=['POST'], website=True, csrf=True)
+    def portal_penalty_respond(self, penalty_id=None, response_type=None, employee_comment=None, **kw):
+        """Allows employee to accept or object to a penalty/investigation with mandatory statement."""
+        emp = self._get_employee()
+        if not emp:
+            return request.redirect('/my?error=no_employee')
+
+        if not penalty_id or not response_type or response_type not in ['accept', 'object']:
+            return request.redirect('/my/penalties?error=invalid_data')
+
+        penalty = request.env['jandalah.hr.penalty'].sudo().browse(int(penalty_id))
+        if not penalty.exists() or penalty.employee_id.id != emp.id:
+            return request.redirect('/my/penalties?error=unauthorized')
+
+        comment = (employee_comment or '').strip()
+        new_state = 'accepted' if response_type == 'accept' else 'objected'
+
+        try:
+            penalty.sudo().write({
+                'employee_response': response_type,
+                'employee_comment': comment,
+                'state': new_state,
+                'response_date': fields.Datetime.now(),
+            })
+            return request.redirect('/my/penalties?success=responded')
+        except Exception as e:
+            _logger.error("Error recording penalty response: %s", e)
+            return request.redirect(f'/my/penalties?error={str(e)}')
+
+
+    # =========================================================================
+    # 8. Assets & Custody (/my/assets)
+    # =========================================================================
+    @http.route(['/my/assets'], type='http', auth='user', website=True)
+    def portal_my_assets(self, success=None, error=None, **kw):
+        """Displays company assets and custody assigned to the employee."""
+        emp = self._get_employee()
+        if not emp:
+            return request.redirect('/my?error=no_employee')
+
+        Asset = request.env['jandalah.hr.asset'].sudo()
+        records = Asset.search([('employee_id', '=', emp.id)], order='handover_date desc, id desc')
+
+        assets_data = []
+        for a in records:
+            assets_data.append({
+                'id': a.id,
+                'name': a.name,
+                'asset_code': a.asset_code or '-',
+                'category': a.category,
+                'handover_date': str(a.handover_date or ''),
+                'return_date': str(a.return_date or '-'),
+                'notes': a.notes or '',
+                'state': a.state,
+                'ack_date': str(a.ack_date or ''),
+            })
+
+        values = self._prepare_portal_layout_values()
+        values.update({
+            'employee': emp,
+            'assets': assets_data,
+            'page_name': 'assets',
+            'success': success,
+            'error': error,
+            'format_tz': format_tz_dynamic,
+            'default_url': '/my/assets',
+        })
+        return request.render('jandalah_employee_portal.portal_my_assets_view', values)
+
+    @http.route('/my/assets/ack/<int:asset_id>', type='http', auth='user', methods=['POST'], website=True, csrf=True)
+    def portal_asset_ack(self, asset_id, **kw):
+        """Employee electronically confirms receipt of an assigned asset."""
+        emp = self._get_employee()
+        if not emp:
+            return request.redirect('/my?error=no_employee')
+
+        asset = request.env['jandalah.hr.asset'].sudo().browse(int(asset_id))
+        if not asset.exists() or asset.employee_id.id != emp.id:
+            return request.redirect('/my/assets?error=unauthorized')
+
+        try:
+            asset.sudo().write({
+                'state': 'acknowledged',
+                'ack_date': fields.Datetime.now(),
+                'ack_signature': f"تم الإقرار إلكترونياً بواسطة: {emp.name}",
+            })
+            return request.redirect('/my/assets?success=acknowledged')
+        except Exception as e:
+            _logger.error("Error acknowledging asset: %s", e)
+            return request.redirect(f'/my/assets?error={str(e)}')
+
+
+    # =========================================================================
+    # 9. Temporary Work Location Requests (/my/location-requests)
+    # =========================================================================
+    @http.route(['/my/location-requests'], type='http', auth='user', website=True)
+    def portal_my_location_requests(self, success=None, error=None, **kw):
+        """Displays temporary work location requests and lets employee submit new ones."""
+        emp = self._get_employee()
+        if not emp:
+            return request.redirect('/my?error=no_employee')
+
+        Req = request.env['jandalah.location.request'].sudo()
+        records = Req.search([('employee_id', '=', emp.id)], order='date_from desc, id desc')
+
+        requests_data = []
+        for r in records:
+            requests_data.append({
+                'id': r.id,
+                'temp_location_name': r.temp_location_name,
+                'date_from': str(r.date_from or ''),
+                'date_to': str(r.date_to or ''),
+                'reason': r.reason or '',
+                'state': r.state,
+                'refusal_reason': r.refusal_reason or '',
+                'temp_radius_meters': r.temp_radius_meters or 500,
+            })
+
+        # Effective current work location
+        effective_loc = emp.get_effective_work_location() if hasattr(emp, 'get_effective_work_location') else {}
+
+        values = self._prepare_portal_layout_values()
+        values.update({
+            'employee': emp,
+            'location_requests': requests_data,
+            'effective_loc': effective_loc,
+            'page_name': 'location_requests',
+            'success': success,
+            'error': error,
+            'format_tz': format_tz_dynamic,
+            'default_url': '/my/location-requests',
+        })
+        return request.render('jandalah_employee_portal.portal_my_location_requests_view', values)
+
+    @http.route('/my/location-requests/submit', type='http', auth='user', methods=['POST'], website=True, csrf=True)
+    def portal_location_request_submit(self, date_from=None, date_to=None, temp_location_name=None, reason=None, temp_latitude=None, temp_longitude=None, **kw):
+        """Handles submission of a new temporary location exception request."""
+        emp = self._get_employee()
+        if not emp:
+            return request.redirect('/my?error=no_employee')
+
+        if not date_from or not date_to or not temp_location_name or not reason:
+            return request.redirect('/my/location-requests?error=missing_fields')
+
+        lat_val = 0.0
+        lon_val = 0.0
+        try:
+            if temp_latitude:
+                lat_val = float(temp_latitude)
+            if temp_longitude:
+                lon_val = float(temp_longitude)
+        except (ValueError, TypeError):
+            pass
+
+        try:
+            request.env['jandalah.location.request'].sudo().create({
+                'employee_id': emp.id,
+                'date_from': date_from,
+                'date_to': date_to,
+                'temp_location_name': temp_location_name.strip(),
+                'reason': reason.strip(),
+                'temp_latitude': lat_val,
+                'temp_longitude': lon_val,
+                'temp_radius_meters': 500,
+                'state': 'confirm',
+            })
+            return request.redirect('/my/location-requests?success=submitted')
+        except Exception as e:
+            _logger.error("Error submitting location request: %s", e)
+            return request.redirect(f'/my/location-requests?error={str(e)}')
+
+    @http.route(['/my/team/location-requests'], type='http', auth='user', website=True)
+    def portal_team_location_requests(self, success=None, error=None, **kw):
+        """Displays team temporary location requests for supervisor approval."""
+        emp = self._get_employee()
+        if not emp:
+            return request.redirect('/my?error=no_employee')
+
+        subordinates = self._get_subordinates(emp)
+        if not subordinates:
+            return request.redirect('/my?error=no_subordinates')
+
+        sub_ids = subordinates.ids
+        Req = request.env['jandalah.location.request'].sudo()
+
+        pending_recs = Req.search([('employee_id', 'in', sub_ids), ('state', '=', 'confirm')], order='date_from desc')
+        history_recs = Req.search([('employee_id', 'in', sub_ids), ('state', 'in', ['approve', 'refuse'])], order='date_from desc', limit=20)
+
+        pending_data = []
+        for r in pending_recs:
+            pending_data.append({
+                'id': r.id,
+                'employee_name': r.employee_id.name,
+                'temp_location_name': r.temp_location_name,
+                'date_from': str(r.date_from or ''),
+                'date_to': str(r.date_to or ''),
+                'reason': r.reason or '',
+                'state': r.state,
+            })
+
+        history_data = []
+        for r in history_recs:
+            history_data.append({
+                'id': r.id,
+                'employee_name': r.employee_id.name,
+                'temp_location_name': r.temp_location_name,
+                'date_from': str(r.date_from or ''),
+                'date_to': str(r.date_to or ''),
+                'state': r.state,
+                'refusal_reason': r.refusal_reason or '',
+            })
+
+        values = self._prepare_portal_layout_values()
+        values.update({
+            'employee': emp,
+            'pending_requests': pending_data,
+            'history_requests': history_data,
+            'pending_count': len(pending_data),
+            'page_name': 'team_location_requests',
+            'success': success,
+            'error': error,
+            'format_tz': format_tz_dynamic,
+            'default_url': '/my/team/location-requests',
+        })
+        return request.render('jandalah_employee_portal.portal_team_location_requests_view', values)
+
+    @http.route('/my/team/location-requests/action', type='http', auth='user', methods=['POST'], website=True, csrf=True)
+    def portal_team_location_request_action(self, request_id=None, action=None, refusal_reason=None, **kw):
+        """Supervisor approves or refuses a team member temporary location request."""
+        emp = self._get_employee()
+        if not emp:
+            return request.redirect('/my?error=no_employee')
+
+        subordinates = self._get_subordinates(emp)
+        sub_ids = subordinates.ids
+
+        req_rec = request.env['jandalah.location.request'].sudo().browse(int(request_id))
+        if not req_rec.exists() or req_rec.employee_id.id not in sub_ids:
+            return request.redirect('/my/team/location-requests?error=unauthorized')
+
+        try:
+            if action == 'approve':
+                req_rec.sudo().write({
+                    'state': 'approve',
+                    'supervisor_id': emp.id,
+                    'action_date': fields.Datetime.now(),
+                })
+                return request.redirect('/my/team/location-requests?success=approved')
+            elif action == 'refuse':
+                req_rec.sudo().write({
+                    'state': 'refuse',
+                    'supervisor_id': emp.id,
+                    'action_date': fields.Datetime.now(),
+                    'refusal_reason': (refusal_reason or '').strip(),
+                })
+                return request.redirect('/my/team/location-requests?success=refused')
+        except Exception as e:
+            _logger.error("Error executing supervisor location action: %s", e)
+            return request.redirect(f'/my/team/location-requests?error={str(e)}')

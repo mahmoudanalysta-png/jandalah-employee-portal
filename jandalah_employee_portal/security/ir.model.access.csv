@@ -2,3 +2,13 @@ id,name,model_id/id,group_id/id,perm_read,perm_write,perm_create,perm_unlink
 access_hr_attendance_portal,hr.attendance.portal,hr_attendance.model_hr_attendance,base.group_portal,1,0,0,0
 access_hr_leave_portal,hr.leave.portal,hr_holidays.model_hr_leave,base.group_portal,1,0,0,0
 access_hr_leave_type_portal,hr.leave.type.portal,hr_holidays.model_hr_leave_type,base.group_portal,1,0,0,0
+access_jandalah_announcement_portal,jandalah.announcement.portal,model_jandalah_announcement,base.group_portal,1,0,0,0
+access_jandalah_announcement_user,jandalah.announcement.user,model_jandalah_announcement,base.group_user,1,1,1,1
+access_jandalah_announcement_ack_portal,jandalah.announcement.ack.portal,model_jandalah_announcement_ack,base.group_portal,1,1,1,0
+access_jandalah_announcement_ack_user,jandalah.announcement.ack.user,model_jandalah_announcement_ack,base.group_user,1,1,1,1
+access_jandalah_hr_penalty_portal,jandalah.hr.penalty.portal,model_jandalah_hr_penalty,base.group_portal,1,1,0,0
+access_jandalah_hr_penalty_user,jandalah.hr.penalty.user,model_jandalah_hr_penalty,base.group_user,1,1,1,1
+access_jandalah_hr_asset_portal,jandalah.hr.asset.portal,model_jandalah_hr_asset,base.group_portal,1,1,0,0
+access_jandalah_hr_asset_user,jandalah.hr.asset.user,model_jandalah_hr_asset,base.group_user,1,1,1,1
+access_jandalah_location_request_portal,jandalah.location.request.portal,model_jandalah_location_request,base.group_portal,1,1,1,0
+access_jandalah_location_request_user,jandalah.location.request.user,model_jandalah_location_request,base.group_user,1,1,1,1
