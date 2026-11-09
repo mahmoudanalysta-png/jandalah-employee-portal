@@ -54,11 +54,12 @@
                 <field name="attendance_date" string="التاريخ"/>
             </xpath>
 
-            <!-- 3. Check-In & Location -->
+            <!-- 3. Check-In: Hide standard datetime check_in, and show check_in_time (time only) -->
             <xpath expr="//field[@name='check_in']" position="attributes">
-                <attribute name="string">وقت الحضور</attribute>
+                <attribute name="invisible">1</attribute>
             </xpath>
             <xpath expr="//field[@name='check_in']" position="after">
+                <field name="check_in_time" string="وقت الحضور"/>
                 <field name="in_location_state" widget="badge" 
                        decoration-success="in_location_state == 'approved'" 
                        decoration-danger="in_location_state == 'rejected'" 
@@ -66,11 +67,12 @@
                        string="مكان الحضور"/>
             </xpath>
 
-            <!-- 4. Check-Out & Location -->
+            <!-- 4. Check-Out: Hide standard datetime check_out, and show check_out_time (time only) -->
             <xpath expr="//field[@name='check_out']" position="attributes">
-                <attribute name="string">وقت الانصراف</attribute>
+                <attribute name="invisible">1</attribute>
             </xpath>
             <xpath expr="//field[@name='check_out']" position="after">
+                <field name="check_out_time" string="وقت الانصراف"/>
                 <field name="out_location_state" widget="badge" 
                        decoration-success="out_location_state == 'approved'" 
                        decoration-danger="out_location_state == 'rejected'" 

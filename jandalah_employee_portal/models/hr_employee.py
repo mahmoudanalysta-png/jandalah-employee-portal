@@ -183,6 +183,18 @@ class HrAttendance(models.Model):
         store=True
     )
 
+    check_in_time = fields.Char(
+        string='وقت الحضور',
+        compute='_compute_jehat_report_fields',
+        store=True
+    )
+
+    check_out_time = fields.Char(
+        string='وقت الانصراف',
+        compute='_compute_jehat_report_fields',
+        store=True
+    )
+
     in_location_state = fields.Selection([
         ('approved', 'معتمد'),
         ('rejected', 'غير معتمد'),
@@ -291,7 +303,7 @@ class HrAttendance(models.Model):
             now_local = pytz.utc.localize(now_utc).astimezone(emp_tz)
             today_local_date = now_local.date()
 
-            # 2. Date and Location states
+            # 2. Date, Time and Location states
             in_local = None
             if att.check_in:
                 in_dt = att.check_in
@@ -299,8 +311,20 @@ class HrAttendance(models.Model):
                     in_dt = pytz.utc.localize(in_dt)
                 in_local = in_dt.astimezone(emp_tz)
                 att.attendance_date = in_local.date()
+                att.check_in_time = in_local.strftime('%I:%M:%S %p')
             else:
                 att.attendance_date = False
+                att.check_in_time = False
+
+            out_local = None
+            if att.check_out:
+                out_dt = att.check_out
+                if not getattr(out_dt, 'tzinfo', None):
+                    out_dt = pytz.utc.localize(out_dt)
+                out_local = out_dt.astimezone(emp_tz)
+                att.check_out_time = out_local.strftime('%I:%M:%S %p')
+            else:
+                att.check_out_time = False
 
             has_in_coords = hasattr(att, 'in_latitude') and att.in_latitude and att.in_longitude
             if has_in_coords:

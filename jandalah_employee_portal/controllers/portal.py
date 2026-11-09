@@ -47,7 +47,7 @@ def get_current_user_tz(tz_name=None):
     # 3. Default fallback to Saudi Arabia
     return 'Asia/Riyadh'
 
-def format_tz_dynamic(dt, tz_name=None):
+def format_tz_dynamic(dt, tz_name=None, time_only=False):
     """Converts naive or UTC datetime to user's dynamic local timezone and formats cleanly."""
     if not dt:
         return '-'
@@ -76,8 +76,12 @@ def format_tz_dynamic(dt, tz_name=None):
 
     try:
         am_pm = 'صباحاً' if local_dt.strftime('%p') == 'AM' else 'مساءً'
+        if time_only:
+            return f"{local_dt.strftime('%I:%M:%S')} {am_pm}"
         return f"{local_dt.strftime('%Y/%m/%d %I:%M')} {am_pm}"
     except Exception:
+        if time_only:
+            return local_dt.strftime('%I:%M:%S %p')
         return local_dt.strftime('%Y/%m/%d %I:%M %p')
 
 format_tz_saudi = format_tz_dynamic
@@ -626,7 +630,7 @@ self.addEventListener('fetch', event => {
             is_unpunched_checkout = False
             out_display = '-'
             if out_local:
-                out_display = format_tz_dynamic(a.check_out, tz_name=user_tz_name)
+                out_display = format_tz_dynamic(a.check_out, tz_name=user_tz_name, time_only=True)
             elif in_local and in_local.date() == today_local_date:
                 out_display = 'مفتوح حالياً'
             else:
@@ -654,7 +658,7 @@ self.addEventListener('fetch', event => {
                 'id': a.id,
                 'record': a,
                 'date': in_local.strftime('%Y/%m/%d') if in_local else '-',
-                'check_in': format_tz_dynamic(a.check_in, tz_name=user_tz_name) if a.check_in else '-',
+                'check_in': format_tz_dynamic(a.check_in, tz_name=user_tz_name, time_only=True) if a.check_in else '-',
                 'check_out': out_display,
                 'worked_hours': f"{a.worked_hours:.2f} س" if a.worked_hours and not is_unpunched_checkout else ('-' if is_unpunched_checkout else 'قيد العمل'),
                 'is_unpunched_checkout': is_unpunched_checkout,
