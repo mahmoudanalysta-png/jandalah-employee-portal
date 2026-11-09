@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import math
 import datetime
+import pytz
 from odoo import models, fields, api, exceptions, _
 
 class HrEmployee(models.Model):
@@ -174,3 +175,143 @@ class HrAttendance(models.Model):
                             'empl_name': attendance.employee_id.name,
                         }
                     )
+
+    # --- Jehat Comprehensive Attendance Report Fields (Matching Management Blueprint) ---
+    in_location_state = fields.Selection([
+        ('approved', 'معتمد'),
+        ('rejected', 'غير معتمد'),
+        ('none', '-'),
+    ], string='مكان الحضور', compute='_compute_jehat_report_fields', store=True)
+
+    out_location_state = fields.Selection([
+        ('approved', 'معتمد'),
+        ('rejected', 'غير معتمد'),
+        ('none', '-'),
+    ], string='مكان الانصراف', compute='_compute_jehat_report_fields', store=True)
+
+    morning_delay_minutes = fields.Integer(
+        string='دقائق التأخير',
+        compute='_compute_jehat_report_fields',
+        store=True
+    )
+
+    delay_display = fields.Char(
+        string='التأخير الصباحي',
+        compute='_compute_jehat_report_fields',
+        store=True
+    )
+
+    late_deduction = fields.Float(
+        string='خصم التأخير',
+        compute='_compute_jehat_report_fields',
+        store=True,
+        digits=(10, 2)
+    )
+
+    missing_checkout_deduction = fields.Float(
+        string='خصم الانصراف',
+        compute='_compute_jehat_report_fields',
+        store=True,
+        digits=(10, 2)
+    )
+
+    net_deduction = fields.Float(
+        string='صافي الخصم',
+        compute='_compute_jehat_report_fields',
+        store=True,
+        digits=(10, 2)
+    )
+
+    occupancy_rate = fields.Float(
+        string='نسبة الإشغال %',
+        compute='_compute_jehat_report_fields',
+        store=True,
+        digits=(10, 1)
+    )
+
+    attendance_notes = fields.Char(
+        string='ملاحظات',
+        compute='_compute_jehat_report_fields',
+        store=True
+    )
+
+    @api.depends('check_in', 'check_out', 'employee_id', 'is_outside_geofence')
+    def _compute_jehat_report_fields(self):
+        riyadh_tz = pytz.timezone('Asia/Riyadh')
+        now_utc = datetime.datetime.utcnow()
+        now_local = pytz.utc.localize(now_utc).astimezone(riyadh_tz)
+        today_local_date = now_local.date()
+
+        for att in self:
+            # 1. Location state
+            has_in_coords = hasattr(att, 'in_latitude') and att.in_latitude and att.in_longitude
+            if has_in_coords:
+                att.in_location_state = 'rejected' if att.is_outside_geofence else 'approved'
+            elif att.check_in:
+                att.in_location_state = 'approved'
+            else:
+                att.in_location_state = 'none'
+
+            has_out_coords = hasattr(att, 'out_latitude') and att.out_latitude and att.out_longitude
+            if has_out_coords:
+                att.out_location_state = 'approved'
+            elif att.check_out:
+                att.out_location_state = 'approved'
+            else:
+                att.out_location_state = 'none'
+
+            # 2. Check-in & morning delay calculation (19-min grace after 8:00 AM)
+            delay_min = 0
+            late_ded = 0.0
+            if att.check_in:
+                in_dt = att.check_in
+                if not getattr(in_dt, 'tzinfo', None):
+                    in_dt = pytz.utc.localize(in_dt)
+                in_local = in_dt.astimezone(riyadh_tz)
+
+                punch_min = in_local.hour * 60 + in_local.minute
+                work_start_min = 8 * 60  # 8:00 AM
+                grace_min = 19
+                if punch_min > (work_start_min + grace_min):
+                    delay_min = punch_min - work_start_min
+                    if delay_min <= 60:
+                        late_ded = 0.25
+                    else:
+                        late_ded = 0.50
+
+            att.morning_delay_minutes = delay_min
+            if delay_min > 0:
+                hours = delay_min // 60
+                mins = delay_min % 60
+                att.delay_display = f"متأخر ({hours:02d}:{mins:02d})"
+            elif att.check_in:
+                att.delay_display = "على الموعد"
+            else:
+                att.delay_display = "-"
+
+            att.late_deduction = late_ded
+
+            # 3. Missing checkout deduction (Midnight rule)
+            missing_ded = 0.0
+            occ_rate = 100.0
+            note = ""
+            if not att.check_out and att.check_in:
+                in_dt = att.check_in
+                if not getattr(in_dt, 'tzinfo', None):
+                    in_dt = pytz.utc.localize(in_dt)
+                in_local = in_dt.astimezone(riyadh_tz)
+
+                if in_local.date() < today_local_date:
+                    missing_ded = 0.25  # Quarter day deduction
+                    occ_rate = 0.0
+                    note = "لم يسجل انصراف (خصم ربع يوم)"
+                else:
+                    note = "مفتوح حالياً"
+            elif att.check_out:
+                occ_rate = 100.0
+                note = "مكتمل"
+
+            att.missing_checkout_deduction = missing_ded
+            att.net_deduction = round(late_ded + missing_ded, 2)
+            att.occupancy_rate = occ_rate
+            att.attendance_notes = note

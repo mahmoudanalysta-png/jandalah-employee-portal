@@ -37,6 +37,36 @@
         </field>
     </record>
 
+    <!-- HR Attendance List Inherit: Jehat Comprehensive Attendance Columns (Management Blueprint) -->
+    <record id="view_attendance_tree_inherit_jehat" model="ir.ui.view">
+        <field name="name">hr.attendance.list.inherit.jehat</field>
+        <field name="model">hr.attendance</field>
+        <field name="inherit_id" ref="hr_attendance.view_attendance_tree"/>
+        <field name="priority">20</field>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='check_in']" position="after">
+                <field name="in_location_state" widget="badge" 
+                       decoration-success="in_location_state == 'approved'" 
+                       decoration-danger="in_location_state == 'rejected'" 
+                       string="مكان الحضور"/>
+                <field name="delay_display" string="التأخير الصباحي" 
+                       decoration-danger="morning_delay_minutes &gt; 0" 
+                       decoration-success="morning_delay_minutes == 0"/>
+                <field name="late_deduction" string="خصم التأخير" sum="Total Late Deductions" widget="float"/>
+            </xpath>
+            <xpath expr="//field[@name='check_out']" position="after">
+                <field name="out_location_state" widget="badge" 
+                       decoration-success="out_location_state == 'approved'" 
+                       decoration-danger="out_location_state == 'rejected'" 
+                       string="مكان الانصراف"/>
+                <field name="missing_checkout_deduction" string="خصم الانصراف" sum="Total Checkout Deductions" widget="float"/>
+                <field name="net_deduction" string="صافي الخصم" sum="Total Net Deductions" widget="float" decoration-danger="net_deduction &gt; 0"/>
+                <field name="occupancy_rate" string="نسبة الإشغال %" avg="Average Occupancy" widget="float" decoration-danger="occupancy_rate == 0" decoration-success="occupancy_rate == 100"/>
+                <field name="attendance_notes" string="ملاحظات" optional="show"/>
+            </xpath>
+        </field>
+    </record>
+
     <!-- ==================== 1. Announcements Views ==================== -->
     <record id="view_jandalah_announcement_tree" model="ir.ui.view">
         <field name="name">jandalah.announcement.tree</field>
