@@ -54,11 +54,8 @@
                 <field name="attendance_date" string="التاريخ"/>
             </xpath>
 
-            <!-- 3. Check-In: Hide standard datetime check_in, and show check_in_time (time only) -->
-            <xpath expr="//field[@name='check_in']" position="attributes">
-                <attribute name="invisible">1</attribute>
-            </xpath>
-            <xpath expr="//field[@name='check_in']" position="after">
+            <!-- 3. Check-In: Replace standard check_in with check_in_time and in_location_state -->
+            <xpath expr="//field[@name='check_in']" position="replace">
                 <field name="check_in_time" string="وقت الحضور"/>
                 <field name="in_location_state" widget="badge" 
                        decoration-success="in_location_state == 'approved'" 
@@ -67,11 +64,8 @@
                        string="مكان الحضور"/>
             </xpath>
 
-            <!-- 4. Check-Out: Hide standard datetime check_out, and show check_out_time (time only) -->
-            <xpath expr="//field[@name='check_out']" position="attributes">
-                <attribute name="invisible">1</attribute>
-            </xpath>
-            <xpath expr="//field[@name='check_out']" position="after">
+            <!-- 4. Check-Out: Replace standard check_out with check_out_time, out_location_state and Jehat report columns -->
+            <xpath expr="//field[@name='check_out']" position="replace">
                 <field name="check_out_time" string="وقت الانصراف"/>
                 <field name="out_location_state" widget="badge" 
                        decoration-success="out_location_state == 'approved'" 
