@@ -53,10 +53,8 @@
             <xpath expr="//field[@name='employee_id']" position="after">
                 <field name="attendance_date" string="التاريخ"/>
                 <field name="leave_permission_display" string="إجازة / إذن" widget="badge" 
-                       decoration-info="leave_permission_type == 'leave'" 
-                       decoration-warning="leave_permission_type == 'permission'" 
-                       decoration-muted="leave_permission_type == 'none'"/>
-                <field name="leave_permission_type" invisible="1"/>
+                       decoration-info="leave_permission_display != '-'" 
+                       decoration-muted="leave_permission_display == '-'"/>
             </xpath>
 
             <!-- 3. Check-In: Replace standard check_in with check_in_time and in_location_state -->
