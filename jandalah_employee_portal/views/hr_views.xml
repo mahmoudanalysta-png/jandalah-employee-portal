@@ -381,4 +381,7 @@
               parent="menu_jandalah_hr_portal_management"
               action="action_jandalah_location_requests"
               sequence="40"/>
+
+    <!-- Auto-sync validated leaves to attendance records on module install / update -->
+    <function model="hr.attendance" name="sync_all_validated_leaves"/>
 </odoo>
