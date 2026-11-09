@@ -139,6 +139,8 @@ class HrAttendance(models.Model):
     def _check_validity(self):
         """Allows new day check-in even if previous day check-out is omitted (Midnight rule)."""
         for attendance in self:
+            if getattr(attendance, 'is_leave_day', False):
+                continue
             att_check_in = attendance.check_in
             att_check_out = attendance.check_out
             if not att_check_in:
@@ -175,6 +177,31 @@ class HrAttendance(models.Model):
                             'empl_name': attendance.employee_id.name,
                         }
                     )
+
+    # --- Leave & Permission Tracking Fields ---
+    is_leave_day = fields.Boolean(
+        string='يوم إجازة',
+        default=False,
+        store=True
+    )
+
+    leave_id = fields.Many2one(
+        'hr.leave',
+        string='طلب الإجازة / الإذن المرتبط',
+        store=True
+    )
+
+    leave_permission_type = fields.Selection([
+        ('leave', 'إجازة'),
+        ('permission', 'إذن'),
+        ('none', '-'),
+    ], string='نوع الإجازة / الإذن', compute='_compute_jehat_report_fields', store=True)
+
+    leave_permission_display = fields.Char(
+        string='إجازة / إذن',
+        compute='_compute_jehat_report_fields',
+        store=True
+    )
 
     # --- Jehat Comprehensive Attendance Report Fields (Matching 17 Columns Blueprint) ---
     attendance_date = fields.Date(
@@ -282,7 +309,7 @@ class HrAttendance(models.Model):
         store=True
     )
 
-    @api.depends('check_in', 'check_out', 'employee_id', 'is_outside_geofence', 'worked_hours')
+    @api.depends('check_in', 'check_out', 'employee_id', 'is_outside_geofence', 'worked_hours', 'is_leave_day', 'leave_id')
     def _compute_jehat_report_fields(self):
         for att in self:
             # 1. Determine local employee timezone
@@ -302,6 +329,35 @@ class HrAttendance(models.Model):
             now_utc = datetime.datetime.utcnow()
             now_local = pytz.utc.localize(now_utc).astimezone(emp_tz)
             today_local_date = now_local.date()
+
+            # Handle full-day approved leave record: Blank punches, zero deductions, 100% occupancy
+            if att.is_leave_day:
+                if att.check_in:
+                    in_dt = att.check_in
+                    if not getattr(in_dt, 'tzinfo', None):
+                        in_dt = pytz.utc.localize(in_dt)
+                    in_local = in_dt.astimezone(emp_tz)
+                    att.attendance_date = in_local.date()
+                att.check_in_time = False
+                att.check_out_time = False
+                att.in_location_state = 'none'
+                att.out_location_state = 'none'
+                att.break_duration = '-'
+                att.overtime_display = '-'
+                att.morning_delay_minutes = 0
+                att.delay_display = '-'
+                att.absence_deduction = 0.0
+                att.late_deduction = 0.0
+                att.missing_checkout_deduction = 0.0
+                att.other_deductions = 0.0
+                att.bonus_amount = 0.0
+                att.net_deduction = 0.0
+                att.occupancy_rate = 100.0
+                leave_name = att.leave_id.holiday_status_id.name if att.leave_id and att.leave_id.holiday_status_id else 'إجازة معتمدة'
+                att.leave_permission_type = 'leave'
+                att.leave_permission_display = f"إجازة ({leave_name})"
+                att.attendance_notes = f"إجازة معتمدة ({leave_name})"
+                continue
 
             # 2. Date, Time and Location states
             in_local = None
@@ -406,3 +462,124 @@ class HrAttendance(models.Model):
             att.net_deduction = round(late_ded + missing_ded, 2)
             att.occupancy_rate = occ_rate
             att.attendance_notes = note
+
+            # 6. Check for approved leave or permission on this date
+            att_date = att.attendance_date or (in_local.date() if in_local else None)
+            leave_perm_type = 'none'
+            leave_perm_disp = '-'
+            if att_date and att.employee_id:
+                domain = [
+                    ('employee_id', '=', att.employee_id.id),
+                    ('state', '=', 'validate'),
+                    ('request_date_from', '<=', att_date),
+                    ('request_date_to', '>=', att_date),
+                ]
+                approved_leave = self.env['hr.leave'].sudo().search(domain, limit=1)
+                if approved_leave:
+                    type_name = approved_leave.holiday_status_id.name or 'إجازة'
+                    is_permission = (
+                        getattr(approved_leave, 'request_unit_hours', False) or
+                        (hasattr(approved_leave, 'number_of_hours_display') and approved_leave.number_of_hours_display > 0 and approved_leave.number_of_hours_display < 8) or
+                        any(k in type_name for k in ['إذن', 'اذن', 'استئذان', 'ساعي', 'خروج'])
+                    )
+                    if is_permission:
+                        leave_perm_type = 'permission'
+                        hours = getattr(approved_leave, 'number_of_hours_display', 0)
+                        if hours and hours > 0:
+                            h_int = int(hours)
+                            m_int = int(round((hours - h_int) * 60))
+                            time_str = f"{h_int}:{m_int:02d} س" if m_int else f"{h_int} س"
+                            leave_perm_disp = f"إذن ({time_str})"
+                        else:
+                            leave_perm_disp = f"إذن ({type_name})"
+
+                        if not att.attendance_notes or att.attendance_notes in ['مكتمل', 'مفتوح حالياً']:
+                            att.attendance_notes = f"إذن معتمد ({type_name})"
+                        else:
+                            att.attendance_notes = f"{att.attendance_notes} | إذن ({type_name})"
+                    else:
+                        leave_perm_type = 'leave'
+                        leave_perm_disp = f"إجازة ({type_name})"
+
+            att.leave_permission_type = leave_perm_type
+            att.leave_permission_display = leave_perm_disp
+
+    @api.model
+    def sync_all_validated_leaves(self):
+        """Batch generates attendance records for all existing validated leaves in DB."""
+        leaves = self.env['hr.leave'].sudo().search([('state', '=', 'validate')])
+        leaves._sync_leaves_to_attendance()
+        return True
+
+
+class HrLeave(models.Model):
+    _inherit = 'hr.leave'
+
+    def action_validate(self):
+        res = super(HrLeave, self).action_validate()
+        self._sync_leaves_to_attendance()
+        return res
+
+    def action_refuse(self):
+        res = super(HrLeave, self).action_refuse()
+        Attendance = self.env['hr.attendance'].sudo()
+        for leave in self:
+            leave_attendances = Attendance.search([
+                ('leave_id', '=', leave.id),
+                ('is_leave_day', '=', True),
+            ])
+            if leave_attendances:
+                leave_attendances.unlink()
+        return res
+
+    def _sync_leaves_to_attendance(self):
+        Attendance = self.env['hr.attendance'].sudo()
+        for leave in self:
+            if leave.state != 'validate' or not leave.employee_id:
+                continue
+
+            type_name = leave.holiday_status_id.name or ''
+            is_permission = (
+                getattr(leave, 'request_unit_hours', False) or
+                (hasattr(leave, 'number_of_hours_display') and leave.number_of_hours_display > 0 and leave.number_of_hours_display < 8) or
+                any(k in type_name for k in ['إذن', 'اذن', 'استئذان', 'ساعي', 'خروج'])
+            )
+            # Hourly permissions don't generate full-day blank attendance rows
+            if is_permission:
+                continue
+
+            date_from = leave.request_date_from or (leave.date_from.date() if leave.date_from else None)
+            date_to = leave.request_date_to or (leave.date_to.date() if leave.date_to else None)
+            if not date_from or not date_to:
+                continue
+
+            cur_date = date_from
+            while cur_date <= date_to:
+                existing = Attendance.search([
+                    ('employee_id', '=', leave.employee_id.id),
+                    ('attendance_date', '=', cur_date),
+                ], limit=1)
+
+                if not existing:
+                    dt_start = datetime.datetime.combine(cur_date, datetime.time(0, 0))
+                    dt_end = datetime.datetime.combine(cur_date, datetime.time(23, 59, 59))
+                    existing = Attendance.search([
+                        ('employee_id', '=', leave.employee_id.id),
+                        ('check_in', '>=', dt_start),
+                        ('check_in', '<=', dt_end),
+                    ], limit=1)
+
+                if not existing:
+                    Attendance.create({
+                        'employee_id': leave.employee_id.id,
+                        'check_in': datetime.datetime.combine(cur_date, datetime.time(8, 0)),
+                        'check_out': datetime.datetime.combine(cur_date, datetime.time(8, 0)),
+                        'is_leave_day': True,
+                        'leave_id': leave.id,
+                    })
+                elif existing and existing.is_leave_day and not existing.leave_id:
+                    existing.write({
+                        'leave_id': leave.id,
+                    })
+
+                cur_date += datetime.timedelta(days=1)
