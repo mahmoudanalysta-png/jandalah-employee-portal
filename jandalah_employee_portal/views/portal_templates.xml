@@ -619,12 +619,16 @@
                                 },
                                 function(err) {
                                     console.warn("GPS error: " + err.message);
-                                    sendAttendance(null, null);
+                                    btn.disabled = false;
+                                    feedback.className = 'mt-2 small fw-bold text-danger text-center';
+                                    feedback.innerHTML = '<i class="fa fa-exclamation-triangle me-1"></i> يرجى تفعيل خدمة تحديد الموقع (GPS) ومنح الصلاحية للمتصفح لإتمام البصمة.';
                                 },
                                 { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
                             );
                         } else {
-                            sendAttendance(null, null);
+                            btn.disabled = false;
+                            feedback.className = 'mt-2 small fw-bold text-danger text-center';
+                            feedback.innerHTML = '<i class="fa fa-exclamation-triangle me-1"></i> جهازك أو متصفحك لا يدعم تحديد الموقع (GPS).';
                         }
                     }
 
@@ -706,69 +710,76 @@
                             <thead class="table-light">
                                 <tr>
                                     <th class="py-3">#</th>
-                                    <th class="py-3">وقت الحضور (التوقيت المحلي)</th>
-                                    <th class="py-3">وقت الانصراف (التوقيت المحلي)</th>
+                                    <th class="py-3">التاريخ</th>
+                                    <th class="py-3">وقت الحضور</th>
+                                    <th class="py-3">حالة الموقع</th>
+                                    <th class="py-3">التأخير الصباحي</th>
+                                    <th class="py-3">وقت الانصراف</th>
                                     <th class="py-3">ساعات العمل</th>
-                                    <th class="py-3">موقع الحضور (GPS)</th>
-                                    <th class="py-3">موقع الانصراف (GPS)</th>
                                     <th class="py-3">عنوان IP</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <t t-if="not attendances">
+                                <t t-if="not attendances_data">
                                     <tr>
-                                        <td colspan="7" class="py-5 text-muted">
+                                        <td colspan="8" class="py-5 text-muted">
                                             <i class="fa fa-folder-open-o fs-1 d-block mb-2 text-secondary"/>
-                                            لا توجد أي حركات حضور وانصراف مسجلة حتى الآن.
+                                            لا توجد أي سجلات حضور وانصراف مسجلة حتى الآن.
                                         </td>
                                     </tr>
                                 </t>
-                                <t t-foreach="attendances" t-as="att">
+                                <t t-foreach="attendances_data" t-as="row">
                                     <tr>
-                                        <td class="text-muted"><t t-esc="att_index + 1"/></td>
-                                        <td class="fw-bold text-success">
-                                            <t t-if="att.check_in">
-                                                <t t-esc="format_tz(att.check_in)"/>
-                                            </t>
-                                        </td>
-                                        <td class="fw-bold text-danger">
-                                            <t t-if="att.check_out">
-                                                <t t-esc="format_tz(att.check_out)"/>
-                                            </t>
-                                            <t t-else="">
-                                                <span class="badge bg-warning text-dark">متواجد حالياً</span>
-                                            </t>
-                                        </td>
-                                        <td class="fw-bold">
-                                            <t t-if="att.worked_hours">
-                                                <t t-esc="'%.2f' % att.worked_hours"/> س
-                                            </t>
-                                            <t t-else="">-</t>
-                                        </td>
+                                        <td class="text-muted"><t t-esc="row_index + 1"/></td>
+                                        <td class="fw-bold text-dark"><t t-esc="row['date']"/></td>
+                                        <td class="fw-bold text-success"><t t-esc="row['check_in']"/></td>
                                         <td>
-                                            <t t-if="att.in_latitude and att.in_longitude">
-                                                <a t-attf-href="https://www.google.com/maps?q=#{att.in_latitude},#{att.in_longitude}" 
-                                                   target="_blank" class="badge bg-light text-primary border text-decoration-none">
-                                                    <i class="fa fa-map-marker me-1"/> الخريطة
-                                                </a>
+                                            <t t-if="row['location_status'] == 'approved'">
+                                                <span class="badge bg-success text-white rounded-pill px-2.5 py-1">
+                                                    <i class="fa fa-check-circle me-1"/> معتمد
+                                                </span>
+                                            </t>
+                                            <t t-elif="row['location_status'] == 'rejected'">
+                                                <span class="badge bg-danger text-white rounded-pill px-2.5 py-1">
+                                                    <i class="fa fa-exclamation-circle me-1"/> غير معتمد
+                                                </span>
                                             </t>
                                             <t t-else="">
                                                 <span class="text-muted small">-</span>
                                             </t>
-                                        </td>
-                                        <td>
-                                            <t t-if="att.out_latitude and att.out_longitude">
-                                                <a t-attf-href="https://www.google.com/maps?q=#{att.out_latitude},#{att.out_longitude}" 
-                                                   target="_blank" class="badge bg-light text-danger border text-decoration-none">
-                                                    <i class="fa fa-map-marker me-1"/> الخريطة
+                                            <t t-if="row['in_lat'] and row['in_lon']">
+                                                <a t-attf-href="https://www.google.com/maps?q=#{row['in_lat']},#{row['in_lon']}" 
+                                                   target="_blank" class="badge bg-light text-primary border text-decoration-none ms-1">
+                                                    <i class="fa fa-map-marker"/>
                                                 </a>
                                             </t>
+                                        </td>
+                                        <td>
+                                            <t t-if="row['is_late']">
+                                                <span class="badge bg-danger text-white rounded-pill px-2.5 py-1">
+                                                    <i class="fa fa-clock-o me-1"/> متأخر (<t t-esc="row['delay_minutes']"/> د)
+                                                </span>
+                                            </t>
                                             <t t-else="">
-                                                <span class="text-muted small">-</span>
+                                                <span class="badge bg-light text-success border rounded-pill px-2.5 py-1">
+                                                    <i class="fa fa-check me-1"/> على الموعد
+                                                </span>
                                             </t>
                                         </td>
                                         <td>
-                                            <small class="text-muted"><t t-esc="att.in_ip_address or '-'"/></small>
+                                            <t t-if="row['is_unpunched_checkout']">
+                                                <span class="badge bg-light text-muted border px-3 py-1 fw-bold" title="لم يتم تسجيل انصراف">-</span>
+                                            </t>
+                                            <t t-elif="row['is_open']">
+                                                <span class="badge bg-warning text-dark rounded-pill px-2.5 py-1">مفتوح حالياً</span>
+                                            </t>
+                                            <t t-else="">
+                                                <span class="fw-bold text-danger"><t t-esc="row['check_out']"/></span>
+                                            </t>
+                                        </td>
+                                        <td class="fw-bold text-dark"><t t-esc="row['worked_hours']"/></td>
+                                        <td>
+                                            <small class="text-muted"><t t-esc="row['record'].in_ip_address or '-'"/></small>
                                         </td>
                                     </tr>
                                 </t>
@@ -840,10 +851,11 @@
                                     <i class="fa fa-calendar text-primary me-1.5"/> <t t-esc="l['holiday_type']"/>
                                 </span>
                                 <div>
-                                    <span t-if="l['state'] == 'validate'" class="badge bg-success rounded-pill px-2.5 py-1">معتمدة</span>
-                                    <span t-elif="l['state'] in ['confirm', 'validate1']" class="badge bg-warning text-dark rounded-pill px-2.5 py-1">قيد المراجعة</span>
-                                    <span t-elif="l['state'] == 'refuse'" class="badge bg-danger rounded-pill px-2.5 py-1">مرفوضة</span>
-                                    <span t-else="" class="badge bg-secondary rounded-pill px-2.5 py-1"><t t-esc="l['state']"/></span>
+                                    <span t-if="l['state'] == 'validate'" class="badge bg-success rounded-pill px-2.5 py-1"><i class="fa fa-check-circle me-1"/> معتمدة</span>
+                                    <span t-elif="l['state'] == 'validate1'" class="badge bg-info text-white rounded-pill px-2.5 py-1"><i class="fa fa-clock-o me-1"/> بانتظار موافقة الموارد البشرية</span>
+                                    <span t-elif="l['state'] == 'confirm'" class="badge bg-warning text-dark rounded-pill px-2.5 py-1"><i class="fa fa-hourglass-half me-1"/> بانتظار موافقة المدير المباشر</span>
+                                    <span t-elif="l['state'] == 'refuse'" class="badge bg-danger rounded-pill px-2.5 py-1"><i class="fa fa-times-circle me-1"/> مرفوضة</span>
+                                    <span t-else="" class="badge bg-secondary rounded-pill px-2.5 py-1"><t t-esc="l.get('state_desc', l['state'])"/></span>
                                 </div>
                             </div>
 
@@ -938,10 +950,11 @@
                                             </t>
                                         </td>
                                         <td>
-                                            <span t-if="l['state'] == 'validate'" class="badge bg-success rounded-pill px-3 py-2">معتمدة</span>
-                                            <span t-elif="l['state'] in ['confirm', 'validate1']" class="badge bg-warning text-dark rounded-pill px-3 py-2">قيد المراجعة</span>
-                                            <span t-elif="l['state'] == 'refuse'" class="badge bg-danger rounded-pill px-3 py-2">مرفوضة</span>
-                                            <span t-else="" class="badge bg-secondary rounded-pill px-3 py-2"><t t-esc="l['state']"/></span>
+                                            <span t-if="l['state'] == 'validate'" class="badge bg-success rounded-pill px-3 py-2"><i class="fa fa-check-circle me-1"/> معتمدة</span>
+                                            <span t-elif="l['state'] == 'validate1'" class="badge bg-info text-white rounded-pill px-3 py-2"><i class="fa fa-clock-o me-1"/> بانتظار موافقة الموارد البشرية</span>
+                                            <span t-elif="l['state'] == 'confirm'" class="badge bg-warning text-dark rounded-pill px-3 py-2"><i class="fa fa-hourglass-half me-1"/> بانتظار موافقة المدير المباشر</span>
+                                            <span t-elif="l['state'] == 'refuse'" class="badge bg-danger rounded-pill px-3 py-2"><i class="fa fa-times-circle me-1"/> مرفوضة</span>
+                                            <span t-else="" class="badge bg-secondary rounded-pill px-3 py-2"><t t-esc="l.get('state_desc', l['state'])"/></span>
                                             <t t-if="l['state'] == 'refuse' and l['refusal_reason']">
                                                 <div class="alert alert-danger py-1 px-2 mt-1 mb-0 rounded-3 small text-start" style="font-size: 11px;">
                                                     <i class="fa fa-times-circle me-1 text-danger"/>

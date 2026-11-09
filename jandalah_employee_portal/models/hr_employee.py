@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import math
-from odoo import models, fields, api
+import datetime
+from odoo import models, fields, api, exceptions, _
 
 class HrEmployee(models.Model):
     _inherit = 'hr.employee'
@@ -132,3 +133,44 @@ class HrAttendance(models.Model):
 
     distance_from_work = fields.Float(string='المسافة عن موقع العمل (متر)', digits=(10, 2))
     is_outside_geofence = fields.Boolean(string='خارج النطاق الجغرافي المسموح', default=False)
+
+    @api.constrains('check_in', 'check_out', 'employee_id')
+    def _check_validity(self):
+        """Allows new day check-in even if previous day check-out is omitted (Midnight rule)."""
+        for attendance in self:
+            att_check_in = attendance.check_in
+            att_check_out = attendance.check_out
+            if not att_check_in:
+                continue
+
+            domain = [
+                ('employee_id', '=', attendance.employee_id.id),
+                ('id', '!=', attendance.id),
+            ]
+
+            if att_check_out:
+                domain += [
+                    ('check_in', '<', att_check_out),
+                    ('check_out', '>', att_check_in),
+                ]
+                conflicts = self.search_count(domain)
+                if conflicts:
+                    raise exceptions.ValidationError(
+                        _("Cannot create overlapping attendance records for %(empl_name)s.") % {
+                            'empl_name': attendance.employee_id.name,
+                        }
+                    )
+            else:
+                att_date = att_check_in.date()
+                domain += [
+                    ('check_out', '=', False),
+                    ('check_in', '>=', fields.Datetime.to_datetime(att_date)),
+                    ('check_in', '<', fields.Datetime.to_datetime(att_date) + datetime.timedelta(days=1)),
+                ]
+                conflicts = self.search_count(domain)
+                if conflicts:
+                    raise exceptions.ValidationError(
+                        _("Employee %(empl_name)s already has an open attendance record today.") % {
+                            'empl_name': attendance.employee_id.name,
+                        }
+                    )

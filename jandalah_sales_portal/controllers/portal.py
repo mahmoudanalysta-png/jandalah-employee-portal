@@ -15,12 +15,10 @@ class JandalahSalesPortal(CustomerPortal):
         emp = self._get_salesperson_employee()
         is_sales = False
         if emp:
-            job_title_str = (emp.sudo().job_title or '').strip()
-            job_name_str = (emp.sudo().job_id and emp.sudo().job_id.name or '').strip()
-            dept_name_str = (emp.sudo().department_id and emp.sudo().department_id.name or '').strip()
-            combined = f"{job_title_str} {job_name_str} {dept_name_str}".lower()
-            sales_keywords = ['اخصائي مبيعات', 'أخصائي مبيعات', 'sales specialist', 'مبيعات', 'sales']
-            if any(k in combined for k in sales_keywords):
+            job_name = (emp.sudo().job_id and emp.sudo().job_id.name or '').strip().lower()
+            job_title = (emp.sudo().job_title or '').strip().lower()
+            sales_keywords = ['اخصائي مبيعات', 'أخصائي مبيعات', 'sales specialist']
+            if any(k in job_name or k in job_title for k in sales_keywords):
                 is_sales = True
         values['is_sales_employee'] = is_sales
         return values

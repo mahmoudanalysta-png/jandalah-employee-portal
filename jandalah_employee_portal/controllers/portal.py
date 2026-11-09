@@ -256,10 +256,24 @@ class JandalahCustomerPortal(CustomerPortal):
         values = super()._prepare_home_portal_values(counters)
         emp = self._get_employee()
         if emp:
+            user_tz_name = get_current_user_tz()
+            user_tz = pytz.timezone(user_tz_name)
+            now_local = pytz.utc.localize(datetime.utcnow()).astimezone(user_tz)
+            today_local_date = now_local.date()
+
             open_att = request.env['hr.attendance'].sudo().search([
                 ('employee_id', '=', emp.id),
                 ('check_out', '=', False)
             ], order='check_in desc', limit=1)
+
+            # Enforce Midnight Rule: If open attendance is from prior date, it is expired
+            is_checked_in = False
+            if open_att and open_att.check_in:
+                check_in_local = pytz.utc.localize(open_att.check_in).astimezone(user_tz)
+                if check_in_local.date() == today_local_date:
+                    is_checked_in = True
+                else:
+                    open_att = False
             
             last_att = request.env['hr.attendance'].sudo().search([
                 ('employee_id', '=', emp.id)
@@ -330,12 +344,10 @@ class JandalahCustomerPortal(CustomerPortal):
             # Check if this employee's job position is 'اخصائي مبيعات'
             is_sales_employee = False
             try:
-                job_title_str = (emp.sudo().job_title or '').strip()
-                job_name_str = (emp.sudo().job_id and emp.sudo().job_id.name or '').strip()
-                dept_name_str = (emp.sudo().department_id and emp.sudo().department_id.name or '').strip()
-                full_job_text = f"{job_title_str} {job_name_str} {dept_name_str}".lower()
-                sales_keywords = ['اخصائي مبيعات', 'أخصائي مبيعات', 'sales specialist', 'مبيعات', 'sales']
-                if any(kw in full_job_text for kw in sales_keywords):
+                job_title_str = (emp.sudo().job_title or '').strip().lower()
+                job_name_str = (emp.sudo().job_id and emp.sudo().job_id.name or '').strip().lower()
+                sales_keywords = ['اخصائي مبيعات', 'أخصائي مبيعات', 'sales specialist']
+                if any(kw in job_name_str or kw in job_title_str for kw in sales_keywords):
                     is_sales_employee = True
             except Exception:
                 pass
@@ -343,7 +355,7 @@ class JandalahCustomerPortal(CustomerPortal):
             values.update({
                 'employee': emp,
                 'is_sales_employee': is_sales_employee,
-                'is_checked_in': bool(open_att),
+                'is_checked_in': is_checked_in,
                 'open_attendance': open_att,
                 'last_attendance': last_att,
                 'attendance_count': request.env['hr.attendance'].sudo().search_count([('employee_id', '=', emp.id)]),
@@ -440,13 +452,31 @@ self.addEventListener('fetch', event => {
         now_utc = fields.Datetime.now()
         formatted_time = format_tz_dynamic(now_utc, tz_name=tz)
 
+        # STRICT GPS REQUIREMENT: Geolocation is mandatory for attendance
+        if not latitude or not longitude:
+            return {
+                'status': 'error',
+                'message': 'تحديد الموقع الجغرافي (GPS) إلزامي لتسجيل البصمة. يرجى تفعيل خدمة الموقع ومنح الصلاحية للمتصفح.'
+            }
+
+        user_tz_name = get_current_user_tz(tz)
+        user_tz = pytz.timezone(user_tz_name)
+        now_local = pytz.utc.localize(datetime.utcnow()).astimezone(user_tz)
+        today_local_date = now_local.date()
+
         # Check for open attendance
         open_att = request.env['hr.attendance'].sudo().search([
             ('employee_id', '=', emp.id),
             ('check_out', '=', False)
         ], order='check_in desc', limit=1)
 
-        if open_att:
+        is_valid_open_today = False
+        if open_att and open_att.check_in:
+            check_in_local = pytz.utc.localize(open_att.check_in).astimezone(user_tz)
+            if check_in_local.date() == today_local_date:
+                is_valid_open_today = True
+
+        if is_valid_open_today:
             # CHECK OUT LOCALLY
             out_vals = {
                 'check_out': now_utc,
@@ -549,7 +579,7 @@ self.addEventListener('fetch', event => {
         emp = self._get_employee()
         if not emp:
             return request.render('portal.portal_my_home', {
-                'error_message': 'لا يوجد ملف موظف مرتبط'
+                'error_message': 'الموظف غير موجود أو غير مرتبط بحسابك'
             })
 
         Attendance = request.env['hr.attendance'].sudo()
@@ -567,20 +597,83 @@ self.addEventListener('fetch', event => {
         offset = (page - 1) * items_per_page
         attendances = Attendance.search(domain, order='check_in desc', limit=items_per_page, offset=offset)
 
+        user_tz_name = get_current_user_tz()
+        user_tz = pytz.timezone(user_tz_name)
+        now_local = pytz.utc.localize(datetime.utcnow()).astimezone(user_tz)
+        today_local_date = now_local.date()
+
         open_att = Attendance.search([
             ('employee_id', '=', emp.id),
             ('check_out', '=', False)
         ], order='check_in desc', limit=1)
 
+        is_checked_in = False
+        if open_att and open_att.check_in:
+            check_in_local = pytz.utc.localize(open_att.check_in).astimezone(user_tz)
+            if check_in_local.date() == today_local_date:
+                is_checked_in = True
+
         all_emp_att = Attendance.search(domain)
         total_hours = round(sum(a.worked_hours for a in all_emp_att if a.worked_hours), 2)
+
+        # Process attendances with midnight rule, location approval, and morning delay (19-min grace)
+        attendances_data = []
+        for a in attendances:
+            in_local = pytz.utc.localize(a.check_in).astimezone(user_tz) if a.check_in else None
+            out_local = pytz.utc.localize(a.check_out).astimezone(user_tz) if a.check_out else None
+
+            # Midnight rule for checkout: If unpunched and date is prior to today, show '-' (unpunched)
+            is_unpunched_checkout = False
+            out_display = '-'
+            if out_local:
+                out_display = format_tz_dynamic(a.check_out, tz_name=user_tz_name)
+            elif in_local and in_local.date() == today_local_date:
+                out_display = 'مفتوح حالياً'
+            else:
+                out_display = '-'
+                is_unpunched_checkout = True
+
+            # Location approval status
+            location_status = 'none'
+            if a.in_latitude and a.in_longitude:
+                location_status = 'rejected' if a.is_outside_geofence else 'approved'
+
+            # Morning delay calculation: work start 8:00 AM, 19 min grace period (up to 8:19 AM)
+            # Staying late does NOT cancel or compensate morning delay!
+            delay_minutes = 0
+            is_late = False
+            if in_local:
+                punch_min = in_local.hour * 60 + in_local.minute
+                work_start_min = 8 * 60  # 8:00 AM
+                grace_min = 19
+                if punch_min > (work_start_min + grace_min):
+                    delay_minutes = punch_min - work_start_min
+                    is_late = True
+
+            attendances_data.append({
+                'id': a.id,
+                'record': a,
+                'date': in_local.strftime('%Y/%m/%d') if in_local else '-',
+                'check_in': format_tz_dynamic(a.check_in, tz_name=user_tz_name) if a.check_in else '-',
+                'check_out': out_display,
+                'worked_hours': f"{a.worked_hours:.2f} س" if a.worked_hours and not is_unpunched_checkout else ('-' if is_unpunched_checkout else 'قيد العمل'),
+                'is_unpunched_checkout': is_unpunched_checkout,
+                'location_status': location_status,
+                'in_lat': a.in_latitude,
+                'in_lon': a.in_longitude,
+                'out_lat': a.out_latitude,
+                'out_lon': a.out_longitude,
+                'delay_minutes': delay_minutes,
+                'is_late': is_late,
+            })
 
         values = self._prepare_portal_layout_values()
         values.update({
             'employee': emp,
             'attendances': attendances,
-            'open_attendance': open_att,
-            'is_checked_in': bool(open_att),
+            'attendances_data': attendances_data,
+            'open_attendance': open_att if is_checked_in else False,
+            'is_checked_in': is_checked_in,
             'total_hours': total_hours,
             'page_name': 'attendance',
             'pager': pager,
@@ -638,6 +731,14 @@ self.addEventListener('fetch', event => {
             date_from_val = l.request_date_from or (l.date_from.date() if l.date_from else '')
             date_to_val = l.request_date_to or (l.date_to.date() if l.date_to else '')
 
+            state_labels = {
+                'confirm': 'بانتظار موافقة المدير المباشر',
+                'validate1': 'بانتظار موافقة الموارد البشرية',
+                'validate': 'معتمدة',
+                'refuse': 'مرفوضة',
+                'draft': 'مسودة',
+                'cancel': 'ملغاة',
+            }
             leaves_data.append({
                 'id': l.id,
                 'holiday_type': leave_type,
@@ -646,6 +747,7 @@ self.addEventListener('fetch', event => {
                 'number_of_days': l.number_of_days or 1.0,
                 'name': l.name or '',
                 'state': l.state,
+                'state_desc': state_labels.get(l.state, l.state),
                 'refusal_reason': refusal_reason,
                 'has_attachment': has_attachment,
             })
@@ -1044,10 +1146,26 @@ self.addEventListener('fetch', event => {
 
         try:
             if action == 'approve':
-                if hasattr(leave, 'action_approve'):
-                    leave.sudo().action_approve()
-                elif hasattr(leave, 'action_validate'):
-                    leave.sudo().action_validate()
+                if leave.state == 'confirm':
+                    # Supervisor Approval -> transitions to pending HR approval
+                    leave.sudo().write({'state': 'validate1'})
+                    try:
+                        leave.sudo().message_post(
+                            body=f"تم اعتماد الطلب من المدير المباشر ({emp.name}). الطلب الآن بانتظار موافقة إدارة الموارد البشرية."
+                        )
+                    except Exception:
+                        pass
+                elif leave.state == 'validate1' and is_hr_admin:
+                    # Final HR Approval
+                    if hasattr(leave, 'action_validate'):
+                        leave.sudo().action_validate()
+                    else:
+                        leave.sudo().write({'state': 'validate'})
+                else:
+                    if hasattr(leave, 'action_approve'):
+                        leave.sudo().action_approve()
+                    elif hasattr(leave, 'action_validate'):
+                        leave.sudo().action_validate()
                 return request.redirect('/my/team/leaves?success=approved')
             elif action == 'refuse':
                 reason = (refusal_reason or kw.get('reason') or '').strip()
