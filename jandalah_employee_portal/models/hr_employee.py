@@ -176,7 +176,13 @@ class HrAttendance(models.Model):
                         }
                     )
 
-    # --- Jehat Comprehensive Attendance Report Fields (Matching Management Blueprint) ---
+    # --- Jehat Comprehensive Attendance Report Fields (Matching 17 Columns Blueprint) ---
+    attendance_date = fields.Date(
+        string='التاريخ',
+        compute='_compute_jehat_report_fields',
+        store=True
+    )
+
     in_location_state = fields.Selection([
         ('approved', 'معتمد'),
         ('rejected', 'غير معتمد'),
@@ -189,6 +195,17 @@ class HrAttendance(models.Model):
         ('none', '-'),
     ], string='مكان الانصراف', compute='_compute_jehat_report_fields', store=True)
 
+    break_duration = fields.Char(
+        string='الاستراحة',
+        default='-'
+    )
+
+    overtime_display = fields.Char(
+        string='وقت إضافي',
+        compute='_compute_jehat_report_fields',
+        store=True
+    )
+
     morning_delay_minutes = fields.Integer(
         string='دقائق التأخير',
         compute='_compute_jehat_report_fields',
@@ -196,9 +213,15 @@ class HrAttendance(models.Model):
     )
 
     delay_display = fields.Char(
-        string='التأخير الصباحي',
+        string='تأخير',
         compute='_compute_jehat_report_fields',
         store=True
+    )
+
+    absence_deduction = fields.Float(
+        string='خصم الغياب',
+        default=0.0,
+        digits=(10, 2)
     )
 
     late_deduction = fields.Float(
@@ -215,8 +238,20 @@ class HrAttendance(models.Model):
         digits=(10, 2)
     )
 
+    other_deductions = fields.Float(
+        string='خصومات أخرى',
+        default=0.0,
+        digits=(10, 2)
+    )
+
+    bonus_amount = fields.Float(
+        string='مكافأة',
+        default=0.0,
+        digits=(10, 2)
+    )
+
     net_deduction = fields.Float(
-        string='صافي الخصم',
+        string='صافي',
         compute='_compute_jehat_report_fields',
         store=True,
         digits=(10, 2)
@@ -235,15 +270,38 @@ class HrAttendance(models.Model):
         store=True
     )
 
-    @api.depends('check_in', 'check_out', 'employee_id', 'is_outside_geofence')
+    @api.depends('check_in', 'check_out', 'employee_id', 'is_outside_geofence', 'worked_hours')
     def _compute_jehat_report_fields(self):
-        riyadh_tz = pytz.timezone('Asia/Riyadh')
-        now_utc = datetime.datetime.utcnow()
-        now_local = pytz.utc.localize(now_utc).astimezone(riyadh_tz)
-        today_local_date = now_local.date()
-
         for att in self:
-            # 1. Location state
+            # 1. Determine local employee timezone
+            tz_name = 'Asia/Riyadh'
+            if att.employee_id and att.employee_id.tz:
+                tz_name = att.employee_id.tz
+            elif att.employee_id and att.employee_id.user_id and att.employee_id.user_id.tz:
+                tz_name = att.employee_id.user_id.tz
+            elif self.env.user and self.env.user.tz:
+                tz_name = self.env.user.tz
+
+            try:
+                emp_tz = pytz.timezone(tz_name)
+            except Exception:
+                emp_tz = pytz.timezone('Asia/Riyadh')
+
+            now_utc = datetime.datetime.utcnow()
+            now_local = pytz.utc.localize(now_utc).astimezone(emp_tz)
+            today_local_date = now_local.date()
+
+            # 2. Date and Location states
+            in_local = None
+            if att.check_in:
+                in_dt = att.check_in
+                if not getattr(in_dt, 'tzinfo', None):
+                    in_dt = pytz.utc.localize(in_dt)
+                in_local = in_dt.astimezone(emp_tz)
+                att.attendance_date = in_local.date()
+            else:
+                att.attendance_date = False
+
             has_in_coords = hasattr(att, 'in_latitude') and att.in_latitude and att.in_longitude
             if has_in_coords:
                 att.in_location_state = 'rejected' if att.is_outside_geofence else 'approved'
@@ -260,15 +318,11 @@ class HrAttendance(models.Model):
             else:
                 att.out_location_state = 'none'
 
-            # 2. Check-in & morning delay calculation (19-min grace after 8:00 AM)
+            # 3. Check-in & morning delay calculation
+            # Work start: 8:00 AM local time, Grace period: 19 minutes (8:19 AM)
             delay_min = 0
             late_ded = 0.0
-            if att.check_in:
-                in_dt = att.check_in
-                if not getattr(in_dt, 'tzinfo', None):
-                    in_dt = pytz.utc.localize(in_dt)
-                in_local = in_dt.astimezone(riyadh_tz)
-
+            if in_local:
                 punch_min = in_local.hour * 60 + in_local.minute
                 work_start_min = 8 * 60  # 8:00 AM
                 grace_min = 19
@@ -284,23 +338,36 @@ class HrAttendance(models.Model):
                 hours = delay_min // 60
                 mins = delay_min % 60
                 att.delay_display = f"متأخر ({hours:02d}:{mins:02d})"
-            elif att.check_in:
+            elif in_local:
                 att.delay_display = "على الموعد"
             else:
                 att.delay_display = "-"
 
             att.late_deduction = late_ded
 
-            # 3. Missing checkout deduction (Midnight rule)
+            # 4. Overtime calculation
+            # Compare worked hours with 8.0 standard hours
+            if att.worked_hours and att.check_out:
+                diff = att.worked_hours - 8.0
+                if diff > 0.02:
+                    h = int(diff)
+                    m = int(round((diff - h) * 60))
+                    att.overtime_display = f"{h:02d}:{m:02d} +"
+                elif diff < -0.02:
+                    diff_abs = abs(diff)
+                    h = int(diff_abs)
+                    m = int(round((diff_abs - h) * 60))
+                    att.overtime_display = f"{h:02d}:{m:02d} -"
+                else:
+                    att.overtime_display = "00:00 +"
+            else:
+                att.overtime_display = "-"
+
+            # 5. Missing checkout deduction (Midnight rule)
             missing_ded = 0.0
             occ_rate = 100.0
             note = ""
-            if not att.check_out and att.check_in:
-                in_dt = att.check_in
-                if not getattr(in_dt, 'tzinfo', None):
-                    in_dt = pytz.utc.localize(in_dt)
-                in_local = in_dt.astimezone(riyadh_tz)
-
+            if not att.check_out and att.check_in and in_local:
                 if in_local.date() < today_local_date:
                     missing_ded = 0.25  # Quarter day deduction
                     occ_rate = 0.0

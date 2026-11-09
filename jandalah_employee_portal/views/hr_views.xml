@@ -37,32 +37,63 @@
         </field>
     </record>
 
-    <!-- HR Attendance List Inherit: Jehat Comprehensive Attendance Columns (Management Blueprint) -->
+    <!-- HR Attendance List Inherit: Jehat Comprehensive Attendance Columns (Matching 17 Columns Blueprint) -->
     <record id="view_attendance_tree_inherit_jehat" model="ir.ui.view">
         <field name="name">hr.attendance.list.inherit.jehat</field>
         <field name="model">hr.attendance</field>
         <field name="inherit_id" ref="hr_attendance.view_attendance_tree"/>
         <field name="priority">20</field>
         <field name="arch" type="xml">
+            <!-- 1. Employee header translated -->
+            <xpath expr="//field[@name='employee_id']" position="attributes">
+                <attribute name="string">الموظف</attribute>
+            </xpath>
+
+            <!-- 2. Date column -->
+            <xpath expr="//field[@name='employee_id']" position="after">
+                <field name="attendance_date" string="التاريخ"/>
+            </xpath>
+
+            <!-- 3. Check-In & Location -->
+            <xpath expr="//field[@name='check_in']" position="attributes">
+                <attribute name="string">وقت الحضور</attribute>
+            </xpath>
             <xpath expr="//field[@name='check_in']" position="after">
                 <field name="in_location_state" widget="badge" 
                        decoration-success="in_location_state == 'approved'" 
                        decoration-danger="in_location_state == 'rejected'" 
+                       decoration-muted="in_location_state == 'none'" 
                        string="مكان الحضور"/>
-                <field name="delay_display" string="التأخير الصباحي" 
-                       decoration-danger="morning_delay_minutes &gt; 0" 
-                       decoration-success="morning_delay_minutes == 0"/>
-                <field name="late_deduction" string="خصم التأخير" sum="Total Late Deductions" widget="float"/>
+            </xpath>
+
+            <!-- 4. Check-Out & Location -->
+            <xpath expr="//field[@name='check_out']" position="attributes">
+                <attribute name="string">وقت الانصراف</attribute>
             </xpath>
             <xpath expr="//field[@name='check_out']" position="after">
                 <field name="out_location_state" widget="badge" 
                        decoration-success="out_location_state == 'approved'" 
                        decoration-danger="out_location_state == 'rejected'" 
+                       decoration-muted="out_location_state == 'none'" 
                        string="مكان الانصراف"/>
-                <field name="missing_checkout_deduction" string="خصم الانصراف" sum="Total Checkout Deductions" widget="float"/>
-                <field name="net_deduction" string="صافي الخصم" sum="Total Net Deductions" widget="float" decoration-danger="net_deduction &gt; 0"/>
-                <field name="occupancy_rate" string="نسبة الإشغال %" avg="Average Occupancy" widget="float" decoration-danger="occupancy_rate == 0" decoration-success="occupancy_rate == 100"/>
+                <field name="break_duration" string="الاستراحة" optional="show"/>
+                <field name="overtime_display" string="وقت إضافي"/>
+                <field name="delay_display" string="تأخير" 
+                       decoration-danger="morning_delay_minutes &gt; 0" 
+                       decoration-success="morning_delay_minutes == 0"/>
+                <field name="absence_deduction" string="خصم الغياب" sum="إجمالي خصم الغياب"/>
+                <field name="late_deduction" string="خصم التأخير" sum="إجمالي خصم التأخير"/>
+                <field name="missing_checkout_deduction" string="خصم الانصراف" sum="إجمالي خصم الانصراف"/>
+                <field name="other_deductions" string="خصومات أخرى" sum="إجمالي خصومات أخرى" optional="hide"/>
+                <field name="bonus_amount" string="مكافأة" sum="إجمالي المكافآت" optional="hide"/>
+                <field name="net_deduction" string="صافي" sum="صافي التأثير" decoration-danger="net_deduction &gt; 0"/>
+                <field name="occupancy_rate" string="نسبة الإشغال %" decoration-danger="occupancy_rate == 0" decoration-success="occupancy_rate == 100"/>
                 <field name="attendance_notes" string="ملاحظات" optional="show"/>
+            </xpath>
+
+            <!-- 5. Hide standard worked hours to preserve exact Jehat table look (still togglable via optional) -->
+            <xpath expr="//field[@name='worked_hours']" position="attributes">
+                <attribute name="optional">hide</attribute>
             </xpath>
         </field>
     </record>
