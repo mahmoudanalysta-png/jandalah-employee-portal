@@ -767,14 +767,19 @@
                                             </t>
                                         </td>
                                         <td>
-                                            <t t-if="row['is_unpunched_checkout']">
+                                            <t t-if="row.get('is_leave_day')">
+                                                <span class="badge bg-info text-white rounded-pill px-2.5 py-1">
+                                                    <i class="fa fa-calendar-check-o me-1"/> <t t-esc="row.get('leave_display') or 'إجازة معتمدة'"/>
+                                                </span>
+                                            </t>
+                                            <t t-elif="row.get('is_unpunched_checkout')">
                                                 <span class="badge bg-light text-muted border px-3 py-1 fw-bold" title="لم يتم تسجيل انصراف">-</span>
                                             </t>
-                                            <t t-elif="row['is_open']">
+                                            <t t-elif="row.get('is_open')">
                                                 <span class="badge bg-warning text-dark rounded-pill px-2.5 py-1">مفتوح حالياً</span>
                                             </t>
                                             <t t-else="">
-                                                <span class="fw-bold text-danger"><t t-esc="row['check_out']"/></span>
+                                                <span class="fw-bold text-danger"><t t-esc="row.get('check_out') or '-'"/></span>
                                             </t>
                                         </td>
                                         <td class="fw-bold text-dark"><t t-esc="row['worked_hours']"/></td>

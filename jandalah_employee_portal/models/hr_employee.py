@@ -398,13 +398,46 @@ class HrAttendance(models.Model):
             else:
                 att.out_location_state = 'none'
 
-            # 3. Check-in & morning delay calculation
-            # Work start: 8:00 AM local time, Grace period: 19 minutes (8:19 AM)
+            # 3. Dynamic work schedule from employee contract or calendar
+            # Grace period: 19 minutes
+            work_start_min = 8 * 60  # Default: 8:00 AM
+            standard_day_hours = 8.0
+            emp = att.employee_id
+            if emp:
+                calendar = None
+                contract = getattr(emp, 'contract_id', None)
+                if contract and contract.resource_calendar_id:
+                    calendar = contract.resource_calendar_id
+                elif hasattr(emp, 'contract_ids'):
+                    running_contracts = emp.contract_ids.filtered(lambda c: c.state == 'open' and c.resource_calendar_id)
+                    if running_contracts:
+                        calendar = running_contracts[0].resource_calendar_id
+                    else:
+                        with_cal = emp.contract_ids.filtered(lambda c: c.resource_calendar_id)
+                        if with_cal:
+                            calendar = with_cal[0].resource_calendar_id
+
+                if not calendar and emp.resource_calendar_id:
+                    calendar = emp.resource_calendar_id
+                elif not calendar and emp.company_id and emp.company_id.resource_calendar_id:
+                    calendar = emp.company_id.resource_calendar_id
+
+                if calendar and calendar.attendance_ids and in_local:
+                    weekday_str = str(in_local.weekday())
+                    day_sched = calendar.attendance_ids.filtered(lambda s: s.dayofweek == weekday_str)
+                    if not day_sched:
+                        day_sched = calendar.attendance_ids
+                    if day_sched:
+                        min_start = min(day_sched.mapped('hour_from'))
+                        work_start_min = int(round(min_start * 60))
+                        tot_hours = sum(s.hour_to - s.hour_from for s in day_sched)
+                        if tot_hours > 0:
+                            standard_day_hours = tot_hours
+
             delay_min = 0
             late_ded = 0.0
             if in_local:
                 punch_min = in_local.hour * 60 + in_local.minute
-                work_start_min = 8 * 60  # 8:00 AM
                 grace_min = 19
                 if punch_min > (work_start_min + grace_min):
                     delay_min = punch_min - work_start_min
@@ -426,9 +459,9 @@ class HrAttendance(models.Model):
             att.late_deduction = late_ded
 
             # 4. Overtime calculation
-            # Compare worked hours with 8.0 standard hours
+            # Compare worked hours with dynamic standard hours
             if att.worked_hours and att.check_out:
-                diff = att.worked_hours - 8.0
+                diff = att.worked_hours - standard_day_hours
                 if diff > 0.02:
                     h = int(diff)
                     m = int(round((diff - h) * 60))
@@ -506,9 +539,12 @@ class HrAttendance(models.Model):
 
     @api.model
     def sync_all_validated_leaves(self):
-        """Batch generates attendance records for all existing validated leaves in DB."""
+        """Batch generates attendance records for all existing validated leaves in DB and recalculates dynamic schedule."""
         leaves = self.env['hr.leave'].sudo().search([('state', '=', 'validate')])
         leaves._sync_leaves_to_attendance()
+        all_att = self.sudo().search([('check_in', '!=', False)])
+        if all_att:
+            all_att._compute_jehat_report_fields()
         return True
 
 

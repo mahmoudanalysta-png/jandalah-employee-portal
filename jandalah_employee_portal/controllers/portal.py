@@ -642,31 +642,64 @@ self.addEventListener('fetch', event => {
             if a.in_latitude and a.in_longitude:
                 location_status = 'rejected' if a.is_outside_geofence else 'approved'
 
-            # Morning delay calculation: work start 8:00 AM, 19 min grace period (up to 8:19 AM)
-            # Staying late does NOT cancel or compensate morning delay!
+            # Morning delay calculation: dynamic work start from calendar/contract, 19 min grace period
             delay_minutes = 0
             is_late = False
-            if in_local:
+            is_leave_day = getattr(a, 'is_leave_day', False)
+            if in_local and not is_leave_day:
+                work_start_min = 8 * 60  # Default 8:00 AM
+                calendar = None
+                contract = getattr(emp, 'contract_id', None)
+                if contract and contract.resource_calendar_id:
+                    calendar = contract.resource_calendar_id
+                elif hasattr(emp, 'contract_ids'):
+                    running = emp.contract_ids.filtered(lambda c: c.state == 'open' and c.resource_calendar_id)
+                    if running:
+                        calendar = running[0].resource_calendar_id
+                    else:
+                        with_cal = emp.contract_ids.filtered(lambda c: c.resource_calendar_id)
+                        if with_cal:
+                            calendar = with_cal[0].resource_calendar_id
+
+                if not calendar and emp.resource_calendar_id:
+                    calendar = emp.resource_calendar_id
+                elif not calendar and emp.company_id and emp.company_id.resource_calendar_id:
+                    calendar = emp.company_id.resource_calendar_id
+
+                if calendar and calendar.attendance_ids:
+                    w_day = str(in_local.weekday())
+                    sched = calendar.attendance_ids.filtered(lambda s: s.dayofweek == w_day)
+                    if not sched:
+                        sched = calendar.attendance_ids
+                    if sched:
+                        work_start_min = int(round(min(sched.mapped('hour_from')) * 60))
+
                 punch_min = in_local.hour * 60 + in_local.minute
-                work_start_min = 8 * 60  # 8:00 AM
                 grace_min = 19
                 if punch_min > (work_start_min + grace_min):
                     delay_minutes = punch_min - work_start_min
                     is_late = True
 
+            # Formatted check_in and check_out
+            check_in_str = '-' if is_leave_day else (format_tz_dynamic(a.check_in, tz_name=user_tz_name, time_only=True) if a.check_in else '-')
+            check_out_str = '-' if is_leave_day else out_display
+
             attendances_data.append({
                 'id': a.id,
                 'record': a,
                 'date': in_local.strftime('%Y/%m/%d') if in_local else '-',
-                'check_in': format_tz_dynamic(a.check_in, tz_name=user_tz_name, time_only=True) if a.check_in else '-',
-                'check_out': out_display,
-                'worked_hours': f"{a.worked_hours:.2f} س" if a.worked_hours and not is_unpunched_checkout else ('-' if is_unpunched_checkout else 'قيد العمل'),
-                'is_unpunched_checkout': is_unpunched_checkout,
-                'location_status': location_status,
-                'in_lat': a.in_latitude,
-                'in_lon': a.in_longitude,
-                'out_lat': a.out_latitude,
-                'out_lon': a.out_longitude,
+                'check_in': check_in_str,
+                'check_out': check_out_str,
+                'worked_hours': ('-' if is_leave_day else (f"{a.worked_hours:.2f} س" if a.worked_hours and not is_unpunched_checkout else ('-' if is_unpunched_checkout else 'قيد العمل'))),
+                'is_unpunched_checkout': is_unpunched_checkout and not is_leave_day,
+                'is_open': not a.check_out and not is_unpunched_checkout and not is_leave_day,
+                'is_leave_day': is_leave_day,
+                'leave_display': getattr(a, 'leave_permission_display', '') or '',
+                'location_status': 'none' if is_leave_day else location_status,
+                'in_lat': False if is_leave_day else a.in_latitude,
+                'in_lon': False if is_leave_day else a.in_longitude,
+                'out_lat': False if is_leave_day else a.out_latitude,
+                'out_lon': False if is_leave_day else a.out_longitude,
                 'delay_minutes': delay_minutes,
                 'is_late': is_late,
             })
