@@ -77,9 +77,10 @@
                        string="مكان الانصراف"/>
                 <field name="break_duration" string="الاستراحة" optional="show"/>
                 <field name="overtime_display" string="وقت إضافي"/>
-                <field name="delay_display" string="تأخير" 
+                <field name="delay_display" string="تأخير" widget="badge"
                        decoration-danger="morning_delay_minutes &gt; 0" 
-                       decoration-success="morning_delay_minutes == 0"/>
+                       decoration-success="delay_display == 'على الموعد'"
+                       decoration-muted="delay_display == '-'"/>
                 <field name="absence_deduction" string="خصم الغياب" sum="إجمالي خصم الغياب"/>
                 <field name="late_deduction" string="خصم التأخير" sum="إجمالي خصم التأخير"/>
                 <field name="missing_checkout_deduction" string="خصم الانصراف" sum="إجمالي خصم الانصراف"/>

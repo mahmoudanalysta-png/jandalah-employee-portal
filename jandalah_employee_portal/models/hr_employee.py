@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
 import math
 import datetime
+import logging
 import pytz
 from odoo import models, fields, api, exceptions, _
+
+_logger = logging.getLogger(__name__)
 
 class HrEmployee(models.Model):
     _inherit = 'hr.employee'
@@ -553,69 +556,79 @@ class HrLeave(models.Model):
 
     def action_validate(self):
         res = super(HrLeave, self).action_validate()
-        self._sync_leaves_to_attendance()
+        try:
+            self._sync_leaves_to_attendance()
+        except Exception as e:
+            _logger.exception("Error syncing leaves to attendance in action_validate: %s", e)
         return res
 
     def action_refuse(self):
         res = super(HrLeave, self).action_refuse()
-        Attendance = self.env['hr.attendance'].sudo()
-        for leave in self:
-            leave_attendances = Attendance.search([
-                ('leave_id', '=', leave.id),
-                ('is_leave_day', '=', True),
-            ])
-            if leave_attendances:
-                leave_attendances.unlink()
+        try:
+            Attendance = self.env['hr.attendance'].sudo()
+            for leave in self:
+                leave_attendances = Attendance.search([
+                    ('leave_id', '=', leave.id),
+                    ('is_leave_day', '=', True),
+                ])
+                if leave_attendances:
+                    leave_attendances.unlink()
+        except Exception as e:
+            _logger.exception("Error deleting attendance records in action_refuse: %s", e)
         return res
 
     def _sync_leaves_to_attendance(self):
-        Attendance = self.env['hr.attendance'].sudo()
-        for leave in self:
-            if leave.state != 'validate' or not leave.employee_id:
-                continue
+        try:
+            Attendance = self.env['hr.attendance'].sudo()
+            for leave in self:
+                if leave.state != 'validate' or not leave.employee_id:
+                    continue
 
-            type_name = leave.holiday_status_id.name or ''
-            is_permission = (
-                getattr(leave, 'request_unit_hours', False) or
-                (hasattr(leave, 'number_of_hours_display') and leave.number_of_hours_display > 0 and leave.number_of_hours_display < 8) or
-                any(k in type_name for k in ['إذن', 'اذن', 'استئذان', 'ساعي', 'خروج'])
-            )
-            # Hourly permissions don't generate full-day blank attendance rows
-            if is_permission:
-                continue
+                type_name = leave.holiday_status_id.name or ''
+                is_permission = (
+                    getattr(leave, 'request_unit_hours', False) or
+                    (hasattr(leave, 'number_of_hours_display') and leave.number_of_hours_display > 0 and leave.number_of_hours_display < 8) or
+                    any(k in type_name for k in ['إذن', 'اذن', 'استئذان', 'ساعي', 'خروج'])
+                )
+                # Hourly permissions don't generate full-day blank attendance rows
+                if is_permission:
+                    continue
 
-            date_from = leave.request_date_from or (leave.date_from.date() if leave.date_from else None)
-            date_to = leave.request_date_to or (leave.date_to.date() if leave.date_to else None)
-            if not date_from or not date_to:
-                continue
+                date_from = leave.request_date_from or (leave.date_from.date() if leave.date_from else None)
+                date_to = leave.request_date_to or (leave.date_to.date() if leave.date_to else None)
+                if not date_from or not date_to:
+                    continue
 
-            cur_date = date_from
-            while cur_date <= date_to:
-                existing = Attendance.search([
-                    ('employee_id', '=', leave.employee_id.id),
-                    ('attendance_date', '=', cur_date),
-                ], limit=1)
-
-                if not existing:
+                cur_date = date_from
+                while cur_date <= date_to:
                     dt_start = datetime.datetime.combine(cur_date, datetime.time(0, 0))
                     dt_end = datetime.datetime.combine(cur_date, datetime.time(23, 59, 59))
                     existing = Attendance.search([
                         ('employee_id', '=', leave.employee_id.id),
-                        ('check_in', '>=', dt_start),
-                        ('check_in', '<=', dt_end),
+                        '|',
+                        ('attendance_date', '=', cur_date),
+                        '&', ('check_in', '>=', dt_start), ('check_in', '<=', dt_end),
                     ], limit=1)
 
-                if not existing:
-                    Attendance.create({
-                        'employee_id': leave.employee_id.id,
-                        'check_in': datetime.datetime.combine(cur_date, datetime.time(8, 0)),
-                        'check_out': datetime.datetime.combine(cur_date, datetime.time(8, 0)),
-                        'is_leave_day': True,
-                        'leave_id': leave.id,
-                    })
-                elif existing and existing.is_leave_day and not existing.leave_id:
-                    existing.write({
-                        'leave_id': leave.id,
-                    })
+                    if not existing:
+                        try:
+                            Attendance.create({
+                                'employee_id': leave.employee_id.id,
+                                'check_in': datetime.datetime.combine(cur_date, datetime.time(8, 0)),
+                                'check_out': datetime.datetime.combine(cur_date, datetime.time(8, 0)),
+                                'is_leave_day': True,
+                                'leave_id': leave.id,
+                            })
+                        except Exception as ce:
+                            _logger.warning("Could not create attendance row for leave day %s: %s", cur_date, ce)
+                    elif existing and existing.is_leave_day and not existing.leave_id:
+                        try:
+                            existing.write({
+                                'leave_id': leave.id,
+                            })
+                        except Exception as we:
+                            _logger.warning("Could not update leave_id on attendance %s: %s", existing.id, we)
 
-                cur_date += datetime.timedelta(days=1)
+                    cur_date += datetime.timedelta(days=1)
+        except Exception as e:
+            _logger.exception("Error in _sync_leaves_to_attendance: %s", e)
