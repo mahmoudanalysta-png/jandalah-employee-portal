@@ -755,9 +755,12 @@
                                             </t>
                                         </td>
                                         <td>
-                                            <t t-if="row['is_late']">
+                                            <t t-if="row.get('is_leave_day')">
+                                                <span class="badge bg-light text-muted border rounded-pill px-2.5 py-1">-</span>
+                                            </t>
+                                            <t t-elif="row.get('is_late')">
                                                 <span class="badge bg-danger text-white rounded-pill px-2.5 py-1">
-                                                    <i class="fa fa-clock-o me-1"/> متأخر (<t t-esc="row['delay_minutes']"/> د)
+                                                    <i class="fa fa-clock-o me-1"/> <t t-esc="row.get('delay_display') or 'متأخر'"/>
                                                 </span>
                                             </t>
                                             <t t-else="">

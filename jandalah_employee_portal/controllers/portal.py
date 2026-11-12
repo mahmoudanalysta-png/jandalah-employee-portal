@@ -680,6 +680,14 @@ self.addEventListener('fetch', event => {
                     delay_minutes = punch_min - work_start_min
                     is_late = True
 
+            delay_display = 'على الموعد'
+            if is_late and delay_minutes > 0:
+                h = delay_minutes // 60
+                m = delay_minutes % 60
+                delay_display = f"متأخر ({h:02d}:{m:02d})"
+            elif is_leave_day or not in_local:
+                delay_display = '-'
+
             # Formatted check_in and check_out
             check_in_str = '-' if is_leave_day else (format_tz_dynamic(a.check_in, tz_name=user_tz_name, time_only=True) if a.check_in else '-')
             check_out_str = '-' if is_leave_day else out_display
@@ -701,6 +709,7 @@ self.addEventListener('fetch', event => {
                 'out_lat': False if is_leave_day else a.out_latitude,
                 'out_lon': False if is_leave_day else a.out_longitude,
                 'delay_minutes': delay_minutes,
+                'delay_display': delay_display,
                 'is_late': is_late,
             })
 
