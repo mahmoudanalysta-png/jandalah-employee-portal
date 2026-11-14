@@ -186,6 +186,18 @@
                                 </div>
                             </div>
                             <div class="d-flex align-items-center gap-2">
+                                <!-- Notification Center Bell Button -->
+                                <button type="button" class="btn btn-light rounded-circle shadow-sm position-relative p-2" 
+                                        style="width: 42px; height: 42px;" 
+                                        data-bs-toggle="modal" data-bs-target="#notificationsCenterModal"
+                                        title="مركز التنبيهات والإشعارات">
+                                    <i class="fa fa-bell text-primary fs-5"/>
+                                    <t t-if="total_active_notifications &gt; 0">
+                                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-white" style="font-size: 10px;">
+                                            <t t-esc="total_active_notifications"/>
+                                        </span>
+                                    </t>
+                                </button>
                                 <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#pwaHelpModal">
                                     <i class="fa fa-mobile me-1"/> دليل تثبيت التطبيق
                                 </button>
@@ -211,7 +223,19 @@
                                                 </h5>
                                                 <small class="text-muted" id="ess_live_clock"></small>
                                             </div>
-                                            <p class="text-muted small mb-3">
+                                            <t t-if="is_overdue_checkout">
+                                                <div class="alert alert-warning border-0 shadow-sm rounded-3 py-2 px-3 mb-2 d-flex align-items-center justify-content-between" style="background-color: #fff3cd; border-right: 4px solid #dc3545 !important;">
+                                                    <div class="d-flex align-items-center">
+                                                        <i class="fa fa-clock-o text-danger fs-4 me-2"/>
+                                                        <div>
+                                                            <strong class="d-block text-danger small">تنبيه انتهاء موعد الدوام الرسمي</strong>
+                                                            <span class="text-dark small"><t t-esc="overdue_checkout_msg"/></span>
+                                                        </div>
+                                                    </div>
+                                                    <span class="badge bg-danger rounded-pill px-2.5 py-1">مطلوب الانصراف</span>
+                                                </div>
+                                            </t>
+                                            <p t-else="" class="text-muted small mb-3">
                                                 تسجيل الحضور والانصراف الذكي بالبصمة والموقع الجغرافي (GPS) بالتوقيت المحلي.
                                             </p>
                                         </div>
@@ -247,9 +271,16 @@
                                                 <h5 class="fw-bold mb-0 text-success">
                                                     <i class="fa fa-calendar-check-o me-2"/> طلبات الإجازات
                                                 </h5>
-                                                <span class="badge bg-light text-dark border">
-                                                    <t t-esc="leaves_count"/> طلب إجازة
-                                                </span>
+                                                <div>
+                                                    <t t-if="recent_approved_leaves_count &gt; 0">
+                                                        <span class="badge bg-success rounded-pill px-2.5 py-1 shadow-sm me-1">
+                                                            <i class="fa fa-check-circle me-1"/> تمت موافقة المدير
+                                                        </span>
+                                                    </t>
+                                                    <span class="badge bg-light text-dark border">
+                                                        <t t-esc="leaves_count"/> طلب إجازة
+                                                    </span>
+                                                </div>
                                             </div>
                                             <p class="text-muted small mb-3">
                                                 تقديم طلبات الإجازات ومتابعة حالة اعتمادها بكل سهولة.
@@ -285,8 +316,8 @@
                                             <i class="fa fa-bullhorn fs-5"/>
                                         </div>
                                         <t t-if="unread_announcements &gt; 0">
-                                            <span class="badge bg-danger rounded-pill px-2.5 py-1">
-                                                <t t-esc="unread_announcements"/> غير مقروء
+                                            <span class="badge bg-danger rounded-pill px-2.5 py-1 shadow-sm">
+                                                <i class="fa fa-bell me-1"/> <t t-esc="unread_announcements"/> جديد غير مقروء
                                             </span>
                                         </t>
                                     </div>
@@ -308,8 +339,8 @@
                                             <i class="fa fa-laptop fs-5"/>
                                         </div>
                                         <t t-if="pending_assets &gt; 0">
-                                            <span class="badge bg-warning text-dark rounded-pill px-2.5 py-1">
-                                                <t t-esc="pending_assets"/> بانتظار الإقرار
+                                            <span class="badge bg-warning text-dark rounded-pill px-2.5 py-1 shadow-sm">
+                                                <i class="fa fa-exclamation-triangle me-1"/> <t t-esc="pending_assets"/> بانتظار إقرارك
                                             </span>
                                         </t>
                                     </div>
@@ -331,8 +362,8 @@
                                             <i class="fa fa-gavel fs-5"/>
                                         </div>
                                         <t t-if="pending_penalties &gt; 0">
-                                            <span class="badge bg-danger rounded-pill px-2.5 py-1">
-                                                <t t-esc="pending_penalties"/> مطلوب الرد
+                                            <span class="badge bg-danger rounded-pill px-2.5 py-1 shadow-sm">
+                                                <i class="fa fa-gavel me-1"/> <t t-esc="pending_penalties"/> مطلوب الرد فوراً
                                             </span>
                                         </t>
                                     </div>
@@ -428,6 +459,123 @@
                             </div>
                         </t>
 
+                    </div>
+                </div>
+
+                <!-- Modal: Notifications Center -->
+                <div class="modal fade" id="notificationsCenterModal" tabindex="-1" aria-labelledby="notificationsCenterModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content border-0 shadow-lg rounded-4">
+                            <div class="modal-header border-0 pb-0">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                        <i class="fa fa-bell fs-5"/>
+                                    </div>
+                                    <h5 class="modal-title fw-bold text-dark mb-0" id="notificationsCenterModalLabel">
+                                        مركز التنبيهات والإشعارات
+                                    </h5>
+                                </div>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body p-4">
+                                <t t-if="total_active_notifications == 0">
+                                    <div class="text-center py-4">
+                                        <div class="text-success fs-1 mb-2">
+                                            <i class="fa fa-check-circle-o"/>
+                                        </div>
+                                        <h6 class="fw-bold text-dark">لا توجد إشعارات جديدة حالياً</h6>
+                                        <p class="text-muted small mb-0">جميع طلباتك وسجلاتك محدثة بنجاح.</p>
+                                    </div>
+                                </t>
+                                <t t-else="">
+                                    <div class="d-flex flex-column gap-2">
+                                        <!-- 1. Overdue checkout -->
+                                        <t t-if="is_overdue_checkout">
+                                            <div class="p-3 rounded-3 border d-flex align-items-center justify-content-between" style="background-color: #fff3cd; border-color: #ffecb5 !important;">
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <i class="fa fa-clock-o text-danger fs-4"/>
+                                                    <div>
+                                                        <strong class="d-block text-danger small">تنبيه انتهاء الدوام</strong>
+                                                        <span class="text-dark small" style="font-size: 12px;"><t t-esc="overdue_checkout_msg"/></span>
+                                                    </div>
+                                                </div>
+                                                <a href="/my/attendance" class="btn btn-sm btn-danger rounded-pill px-3 fw-bold">انصراف</a>
+                                            </div>
+                                        </t>
+
+                                        <!-- 2. Unread announcements -->
+                                        <t t-if="unread_announcements &gt; 0">
+                                            <div class="p-3 rounded-3 border d-flex align-items-center justify-content-between bg-light">
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <i class="fa fa-bullhorn text-warning fs-4"/>
+                                                    <div>
+                                                        <strong class="d-block text-dark small">تعاميم وقرارات إدارية جديدة</strong>
+                                                        <span class="text-muted" style="font-size: 12px;">يوجد <t t-esc="unread_announcements"/> تعميم جديد غير مقروء</span>
+                                                    </div>
+                                                </div>
+                                                <a href="/my/announcements" class="btn btn-sm btn-outline-warning rounded-pill px-3 fw-bold">عرض</a>
+                                            </div>
+                                        </t>
+
+                                        <!-- 3. Pending assets -->
+                                        <t t-if="pending_assets &gt; 0">
+                                            <div class="p-3 rounded-3 border d-flex align-items-center justify-content-between bg-light">
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <i class="fa fa-laptop text-info fs-4"/>
+                                                    <div>
+                                                        <strong class="d-block text-dark small">إقرار استلام عهدة</strong>
+                                                        <span class="text-muted" style="font-size: 12px;">يوجد <t t-esc="pending_assets"/> عهدة بانتظار إقرارك</span>
+                                                    </div>
+                                                </div>
+                                                <a href="/my/assets" class="btn btn-sm btn-outline-info rounded-pill px-3 fw-bold">إقرار</a>
+                                            </div>
+                                        </t>
+
+                                        <!-- 4. Pending penalties -->
+                                        <t t-if="pending_penalties &gt; 0">
+                                            <div class="p-3 rounded-3 border d-flex align-items-center justify-content-between" style="background-color: #f8d7da; border-color: #f5c2c7 !important;">
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <i class="fa fa-gavel text-danger fs-4"/>
+                                                    <div>
+                                                        <strong class="d-block text-danger small">قرار جزاء / تحقيق إداري</strong>
+                                                        <span class="text-muted" style="font-size: 12px;">مطلوب تسجيل إفادتك أو الرد على القرار</span>
+                                                    </div>
+                                                </div>
+                                                <a href="/my/penalties" class="btn btn-sm btn-danger rounded-pill px-3 fw-bold">الرد</a>
+                                            </div>
+                                        </t>
+
+                                        <!-- 5. Approved leaves -->
+                                        <t t-if="recent_approved_leaves_count &gt; 0">
+                                            <div class="p-3 rounded-3 border d-flex align-items-center justify-content-between" style="background-color: #d1e7dd; border-color: #badbcc !important;">
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <i class="fa fa-check-circle text-success fs-4"/>
+                                                    <div>
+                                                        <strong class="d-block text-success small">موافقة على الإجازة / الإذن</strong>
+                                                        <span class="text-muted" style="font-size: 12px;">تم اعتماد طلبك من قبل الإدارة</span>
+                                                    </div>
+                                                </div>
+                                                <a href="/my/leaves" class="btn btn-sm btn-success rounded-pill px-3 fw-bold">عرض</a>
+                                            </div>
+                                        </t>
+
+                                        <!-- 6. Supervisor pending team leaves -->
+                                        <t t-if="is_supervisor and team_pending_leaves_count &gt; 0">
+                                            <div class="p-3 rounded-3 border d-flex align-items-center justify-content-between bg-light">
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <i class="fa fa-users text-primary fs-4"/>
+                                                    <div>
+                                                        <strong class="d-block text-dark small">طلبات فريقك بانتظار اعتمادك</strong>
+                                                        <span class="text-muted" style="font-size: 12px;">يوجد <t t-esc="team_pending_leaves_count"/> طلب إجازة لفريقك</span>
+                                                    </div>
+                                                </div>
+                                                <a href="/my/team/leaves" class="btn btn-sm btn-primary rounded-pill px-3 fw-bold">اعتماد</a>
+                                            </div>
+                                        </t>
+                                    </div>
+                                </t>
+                            </div>
+                        </div>
                     </div>
                 </div>
 

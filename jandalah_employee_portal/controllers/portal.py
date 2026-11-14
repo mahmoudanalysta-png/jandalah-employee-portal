@@ -283,6 +283,50 @@ class JandalahCustomerPortal(CustomerPortal):
                 ('employee_id', '=', emp.id)
             ], order='check_in desc', limit=1)
 
+            # Smart Overdue Checkout Alert (Shift completion reminder)
+            is_overdue_checkout = False
+            overdue_checkout_msg = ''
+            if is_checked_in and open_att:
+                calendar = None
+                contract = getattr(emp, 'contract_id', None)
+                if contract and contract.resource_calendar_id:
+                    calendar = contract.resource_calendar_id
+                elif hasattr(emp, 'contract_ids'):
+                    running = emp.contract_ids.filtered(lambda c: c.state == 'open' and c.resource_calendar_id)
+                    if running:
+                        calendar = running[0].resource_calendar_id
+                    elif emp.contract_ids:
+                        with_cal = emp.contract_ids.filtered(lambda c: c.resource_calendar_id)
+                        if with_cal:
+                            calendar = with_cal[0].resource_calendar_id
+
+                if not calendar and emp.resource_calendar_id:
+                    calendar = emp.resource_calendar_id
+                elif not calendar and emp.company_id and emp.company_id.resource_calendar_id:
+                    calendar = emp.company_id.resource_calendar_id
+
+                work_end_min = 17 * 60  # Default: 5:00 PM (17:00)
+                if calendar and calendar.attendance_ids:
+                    w_day = str(now_local.weekday())
+                    sched = calendar.attendance_ids.filtered(lambda s: s.dayofweek == w_day)
+                    if not sched:
+                        sched = calendar.attendance_ids
+                    if sched:
+                        max_end = max(sched.mapped('hour_to'))
+                        work_end_min = int(round(max_end * 60))
+
+                now_min = now_local.hour * 60 + now_local.minute
+                if now_min > (work_end_min + 5):
+                    is_overdue_checkout = True
+                    end_h = work_end_min // 60
+                    end_m = work_end_min % 60
+                    am_pm = 'مساءً' if end_h >= 12 else 'صباحاً'
+                    h12 = end_h if end_h <= 12 else (end_h - 12)
+                    if h12 == 0:
+                        h12 = 12
+                    time_end_str = f"{h12}:{end_m:02d} {am_pm}"
+                    overdue_checkout_msg = f"انتهى موعد دوامك الرسمي في تمام ({time_end_str})، يُرجى تسجيل الانصراف الآن."
+
             # Check supervisor/manager status
             subordinates = self._get_subordinates(emp)
             is_supervisor = bool(subordinates)
@@ -356,18 +400,44 @@ class JandalahCustomerPortal(CustomerPortal):
             except Exception:
                 pass
 
+            # Recent Manager Approved Leaves (Within past 5 days)
+            recent_approved_leaves_count = 0
+            try:
+                five_days_ago = fields.Datetime.to_string(datetime.utcnow() - timedelta(days=5))
+                recent_approved_leaves_count = request.env['hr.leave'].sudo().search_count([
+                    ('employee_id', '=', emp.id),
+                    ('state', '=', 'validate'),
+                    ('write_date', '>=', five_days_ago)
+                ])
+            except Exception:
+                pass
+
+            # Total notifications for header bell and central dashboard
+            total_active_notifications = (
+                unread_announcements +
+                pending_assets +
+                pending_penalties +
+                (1 if is_overdue_checkout else 0) +
+                (1 if recent_approved_leaves_count > 0 else 0) +
+                (team_pending_leaves if is_supervisor else 0)
+            )
+
             values.update({
                 'employee': emp,
                 'is_sales_employee': is_sales_employee,
                 'is_checked_in': is_checked_in,
                 'open_attendance': open_att,
                 'last_attendance': last_att,
+                'is_overdue_checkout': is_overdue_checkout,
+                'overdue_checkout_msg': overdue_checkout_msg,
                 'attendance_count': request.env['hr.attendance'].sudo().search_count([('employee_id', '=', emp.id)]),
                 'leaves_count': request.env['hr.leave'].sudo().search_count([('employee_id', '=', emp.id)]),
+                'recent_approved_leaves_count': recent_approved_leaves_count,
                 'unread_announcements': unread_announcements,
                 'pending_assets': pending_assets,
                 'pending_penalties': pending_penalties,
                 'pending_locations': pending_locations,
+                'total_active_notifications': total_active_notifications,
                 'format_tz': format_tz_dynamic,
                 # Supervisor values
                 'is_supervisor': is_supervisor,
