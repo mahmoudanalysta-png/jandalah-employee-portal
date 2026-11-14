@@ -16,6 +16,7 @@ class JandalahHrPenalty(models.Model):
     ], string='نوع الإجراء', default='warning', required=True)
 
     date = fields.Date(string='تاريخ القرار / الإحالة', default=fields.Date.today, required=True)
+    issued_by = fields.Char(string='الجهة أو المسؤول المصدر', default='إدارة الموارد البشرية', help='مثال: الشؤون القانونية / إدارة الموارد البشرية')
     reason = fields.Text(string='الموضوع / سبب الإجراء أو التحقيق', required=True)
     deduction_days = fields.Float(string='عدد أيام الخصم', default=0.0)
 

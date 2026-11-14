@@ -2153,7 +2153,7 @@
                             <div class="card border-0 shadow-sm rounded-4 p-4 bg-white" style="border: 1px solid #edf2f7 !important;">
                                 <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 pb-2 border-bottom">
                                     <div>
-                                        <div class="d-flex align-items-center gap-2 mb-1">
+                                        <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
                                             <span class="badge bg-warning bg-opacity-25 text-dark rounded-pill px-2.5 py-1 small">
                                                 <t t-if="ann['announcement_type'] == 'circular'">تعميم إداري عام</t>
                                                 <t t-elif="ann['announcement_type'] == 'letter'">خطاب رسمي</t>
@@ -2161,6 +2161,9 @@
                                                 <t t-else="">لائحة وسياسة</t>
                                             </span>
                                             <small class="text-muted"><i class="fa fa-calendar me-1"/> <t t-esc="ann['date']"/></small>
+                                            <span class="badge bg-light text-primary border rounded-pill px-2.5 py-1 small">
+                                                <i class="fa fa-user-circle-o text-primary me-1"/> صادر عن: <strong class="text-dark"><t t-esc="ann.get('issued_by') or 'الإدارة العامة'"/></strong>
+                                            </span>
                                         </div>
                                         <h5 class="fw-bold text-dark mb-0"><t t-esc="ann['name']"/></h5>
                                     </div>
@@ -2252,7 +2255,7 @@
                             <div class="card border-0 shadow-sm rounded-4 p-4 bg-white" style="border: 1px solid #edf2f7 !important;">
                                 <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 pb-2 border-bottom">
                                     <div>
-                                        <div class="d-flex align-items-center gap-2 mb-1">
+                                        <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
                                             <span class="badge bg-danger text-white rounded-pill px-2.5 py-1 small">
                                                 <t t-if="p['penalty_type'] == 'warning'">إنذار / لفت نظر</t>
                                                 <t t-elif="p['penalty_type'] == 'deduction'">خصم من الراتب (<t t-esc="p['deduction_days']"/> يوم)</t>
@@ -2261,6 +2264,9 @@
                                             </span>
                                             <span class="fw-bold text-muted small">رقم: <t t-esc="p['name']"/></span>
                                             <small class="text-muted"><i class="fa fa-calendar me-1"/> <t t-esc="p['date']"/></small>
+                                            <span class="badge bg-light text-secondary border rounded-pill px-2.5 py-1 small">
+                                                <i class="fa fa-user-circle-o text-danger me-1"/> صادر عن: <strong class="text-dark"><t t-esc="p.get('issued_by') or 'إدارة الموارد البشرية'"/></strong>
+                                            </span>
                                         </div>
                                         <h6 class="fw-bold text-dark mt-2 mb-0">سبب وموضوع الإجراء:</h6>
                                     </div>

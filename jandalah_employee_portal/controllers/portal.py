@@ -1334,11 +1334,13 @@ self.addEventListener('fetch', event => {
             elif filter == 'read' and not is_read:
                 continue
 
+            issued_by_val = getattr(a, 'issued_by', False) or (a.create_uid.name if a.create_uid and a.create_uid.name != 'OdooBot' else 'الإدارة العامة')
             announcements_data.append({
                 'id': a.id,
                 'name': a.name,
                 'announcement_type': a.announcement_type,
                 'date': str(a.date or ''),
+                'issued_by': issued_by_val,
                 'content': a.content or '',
                 'has_attachment': bool(a.attachment_id),
                 'attachment_id': a.attachment_id.id if a.attachment_id else None,
@@ -1400,11 +1402,13 @@ self.addEventListener('fetch', event => {
 
         penalties_data = []
         for p in records:
+            issued_by_val = getattr(p, 'issued_by', False) or (p.create_uid.name if p.create_uid and p.create_uid.name != 'OdooBot' else 'إدارة الموارد البشرية')
             penalties_data.append({
                 'id': p.id,
                 'name': p.name,
                 'penalty_type': p.penalty_type,
                 'date': str(p.date or ''),
+                'issued_by': issued_by_val,
                 'reason': p.reason or '',
                 'deduction_days': p.deduction_days or 0.0,
                 'state': p.state,

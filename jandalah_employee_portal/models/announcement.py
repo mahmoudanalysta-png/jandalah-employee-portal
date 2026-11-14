@@ -15,6 +15,7 @@ class JandalahAnnouncement(models.Model):
     ], string='نوع الإشعار', default='circular', required=True)
     
     date = fields.Date(string='تاريخ الإصدار', default=fields.Date.today, required=True)
+    issued_by = fields.Char(string='الجهة أو المسؤول المصدر', default='الإدارة العامة', help='مثال: الإدارة العامة / د. عماد / إدارة الموارد البشرية')
     content = fields.Html(string='نص التعميم / القرار', required=True)
     
     target_type = fields.Selection([
