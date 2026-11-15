@@ -106,7 +106,7 @@
         <field name="name">jandalah.announcement.tree</field>
         <field name="model">jandalah.announcement</field>
         <field name="arch" type="xml">
-            <list string="التعاميم والقرارات الإدارية">
+            <tree string="التعاميم والقرارات الإدارية">
                 <field name="date"/>
                 <field name="name"/>
                 <field name="issued_by"/>
@@ -115,7 +115,7 @@
                 <field name="department_id" optional="show"/>
                 <field name="ack_count"/>
                 <field name="active" widget="boolean_toggle"/>
-            </list>
+            </tree>
         </field>
     </record>
 
@@ -134,8 +134,8 @@
                             <field name="announcement_type"/>
                             <field name="issued_by" placeholder="مثال: الإدارة العامة / د. عماد / إدارة الموارد البشرية"/>
                             <field name="date"/>
-                            <field name="attachment_file" filename="attachment_name" string="رفع المرفق الرسمي (PDF / صورة)"/>
                             <field name="attachment_name" invisible="1"/>
+                            <field name="attachment_file" filename="attachment_name" string="رفع المرفق الرسمي (PDF / صورة)"/>
                         </group>
                         <group>
                             <field name="target_type"/>
@@ -150,10 +150,10 @@
                         </page>
                         <page string="سجل إقرارات الاطلاع للموظفين">
                             <field name="ack_ids" readonly="1">
-                                <list string="إقرارات الاطلاع">
+                                <tree string="إقرارات الاطلاع">
                                     <field name="employee_id"/>
                                     <field name="ack_date"/>
-                                </list>
+                                </tree>
                             </field>
                         </page>
                     </notebook>
@@ -165,7 +165,7 @@
     <record id="action_jandalah_announcements" model="ir.actions.act_window">
         <field name="name">التعاميم والقرارات</field>
         <field name="res_model">jandalah.announcement</field>
-        <field name="view_mode">list,form</field>
+        <field name="view_mode">tree,form</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
                 أنشئ أول تعميم إداري أو خطاب رسمي ليظهر فوراً في بوابة الموظفين مع إشعار بالاطلاع.
@@ -178,7 +178,7 @@
         <field name="name">jandalah.hr.penalty.tree</field>
         <field name="model">jandalah.hr.penalty</field>
         <field name="arch" type="xml">
-            <list string="الجزاءات والتحقيقات الإدارية">
+            <tree string="الجزاءات والتحقيقات الإدارية">
                 <field name="name"/>
                 <field name="employee_id"/>
                 <field name="penalty_type"/>
@@ -186,7 +186,7 @@
                 <field name="deduction_days" optional="show"/>
                 <field name="state" widget="badge" decoration-info="state == 'issued'" decoration-success="state == 'accepted'" decoration-danger="state == 'objected'" decoration-muted="state == 'closed'"/>
                 <field name="employee_response" optional="show"/>
-            </list>
+            </tree>
         </field>
     </record>
 
@@ -210,8 +210,8 @@
                             <field name="penalty_type"/>
                             <field name="date"/>
                             <field name="deduction_days" invisible="penalty_type != 'deduction'"/>
-                            <field name="attachment_file" filename="attachment_name" string="رفع المستند الرسمي (PDF / صورة)"/>
                             <field name="attachment_name" invisible="1"/>
+                            <field name="attachment_file" filename="attachment_name" string="رفع المستند الرسمي (PDF / صورة)"/>
                         </group>
                         <group>
                             <field name="employee_response" readonly="1"/>
@@ -236,7 +236,7 @@
     <record id="action_jandalah_penalties" model="ir.actions.act_window">
         <field name="name">الجزاءات والتحقيقات</field>
         <field name="res_model">jandalah.hr.penalty</field>
-        <field name="view_mode">list,form</field>
+        <field name="view_mode">tree,form</field>
     </record>
 
     <!-- ==================== 3. Assets Views ==================== -->
@@ -244,14 +244,14 @@
         <field name="name">jandalah.hr.asset.tree</field>
         <field name="model">jandalah.hr.asset</field>
         <field name="arch" type="xml">
-            <list string="العهد ومستلزمات العمل">
+            <tree string="العهد ومستلزمات العمل">
                 <field name="name"/>
                 <field name="asset_code"/>
                 <field name="category"/>
                 <field name="employee_id"/>
                 <field name="handover_date"/>
                 <field name="state" widget="badge" decoration-warning="state == 'assigned'" decoration-success="state == 'acknowledged'" decoration-muted="state == 'returned'"/>
-            </list>
+            </tree>
         </field>
     </record>
 
@@ -294,7 +294,7 @@
     <record id="action_jandalah_assets" model="ir.actions.act_window">
         <field name="name">العهد ومستلزمات العمل</field>
         <field name="res_model">jandalah.hr.asset</field>
-        <field name="view_mode">list,form</field>
+        <field name="view_mode">tree,form</field>
     </record>
 
     <!-- ==================== 4. Location Requests Views ==================== -->
@@ -302,14 +302,14 @@
         <field name="name">jandalah.location.request.tree</field>
         <field name="model">jandalah.location.request</field>
         <field name="arch" type="xml">
-            <list string="طلبات العمل من موقع مؤقت">
+            <tree string="طلبات العمل من موقع مؤقت">
                 <field name="employee_id"/>
                 <field name="temp_location_name"/>
                 <field name="date_from"/>
                 <field name="date_to"/>
                 <field name="supervisor_id"/>
                 <field name="state" widget="badge" decoration-info="state == 'confirm'" decoration-success="state == 'approve'" decoration-danger="state == 'refuse'"/>
-            </list>
+            </tree>
         </field>
     </record>
 
@@ -355,7 +355,7 @@
     <record id="action_jandalah_location_requests" model="ir.actions.act_window">
         <field name="name">طلبات المواقع المؤقتة</field>
         <field name="res_model">jandalah.location.request</field>
-        <field name="view_mode">list,form</field>
+        <field name="view_mode">tree,form</field>
     </record>
 
     <!-- ==================== Menus ==================== -->
