@@ -117,6 +117,29 @@ class JandalahAnnouncement(models.Model):
 
         return {'has_attachment': False, 'data': None, 'name': None, 'source': None, 'id': None}
 
+    def init(self):
+        super().init()
+        try:
+            self.env.cr.execute("""
+                UPDATE ir_ui_view 
+                SET active = false 
+                WHERE model = 'jandalah.announcement' 
+                  AND type = 'form' 
+                  AND inherit_id IS NOT NULL;
+
+                UPDATE ir_ui_view 
+                SET active = false 
+                WHERE inherit_id IN (
+                    SELECT res_id 
+                    FROM ir_model_data 
+                    WHERE model = 'ir.ui.view' 
+                      AND module = 'jandalah_employee_portal' 
+                      AND name = 'view_jandalah_announcement_form'
+                );
+            """)
+        except Exception as e:
+            _logger.warning("Error cleaning custom inherited views: %s", e)
+
     ack_ids = fields.One2many('jandalah.announcement.ack', 'announcement_id', string='إقرارات الاطلاع')
     ack_count = fields.Integer(string='عدد المطلعين', compute='_compute_ack_count')
 

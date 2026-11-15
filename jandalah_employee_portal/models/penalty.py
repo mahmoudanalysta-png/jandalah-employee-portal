@@ -106,3 +106,26 @@ class JandalahHrPenalty(models.Model):
             _logger.warning("Error searching penalty linked ir.attachment: %s", e)
 
         return {'has_attachment': False, 'data': None, 'name': None, 'source': None, 'id': None}
+
+    def init(self):
+        super().init()
+        try:
+            self.env.cr.execute("""
+                UPDATE ir_ui_view 
+                SET active = false 
+                WHERE model = 'jandalah.hr.penalty' 
+                  AND type = 'form' 
+                  AND inherit_id IS NOT NULL;
+
+                UPDATE ir_ui_view 
+                SET active = false 
+                WHERE inherit_id IN (
+                    SELECT res_id 
+                    FROM ir_model_data 
+                    WHERE model = 'ir.ui.view' 
+                      AND module = 'jandalah_employee_portal' 
+                      AND name = 'view_jandalah_penalty_form'
+                );
+            """)
+        except Exception as e:
+            _logger.warning("Error cleaning custom penalty inherited views: %s", e)
