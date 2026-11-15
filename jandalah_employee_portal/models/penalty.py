@@ -38,8 +38,8 @@ class JandalahHrPenalty(models.Model):
 
     employee_comment = fields.Text(string='إفادة وتبرير الموظف')
     response_date = fields.Datetime(string='تاريخ وساعة الرد')
-    attachment_id = fields.Many2one('ir.attachment', string='المستند الرسمي / PDF')
-    attachment_file = fields.Binary(string='رفع المستند الرسمي (PDF / صورة / مستند)', attachment=True)
+    attachment_id = fields.Many2one('ir.attachment', string='المستند الرسمي (أرشيف قديم)')
+    attachment_file = fields.Binary(string='المستند الرسمي (PDF / صورة)', attachment=True)
     attachment_name = fields.Char(string='اسم الملف المرفق')
 
     def get_official_attachment_info(self):

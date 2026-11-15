@@ -31,8 +31,8 @@ class JandalahAnnouncement(models.Model):
     department_id = fields.Many2one('hr.department', string='القسم المستهدف')
     employee_ids = fields.Many2many('hr.employee', 'jandalah_announcement_emp_rel', 'announcement_id', 'employee_id', string='الموظفون المخصصون')
     
-    attachment_id = fields.Many2one('ir.attachment', string='المرفق الرسمي / مستند PDF')
-    attachment_file = fields.Binary(string='رفع المرفق الرسمي (PDF / صورة / مستند)', attachment=True)
+    attachment_id = fields.Many2one('ir.attachment', string='المرفق الرسمي (أرشيف قديم)')
+    attachment_file = fields.Binary(string='المرفق الرسمي (PDF / صورة)', attachment=True)
     attachment_name = fields.Char(string='اسم الملف المرفق')
     active = fields.Boolean(string='نشط', default=True)
 
