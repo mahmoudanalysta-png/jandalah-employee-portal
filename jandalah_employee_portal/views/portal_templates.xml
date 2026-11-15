@@ -744,12 +744,44 @@
 
                     function copyPortalUrl() {
                         const url = window.location.origin + '/my';
-                        navigator.clipboard.writeText(url).then(() => {
+                        function showFeedback() {
                             const f1 = document.getElementById('copy_feedback_chrome');
                             const f2 = document.getElementById('copy_feedback_inapp');
                             if (f1) f1.classList.remove('d-none');
                             if (f2) f2.classList.remove('d-none');
-                        });
+                            setTimeout(() => {
+                                if (f1) f1.classList.add('d-none');
+                                if (f2) f2.classList.add('d-none');
+                            }, 3500);
+                        }
+                        function execCommandFallback() {
+                            try {
+                                const tempInput = document.createElement('input');
+                                tempInput.type = 'text';
+                                tempInput.value = url;
+                                tempInput.style.position = 'fixed';
+                                tempInput.style.opacity = '0';
+                                document.body.appendChild(tempInput);
+                                tempInput.focus();
+                                tempInput.select();
+                                document.execCommand('copy');
+                                document.body.removeChild(tempInput);
+                                showFeedback();
+                            } catch (e) {
+                                console.warn('Copy fallback error:', e);
+                            }
+                        }
+                        try {
+                            if (navigator.clipboard &amp;&amp; navigator.clipboard.writeText) {
+                                navigator.clipboard.writeText(url).then(showFeedback).catch(() => {
+                                    execCommandFallback();
+                                });
+                            } else {
+                                execCommandFallback();
+                            }
+                        } catch (err) {
+                            execCommandFallback();
+                        }
                     }
 
                     // 4. GPS Geolocation and 1-Tap Toggle
@@ -2134,13 +2166,29 @@
                     </div>
                 </div>
 
+                <!-- Prominent New Announcement Alert Notification Banner -->
+                <t t-if="unread_count &gt; 0 and active_filter != 'read'">
+                    <div class="alert alert-danger border-0 shadow-sm rounded-4 p-3 mb-3 d-flex align-items-center justify-content-between flex-wrap gap-2" style="background-color: #fff5f5; border-right: 5px solid #dc3545 !important;">
+                        <div class="d-flex align-items-center">
+                            <div class="rounded-circle bg-danger text-white p-2 d-flex align-items-center justify-content-center me-3" style="width: 42px; height: 42px;">
+                                <i class="fa fa-bell fs-5"/>
+                            </div>
+                            <div>
+                                <h6 class="fw-bold mb-0 text-danger">تنبيه: لديك (<t t-esc="unread_count"/>) تعميم جديد غير مقروء!</h6>
+                                <small class="text-dark">يُرجى قراءة التعاميم الرسمية الموضحة بالأسفل والضغط على زر "أقر بقراءة التعميم والالتزام به".</small>
+                            </div>
+                        </div>
+                        <span class="badge bg-danger rounded-pill px-3 py-2">مطلوب الإقرار</span>
+                    </div>
+                </t>
+
                 <!-- Filters -->
                 <div class="d-flex gap-2 mb-3">
                     <a href="/my/announcements?filter=all" t-attf-class="btn btn-sm rounded-pill px-3 #{'btn-primary' if active_filter == 'all' else 'btn-outline-secondary'}">
                         الكل (<t t-esc="len(announcements)"/>)
                     </a>
                     <a href="/my/announcements?filter=unread" t-attf-class="btn btn-sm rounded-pill px-3 #{'btn-danger' if active_filter == 'unread' else 'btn-outline-secondary'}">
-                        غير مقروءة
+                        غير مقروءة <t t-if="unread_count &gt; 0"><span class="badge bg-danger rounded-pill ms-1 text-white"><t t-esc="unread_count"/></span></t>
                     </a>
                     <a href="/my/announcements?filter=read" t-attf-class="btn btn-sm rounded-pill px-3 #{'btn-success' if active_filter == 'read' else 'btn-outline-secondary'}">
                         تم الاطلاع

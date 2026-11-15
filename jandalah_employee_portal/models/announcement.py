@@ -32,6 +32,49 @@ class JandalahAnnouncement(models.Model):
     attachment_name = fields.Char(string='اسم الملف المرفق')
     active = fields.Boolean(string='نشط', default=True)
 
+    def get_official_attachment_info(self):
+        """Safely retrieves attachment metadata and data whether stored in binary field, Many2one, or ir.attachment."""
+        self.ensure_one()
+        # 1. Direct binary field on model
+        if self.attachment_file or self.attachment_name:
+            return {
+                'has_attachment': True,
+                'data': self.attachment_file,
+                'name': self.attachment_name or f"announcement_{self.id}.pdf",
+                'source': 'binary',
+            }
+
+        # 2. Linked ir.attachment (e.g. uploaded via control panel, chatter, or mail)
+        Att = self.env['ir.attachment'].sudo()
+        att = Att.search([
+            ('res_model', '=', 'jandalah.announcement'),
+            ('res_id', '=', self.id),
+            ('name', '!=', 'loader.js'),
+            ('name', 'not like', '%.js'),
+        ], order='id desc', limit=1)
+        if att and (att.datas or att.db_datas or att.store_fname):
+            return {
+                'has_attachment': True,
+                'data': att.datas,
+                'name': att.name or f"announcement_{self.id}.pdf",
+                'source': 'ir_attachment',
+                'id': att.id,
+            }
+
+        # 3. Many2one attachment_id
+        if self.attachment_id:
+            att = self.attachment_id
+            if att.name and att.name != 'loader.js' and not att.name.endswith('.js') and (att.datas or att.db_datas or att.store_fname):
+                return {
+                    'has_attachment': True,
+                    'data': att.datas,
+                    'name': att.name or f"announcement_{self.id}.pdf",
+                    'source': 'attachment_id',
+                    'id': att.id,
+                }
+
+        return {'has_attachment': False, 'data': None, 'name': None, 'source': None}
+
     ack_ids = fields.One2many('jandalah.announcement.ack', 'announcement_id', string='إقرارات الاطلاع')
     ack_count = fields.Integer(string='عدد المطلعين', compute='_compute_ack_count')
 
