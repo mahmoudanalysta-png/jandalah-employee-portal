@@ -40,13 +40,14 @@ class JandalahAnnouncement(models.Model):
         """Safely retrieves attachment metadata and data whether stored in binary field, Many2one, or ir.attachment."""
         self.ensure_one()
         # 1. Direct binary field on model (only if content exists)
-        if self.attachment_file:
-            name = self.attachment_name or f"announcement_{self.id}.pdf"
+        rec_no_bin = self.with_context(bin_size=False)
+        if rec_no_bin.attachment_file:
+            name = rec_no_bin.attachment_name or f"announcement_{self.id}.pdf"
             if '.' not in name:
                 name = f"{name}.pdf"
             return {
                 'has_attachment': True,
-                'data': self.attachment_file,
+                'data': rec_no_bin.attachment_file,
                 'name': name,
                 'source': 'binary',
                 'id': None,
@@ -55,7 +56,7 @@ class JandalahAnnouncement(models.Model):
         # 2. Many2one attachment_id (user uploaded directly into attachment_id)
         if self.attachment_id:
             try:
-                att = self.attachment_id.sudo()
+                att = self.attachment_id.sudo().with_context(bin_size=False)
                 name = att.name or f"announcement_{self.id}.pdf"
                 if name != 'loader.js' and not name.lower().endswith('.js'):
                     if '.' not in name:
@@ -63,6 +64,14 @@ class JandalahAnnouncement(models.Model):
                     datas = att.datas
                     if not datas and getattr(att, 'raw', False):
                         datas = base64.b64encode(att.raw).decode('utf-8')
+                    if not datas and getattr(att, 'store_fname', False):
+                        try:
+                            file_bytes = att._file_read(att.store_fname)
+                            if file_bytes:
+                                datas = base64.b64encode(file_bytes).decode('utf-8')
+                        except Exception as e_filestore:
+                            _logger.warning("Error reading filestore: %s", e_filestore)
+
                     return {
                         'has_attachment': True,
                         'data': datas,
@@ -75,7 +84,7 @@ class JandalahAnnouncement(models.Model):
 
         # 3. Linked ir.attachment (e.g. uploaded via chatter or control panel)
         try:
-            Att = self.env['ir.attachment'].sudo()
+            Att = self.env['ir.attachment'].sudo().with_context(bin_size=False)
             att = Att.search([
                 ('res_model', '=', 'jandalah.announcement'),
                 ('res_id', '=', self.id),
@@ -89,6 +98,13 @@ class JandalahAnnouncement(models.Model):
                 datas = att.datas
                 if not datas and getattr(att, 'raw', False):
                     datas = base64.b64encode(att.raw).decode('utf-8')
+                if not datas and getattr(att, 'store_fname', False):
+                    try:
+                        file_bytes = att._file_read(att.store_fname)
+                        if file_bytes:
+                            datas = base64.b64encode(file_bytes).decode('utf-8')
+                    except Exception:
+                        pass
                 return {
                     'has_attachment': True,
                     'data': datas,
@@ -98,17 +114,6 @@ class JandalahAnnouncement(models.Model):
                 }
         except Exception as e:
             _logger.warning("Error searching linked ir.attachment: %s", e)
-
-        # 4. Fallback for test announcements to verify download functionality
-        if any(w in (self.name or '') for w in ['اختبار', 'تجربة', 'test', 'Test']):
-            SAMPLE_PDF_B64 = "JVBERi0xLjQKJcTl8uXrp/Og0MTGCjEgMCBvYmoKPDwKL1R5cGUgL0NhdGFsb2cKL1BhZ2VzIDIgMCBSCj4+CmVuZG9iagoyIDAgb2JqCjw8Ci9UeXBlIC9QYWdlcwovS2lkcyBbMyAwIFJdCi9Db3VudCAxIAo+PgplbmRvYmoKMyAwIG9iago8PAovVHlwZSAvUGFnZQovUGFyZW50IDIgMCBSCi9NZWRpYUJveCBbMCAwIDYxMiA3OTJdCi9Db250ZW50cyA0IDAgUgovUmVzb3VyY2VzIDw8Ci9Gb250IDw8Ci9GMSA1IDAgUgo+Pgo+PgplbmRvYmoKNCAwIG9iago8PAovTGVuZ3RoIDQ0Cj4+CnN0cmVhbQpCVAovRjEgMjQgVGYKNTAgNzAwIFRECihKYW5kYWxhaCBPZmZpY2lhbCBEb2N1bWVudCkgVGoKRVQKZW5kc3RyZWFtCmVuZG9iago1IDAgb2JqCjw8Ci9UeXBlIC9Gb250Ci9TdWJ0eXBlIC9UeXBlMQovQmFzZUZvbnQgL0hlbHZldGljYQo+PgplbmRvYmoKeHJlZgowIDYKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMDE4IDAwMDAwIG4gCjAwMDAwMDAwNjggMDAwMDAgbiAKMDAwMDAwMDEyNSAwMDAwMCBuIAowMDAwMDAwMjQ5IDAwMDAwIG4gCjAwMDAwMDAzNDQgMDAwMDAgbiAKdHJhaWxlcgo8PAovU2l6ZSA2Ci9Sb290IDEgMCBSCj4+CnN0YXJ0eHJlZgowMDAwMDAwNDM1CiUlRU9G"
-            return {
-                'has_attachment': True,
-                'data': SAMPLE_PDF_B64,
-                'name': 'خطاب_تعميم_رسمي_اختبار.pdf',
-                'source': 'sample',
-                'id': None,
-            }
 
         return {'has_attachment': False, 'data': None, 'name': None, 'source': None, 'id': None}
 

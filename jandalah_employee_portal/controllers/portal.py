@@ -1423,13 +1423,42 @@ self.addEventListener('fetch', event => {
             return request.not_found()
 
         att_info = ann.get_official_attachment_info()
-        if not att_info['has_attachment'] or not att_info['data']:
+        if not att_info['has_attachment']:
             return request.redirect('/my/announcements?error=no_attachment')
 
-        try:
-            file_data = base64.b64decode(att_info['data'])
-        except Exception as e:
-            _logger.error("Failed to decode announcement file data: %s", e)
+        file_data = None
+        if att_info.get('id'):
+            try:
+                att = request.env['ir.attachment'].sudo().with_context(bin_size=False).browse(att_info['id'])
+                if att.exists():
+                    file_data = att.raw
+                    if not file_data and att.datas:
+                        try:
+                            file_data = base64.b64decode(att.datas)
+                        except Exception:
+                            file_data = att.datas
+                    if not file_data and getattr(att, 'store_fname', False):
+                        try:
+                            file_data = att._file_read(att.store_fname)
+                        except Exception:
+                            pass
+            except Exception as e_att:
+                _logger.warning("Error fetching announcement attachment raw bytes: %s", e_att)
+
+        if not file_data and att_info.get('data'):
+            try:
+                d = att_info['data']
+                if isinstance(d, str):
+                    file_data = base64.b64decode(d)
+                elif isinstance(d, bytes):
+                    try:
+                        file_data = base64.b64decode(d)
+                    except Exception:
+                        file_data = d
+            except Exception as e_dec:
+                _logger.error("Failed to decode announcement file data: %s", e_dec)
+
+        if not file_data:
             return request.redirect('/my/announcements?error=invalid_file')
 
         filename = att_info['name'] or f"announcement_{ann.id}.pdf"
@@ -1541,13 +1570,42 @@ self.addEventListener('fetch', event => {
             return request.not_found()
 
         att_info = p.get_official_attachment_info()
-        if not att_info['has_attachment'] or not att_info['data']:
+        if not att_info['has_attachment']:
             return request.redirect('/my/penalties?error=no_attachment')
 
-        try:
-            file_data = base64.b64decode(att_info['data'])
-        except Exception as e:
-            _logger.error("Failed to decode penalty file data: %s", e)
+        file_data = None
+        if att_info.get('id'):
+            try:
+                att = request.env['ir.attachment'].sudo().with_context(bin_size=False).browse(att_info['id'])
+                if att.exists():
+                    file_data = att.raw
+                    if not file_data and att.datas:
+                        try:
+                            file_data = base64.b64decode(att.datas)
+                        except Exception:
+                            file_data = att.datas
+                    if not file_data and getattr(att, 'store_fname', False):
+                        try:
+                            file_data = att._file_read(att.store_fname)
+                        except Exception:
+                            pass
+            except Exception as e_att:
+                _logger.warning("Error fetching penalty attachment raw bytes: %s", e_att)
+
+        if not file_data and att_info.get('data'):
+            try:
+                d = att_info['data']
+                if isinstance(d, str):
+                    file_data = base64.b64decode(d)
+                elif isinstance(d, bytes):
+                    try:
+                        file_data = base64.b64decode(d)
+                    except Exception:
+                        file_data = d
+            except Exception as e_dec:
+                _logger.error("Failed to decode penalty file data: %s", e_dec)
+
+        if not file_data:
             return request.redirect('/my/penalties?error=invalid_file')
 
         filename = att_info['name'] or f"penalty_{p.id}.pdf"
