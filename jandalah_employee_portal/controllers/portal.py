@@ -305,6 +305,10 @@ class JandalahCustomerPortal(CustomerPortal):
                 elif not calendar and emp.company_id and emp.company_id.resource_calendar_id:
                     calendar = emp.company_id.resource_calendar_id
 
+                standard_hours = 8.0
+                if calendar:
+                    standard_hours = getattr(calendar, 'hours_per_day', 8.0) or 8.0
+
                 work_end_min = 17 * 60  # Default: 5:00 PM (17:00)
                 if calendar and calendar.attendance_ids:
                     w_day = str(now_local.weekday())
@@ -314,11 +318,26 @@ class JandalahCustomerPortal(CustomerPortal):
                     if sched:
                         max_end = max(sched.mapped('hour_to'))
                         work_end_min = int(round(max_end * 60))
+                        tot_h = sum(s.hour_to - s.hour_from for s in sched)
+                        if tot_h > 0:
+                            standard_hours = tot_h
+
+                # Dynamic Shift Completion: If employee is on an afternoon/evening shift (e.g. check-in after midday),
+                # the expected shift end is dynamically calculated from check-in + required working hours
+                if open_att.check_in:
+                    in_dt = open_att.check_in
+                    if not getattr(in_dt, 'tzinfo', None):
+                        in_dt = pytz.utc.localize(in_dt)
+                    in_local = in_dt.astimezone(emp_tz)
+                    in_min = in_local.hour * 60 + in_local.minute
+                    expected_end_min = in_min + int(round(standard_hours * 60))
+                    if expected_end_min > work_end_min:
+                        work_end_min = expected_end_min
 
                 now_min = now_local.hour * 60 + now_local.minute
                 if now_min > (work_end_min + 5):
                     is_overdue_checkout = True
-                    end_h = work_end_min // 60
+                    end_h = (work_end_min // 60) % 24
                     end_m = work_end_min % 60
                     am_pm = 'مساءً' if end_h >= 12 else 'صباحاً'
                     h12 = end_h if end_h <= 12 else (end_h - 12)
