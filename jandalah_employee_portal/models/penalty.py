@@ -34,4 +34,6 @@ class JandalahHrPenalty(models.Model):
 
     employee_comment = fields.Text(string='إفادة وتبرير الموظف')
     response_date = fields.Datetime(string='تاريخ وساعة الرد')
-    attachment_id = fields.Many2one('ir.attachment', string='المستند الرسمي المرفق')
+    attachment_id = fields.Many2one('ir.attachment', string='المستند الرسمي (سجل قديم)')
+    attachment_file = fields.Binary(string='رفع المستند الرسمي (PDF / صورة / مستند)', attachment=True)
+    attachment_name = fields.Char(string='اسم الملف المرفق')

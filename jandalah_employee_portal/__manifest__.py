@@ -20,6 +20,11 @@
         'views/portal_templates.xml',
         'views/hr_views.xml',
     ],
+    'assets': {
+        'web.assets_backend': [
+            'jandalah_employee_portal/static/src/css/backend_attendance.css',
+        ],
+    },
     'installable': True,
     'application': True,
     'auto_install': False,

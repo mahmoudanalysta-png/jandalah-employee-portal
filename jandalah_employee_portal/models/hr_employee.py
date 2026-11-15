@@ -451,9 +451,7 @@ class HrAttendance(models.Model):
 
             att.morning_delay_minutes = delay_min
             if delay_min > 0:
-                hours = delay_min // 60
-                mins = delay_min % 60
-                att.delay_display = f"متأخر ({hours:02d}:{mins:02d})"
+                att.delay_display = f"متأخر ({delay_min} د)"
             elif in_local:
                 att.delay_display = "على الموعد"
             else:
@@ -557,22 +555,33 @@ class HrLeave(models.Model):
     def action_validate(self):
         res = super(HrLeave, self).action_validate()
         try:
-            self._sync_leaves_to_attendance()
+            with self.env.cr.savepoint():
+                self._sync_leaves_to_attendance()
         except Exception as e:
             _logger.exception("Error syncing leaves to attendance in action_validate: %s", e)
+        return res
+
+    def action_approve(self):
+        res = super(HrLeave, self).action_approve()
+        try:
+            with self.env.cr.savepoint():
+                self._sync_leaves_to_attendance()
+        except Exception as e:
+            _logger.exception("Error syncing leaves to attendance in action_approve: %s", e)
         return res
 
     def action_refuse(self):
         res = super(HrLeave, self).action_refuse()
         try:
-            Attendance = self.env['hr.attendance'].sudo()
-            for leave in self:
-                leave_attendances = Attendance.search([
-                    ('leave_id', '=', leave.id),
-                    ('is_leave_day', '=', True),
-                ])
-                if leave_attendances:
-                    leave_attendances.unlink()
+            with self.env.cr.savepoint():
+                Attendance = self.env['hr.attendance'].sudo()
+                for leave in self:
+                    leave_attendances = Attendance.search([
+                        ('leave_id', '=', leave.id),
+                        ('is_leave_day', '=', True),
+                    ])
+                    if leave_attendances:
+                        leave_attendances.unlink()
         except Exception as e:
             _logger.exception("Error deleting attendance records in action_refuse: %s", e)
         return res
@@ -612,20 +621,22 @@ class HrLeave(models.Model):
 
                     if not existing:
                         try:
-                            Attendance.create({
-                                'employee_id': leave.employee_id.id,
-                                'check_in': datetime.datetime.combine(cur_date, datetime.time(8, 0)),
-                                'check_out': datetime.datetime.combine(cur_date, datetime.time(8, 0)),
-                                'is_leave_day': True,
-                                'leave_id': leave.id,
-                            })
+                            with self.env.cr.savepoint():
+                                Attendance.create({
+                                    'employee_id': leave.employee_id.id,
+                                    'check_in': datetime.datetime.combine(cur_date, datetime.time(8, 0)),
+                                    'check_out': datetime.datetime.combine(cur_date, datetime.time(8, 0)),
+                                    'is_leave_day': True,
+                                    'leave_id': leave.id,
+                                })
                         except Exception as ce:
                             _logger.warning("Could not create attendance row for leave day %s: %s", cur_date, ce)
                     elif existing and existing.is_leave_day and not existing.leave_id:
                         try:
-                            existing.write({
-                                'leave_id': leave.id,
-                            })
+                            with self.env.cr.savepoint():
+                                existing.write({
+                                    'leave_id': leave.id,
+                                })
                         except Exception as we:
                             _logger.warning("Could not update leave_id on attendance %s: %s", existing.id, we)
 

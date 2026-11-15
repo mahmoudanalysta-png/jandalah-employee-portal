@@ -1,0 +1,73 @@
+/* -*- coding: utf-8 -*- */
+/* Jandalah Employee Portal - Backend Attendance List Badges Styling */
+/* Matches the shaded, vivid, rounded badge design from the mobile app */
+
+.o_list_table .badge.text-bg-danger,
+.o_list_table .badge.bg-danger,
+.o_list_table span.badge[class*="danger"],
+.o_badge_cell span.text-bg-danger,
+.o_badge_cell span.bg-danger {
+    background-color: #dc3545 !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    font-size: 0.82rem !important;
+    padding: 5px 14px !important;
+    border-radius: 50rem !important;
+    box-shadow: 0 2px 6px rgba(220, 53, 69, 0.35) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15) !important;
+    line-height: 1.2 !important;
+}
+
+.o_list_table .badge.text-bg-success,
+.o_list_table .badge.bg-success,
+.o_list_table span.badge[class*="success"],
+.o_badge_cell span.text-bg-success,
+.o_badge_cell span.bg-success {
+    background-color: #198754 !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    font-size: 0.82rem !important;
+    padding: 5px 14px !important;
+    border-radius: 50rem !important;
+    box-shadow: 0 2px 6px rgba(25, 135, 84, 0.25) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    line-height: 1.2 !important;
+}
+
+.o_list_table .badge.text-bg-info,
+.o_list_table .badge.bg-info,
+.o_list_table span.badge[class*="info"],
+.o_badge_cell span.text-bg-info,
+.o_badge_cell span.bg-info {
+    background-color: #0dcaf0 !important;
+    color: #04414d !important;
+    font-weight: 700 !important;
+    font-size: 0.82rem !important;
+    padding: 5px 14px !important;
+    border-radius: 50rem !important;
+    box-shadow: 0 2px 6px rgba(13, 202, 240, 0.25) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    line-height: 1.2 !important;
+}
+
+.o_list_table .badge.text-bg-secondary,
+.o_list_table .badge.bg-secondary,
+.o_list_table span.badge[class*="muted"],
+.o_badge_cell span.text-bg-secondary {
+    background-color: #6c757d !important;
+    color: #ffffff !important;
+    font-weight: 500 !important;
+    font-size: 0.80rem !important;
+    padding: 4px 10px !important;
+    border-radius: 50rem !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}

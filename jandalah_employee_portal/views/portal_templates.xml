@@ -2109,6 +2109,14 @@
                     <i class="fa fa-check-circle me-2"/> تم تسجيل وتأكيد اطلاعك على التعميم بنجاح.
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
+                <div t-if="error == 'no_valid_attachment'" class="alert alert-warning alert-dismissible fade show rounded-3 shadow-sm" role="alert">
+                    <i class="fa fa-exclamation-triangle me-2"/> لم يتم إرفاق ملف PDF صالح مع هذا التعميم، يُرجى مراجعة إدارة الموارد البشرية.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                <div t-if="error == 'no_attachment'" class="alert alert-info alert-dismissible fade show rounded-3 shadow-sm" role="alert">
+                    <i class="fa fa-info-circle me-2"/> لا يوجد ملف مرفق مع هذا التعميم.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
 
                 <div class="row align-items-center mb-4">
                     <div class="col-md-7">
@@ -2188,7 +2196,7 @@
                                 <div class="d-flex flex-wrap justify-content-between align-items-center pt-2 border-top gap-2">
                                     <div>
                                         <t t-if="ann['has_attachment']">
-                                            <a t-attf-href="/web/content/#{ann['attachment_id']}?download=true" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                                            <a t-attf-href="/my/announcements/download/#{ann['id']}" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-sm">
                                                 <i class="fa fa-file-pdf-o me-1"/> تحميل الخطاب الرسمي المرفق
                                             </a>
                                         </t>
@@ -2299,15 +2307,24 @@
                                     </div>
                                 </t>
 
-                                <div class="pt-2 border-top text-end">
-                                    <t t-if="p['state'] == 'issued'">
-                                        <button type="button" class="btn btn-danger rounded-pill px-4 fw-bold shadow-sm"
-                                                data-bs-toggle="modal" data-bs-target="#respondPenaltyModal"
-                                                t-att-data-penalty-id="p['id']"
-                                                onclick="openPenaltyModal(this)">
-                                            <i class="fa fa-reply me-1"/> تقديم الإفادة / الرد على القرار
-                                        </button>
-                                    </t>
+                                <div class="d-flex flex-wrap justify-content-between align-items-center pt-2 border-top gap-2">
+                                    <div>
+                                        <t t-if="p.get('has_attachment')">
+                                            <a t-attf-href="/my/penalties/download/#{p['id']}" target="_blank" class="btn btn-sm btn-outline-danger rounded-pill px-3 shadow-sm">
+                                                <i class="fa fa-file-pdf-o me-1"/> تحميل المستند الرسمي المرفق
+                                            </a>
+                                        </t>
+                                    </div>
+                                    <div>
+                                        <t t-if="p['state'] == 'issued'">
+                                            <button type="button" class="btn btn-danger rounded-pill px-4 fw-bold shadow-sm"
+                                                    data-bs-toggle="modal" data-bs-target="#respondPenaltyModal"
+                                                    t-att-data-penalty-id="p['id']"
+                                                    onclick="openPenaltyModal(this)">
+                                                <i class="fa fa-reply me-1"/> تقديم الإفادة / الرد على القرار
+                                            </button>
+                                        </t>
+                                    </div>
                                 </div>
                             </div>
                         </div>

@@ -77,8 +77,11 @@
                        string="مكان الانصراف"/>
                 <field name="break_duration" string="الاستراحة" optional="show"/>
                 <field name="overtime_display" string="وقت إضافي"/>
+                <field name="morning_delay_minutes" invisible="1"/>
+                <field name="is_leave_day" invisible="1"/>
+                <field name="leave_id" invisible="1"/>
                 <field name="delay_display" string="تأخير" widget="badge"
-                       decoration-danger="morning_delay_minutes &gt; 0" 
+                       decoration-danger="morning_delay_minutes &gt; 0 or (delay_display != 'على الموعد' and delay_display != '-')" 
                        decoration-success="delay_display == 'على الموعد'"
                        decoration-muted="delay_display == '-'"/>
                 <field name="absence_deduction" string="خصم الغياب" sum="إجمالي خصم الغياب"/>
@@ -131,7 +134,8 @@
                             <field name="announcement_type"/>
                             <field name="issued_by" placeholder="مثال: الإدارة العامة / د. عماد / إدارة الموارد البشرية"/>
                             <field name="date"/>
-                            <field name="attachment_id"/>
+                            <field name="attachment_file" filename="attachment_name" widget="binary" string="رفع المرفق الرسمي (PDF / صورة)"/>
+                            <field name="attachment_name" invisible="1"/>
                         </group>
                         <group>
                             <field name="target_type"/>
@@ -206,7 +210,8 @@
                             <field name="penalty_type"/>
                             <field name="date"/>
                             <field name="deduction_days" invisible="penalty_type != 'deduction'"/>
-                            <field name="attachment_id"/>
+                            <field name="attachment_file" filename="attachment_name" widget="binary" string="رفع المستند الرسمي (PDF / صورة)"/>
+                            <field name="attachment_name" invisible="1"/>
                         </group>
                         <group>
                             <field name="employee_response" readonly="1"/>

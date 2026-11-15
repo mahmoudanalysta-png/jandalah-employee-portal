@@ -752,9 +752,7 @@ self.addEventListener('fetch', event => {
 
             delay_display = 'على الموعد'
             if is_late and delay_minutes > 0:
-                h = delay_minutes // 60
-                m = delay_minutes % 60
-                delay_display = f"متأخر ({h:02d}:{m:02d})"
+                delay_display = f"متأخر ({delay_minutes} د)"
             elif is_leave_day or not in_local:
                 delay_display = '-'
 
@@ -1335,6 +1333,7 @@ self.addEventListener('fetch', event => {
                 continue
 
             issued_by_val = getattr(a, 'issued_by', False) or (a.create_uid.name if a.create_uid and a.create_uid.name != 'OdooBot' else 'الإدارة العامة')
+            has_att = bool(a.attachment_file or (a.attachment_id and a.attachment_id.name and a.attachment_id.name != 'loader.js' and not a.attachment_id.name.endswith('.js')))
             announcements_data.append({
                 'id': a.id,
                 'name': a.name,
@@ -1342,8 +1341,9 @@ self.addEventListener('fetch', event => {
                 'date': str(a.date or ''),
                 'issued_by': issued_by_val,
                 'content': a.content or '',
-                'has_attachment': bool(a.attachment_id),
+                'has_attachment': has_att,
                 'attachment_id': a.attachment_id.id if a.attachment_id else None,
+                'attachment_name': a.attachment_name or (a.attachment_id.name if a.attachment_id else 'document.pdf'),
                 'is_read': is_read,
                 'ack_count': a.ack_count,
             })
@@ -1386,6 +1386,46 @@ self.addEventListener('fetch', event => {
 
         return request.redirect('/my/announcements?success=acknowledged')
 
+    @http.route('/my/announcements/download/<int:announcement_id>', type='http', auth='user', website=True)
+    def portal_announcement_download(self, announcement_id, **kw):
+        """Securely serves the official announcement attachment file to authorized employees."""
+        emp = self._get_employee()
+        if not emp:
+            return request.redirect('/my/announcements')
+
+        ann = request.env['jandalah.announcement'].sudo().browse(announcement_id)
+        if not ann.exists() or not ann.is_visible_for(emp):
+            return request.not_found()
+
+        # 1. Direct binary field
+        if ann.attachment_file:
+            file_data = base64.b64decode(ann.attachment_file)
+            filename = ann.attachment_name or f"announcement_{ann.id}.pdf"
+            content_type = 'application/pdf' if filename.lower().endswith('.pdf') else 'application/octet-stream'
+            headers = [
+                ('Content-Type', content_type),
+                ('Content-Disposition', f'attachment; filename="{filename}"'),
+                ('Content-Length', len(file_data)),
+            ]
+            return request.make_response(file_data, headers=headers)
+
+        # 2. Linked ir.attachment fallback
+        if ann.attachment_id and ann.attachment_id.datas:
+            att = ann.attachment_id
+            if att.name and (att.name == 'loader.js' or att.name.endswith('.js')):
+                return request.redirect('/my/announcements?error=no_valid_attachment')
+            file_data = base64.b64decode(att.datas)
+            filename = att.name or f"announcement_{ann.id}.pdf"
+            content_type = att.mimetype or 'application/pdf'
+            headers = [
+                ('Content-Type', content_type),
+                ('Content-Disposition', f'attachment; filename="{filename}"'),
+                ('Content-Length', len(file_data)),
+            ]
+            return request.make_response(file_data, headers=headers)
+
+        return request.redirect('/my/announcements?error=no_attachment')
+
 
     # =========================================================================
     # 7. Penalties & Investigations (/my/penalties)
@@ -1415,7 +1455,8 @@ self.addEventListener('fetch', event => {
                 'employee_response': p.employee_response or '',
                 'employee_comment': p.employee_comment or '',
                 'response_date': str(p.response_date or ''),
-                'has_attachment': bool(p.attachment_id),
+                'has_attachment': bool(p.attachment_file or (p.attachment_id and p.attachment_id.name and p.attachment_id.name != 'loader.js' and not p.attachment_id.name.endswith('.js'))),
+                'attachment_id': p.attachment_id.id if p.attachment_id else None,
             })
 
         values = self._prepare_portal_layout_values()
@@ -1458,6 +1499,44 @@ self.addEventListener('fetch', event => {
         except Exception as e:
             _logger.error("Error recording penalty response: %s", e)
             return request.redirect(f'/my/penalties?error={str(e)}')
+
+    @http.route('/my/penalties/download/<int:penalty_id>', type='http', auth='user', website=True)
+    def portal_penalty_download(self, penalty_id, **kw):
+        """Securely serves penalty/investigation documents to the authorized employee."""
+        emp = self._get_employee()
+        if not emp:
+            return request.redirect('/my/penalties')
+
+        p = request.env['jandalah.hr.penalty'].sudo().browse(penalty_id)
+        if not p.exists() or p.employee_id.id != emp.id:
+            return request.not_found()
+
+        if p.attachment_file:
+            file_data = base64.b64decode(p.attachment_file)
+            filename = p.attachment_name or f"penalty_{p.id}.pdf"
+            content_type = 'application/pdf' if filename.lower().endswith('.pdf') else 'application/octet-stream'
+            headers = [
+                ('Content-Type', content_type),
+                ('Content-Disposition', f'attachment; filename="{filename}"'),
+                ('Content-Length', len(file_data)),
+            ]
+            return request.make_response(file_data, headers=headers)
+
+        if p.attachment_id and p.attachment_id.datas:
+            att = p.attachment_id
+            if att.name and (att.name == 'loader.js' or att.name.endswith('.js')):
+                return request.redirect('/my/penalties?error=no_valid_attachment')
+            file_data = base64.b64decode(att.datas)
+            filename = att.name or f"penalty_{p.id}.pdf"
+            content_type = att.mimetype or 'application/pdf'
+            headers = [
+                ('Content-Type', content_type),
+                ('Content-Disposition', f'attachment; filename="{filename}"'),
+                ('Content-Length', len(file_data)),
+            ]
+            return request.make_response(file_data, headers=headers)
+
+        return request.redirect('/my/penalties?error=no_attachment')
 
 
     # =========================================================================
