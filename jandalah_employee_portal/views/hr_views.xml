@@ -134,6 +134,7 @@
                             <field name="announcement_type"/>
                             <field name="issued_by" placeholder="مثال: الإدارة العامة / د. عماد / إدارة الموارد البشرية"/>
                             <field name="date"/>
+                            <field name="attachment_id" string="المرفق الرسمي / مستند PDF"/>
                             <field name="attachment_name" invisible="1"/>
                             <field name="attachment_file" filename="attachment_name" string="رفع المرفق الرسمي (PDF / صورة)"/>
                         </group>
@@ -210,6 +211,7 @@
                             <field name="penalty_type"/>
                             <field name="date"/>
                             <field name="deduction_days" invisible="penalty_type != 'deduction'"/>
+                            <field name="attachment_id" string="المستند الرسمي / مستند PDF"/>
                             <field name="attachment_name" invisible="1"/>
                             <field name="attachment_file" filename="attachment_name" string="رفع المستند الرسمي (PDF / صورة)"/>
                         </group>

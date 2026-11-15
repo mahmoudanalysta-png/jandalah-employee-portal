@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
+import base64
+import logging
 from odoo import models, fields, api
+
+_logger = logging.getLogger(__name__)
 
 class JandalahAnnouncement(models.Model):
     _name = 'jandalah.announcement'
@@ -27,7 +31,7 @@ class JandalahAnnouncement(models.Model):
     department_id = fields.Many2one('hr.department', string='القسم المستهدف')
     employee_ids = fields.Many2many('hr.employee', 'jandalah_announcement_emp_rel', 'announcement_id', 'employee_id', string='الموظفون المخصصون')
     
-    attachment_id = fields.Many2one('ir.attachment', string='المرفق الرسمي (سجل قديم)')
+    attachment_id = fields.Many2one('ir.attachment', string='المرفق الرسمي / مستند PDF')
     attachment_file = fields.Binary(string='رفع المرفق الرسمي (PDF / صورة / مستند)', attachment=True)
     attachment_name = fields.Char(string='اسم الملف المرفق')
     active = fields.Boolean(string='نشط', default=True)
@@ -35,43 +39,65 @@ class JandalahAnnouncement(models.Model):
     def get_official_attachment_info(self):
         """Safely retrieves attachment metadata and data whether stored in binary field, Many2one, or ir.attachment."""
         self.ensure_one()
-        # 1. Direct binary field on model
-        if self.attachment_file or self.attachment_name:
+        # 1. Direct binary field on model (only if content exists)
+        if self.attachment_file:
+            name = self.attachment_name or f"announcement_{self.id}.pdf"
+            if '.' not in name:
+                name = f"{name}.pdf"
             return {
                 'has_attachment': True,
                 'data': self.attachment_file,
-                'name': self.attachment_name or f"announcement_{self.id}.pdf",
+                'name': name,
                 'source': 'binary',
+                'id': None,
             }
 
-        # 2. Linked ir.attachment (e.g. uploaded via control panel, chatter, or mail)
-        Att = self.env['ir.attachment'].sudo()
-        att = Att.search([
-            ('res_model', '=', 'jandalah.announcement'),
-            ('res_id', '=', self.id),
-            ('name', '!=', 'loader.js'),
-            ('name', 'not like', '%.js'),
-        ], order='id desc', limit=1)
-        if att and (att.datas or att.db_datas or att.store_fname):
-            return {
-                'has_attachment': True,
-                'data': att.datas,
-                'name': att.name or f"announcement_{self.id}.pdf",
-                'source': 'ir_attachment',
-                'id': att.id,
-            }
-
-        # 3. Many2one attachment_id
+        # 2. Many2one attachment_id (user uploaded directly into attachment_id)
         if self.attachment_id:
-            att = self.attachment_id
-            if att.name and att.name != 'loader.js' and not att.name.endswith('.js') and (att.datas or att.db_datas or att.store_fname):
+            try:
+                att = self.attachment_id.sudo()
+                name = att.name or f"announcement_{self.id}.pdf"
+                if name != 'loader.js' and not name.lower().endswith('.js'):
+                    if '.' not in name:
+                        name = f"{name}.pdf"
+                    datas = att.datas
+                    if not datas and getattr(att, 'raw', False):
+                        datas = base64.b64encode(att.raw).decode('utf-8')
+                    return {
+                        'has_attachment': True,
+                        'data': datas,
+                        'name': name,
+                        'source': 'attachment_id',
+                        'id': att.id,
+                    }
+            except Exception as e:
+                _logger.warning("Error reading announcement attachment_id: %s", e)
+
+        # 3. Linked ir.attachment (e.g. uploaded via chatter or control panel)
+        try:
+            Att = self.env['ir.attachment'].sudo()
+            att = Att.search([
+                ('res_model', '=', 'jandalah.announcement'),
+                ('res_id', '=', self.id),
+                ('name', '!=', 'loader.js'),
+                ('name', 'not like', '%.js'),
+            ], order='id desc', limit=1)
+            if att:
+                name = att.name or f"announcement_{self.id}.pdf"
+                if '.' not in name:
+                    name = f"{name}.pdf"
+                datas = att.datas
+                if not datas and getattr(att, 'raw', False):
+                    datas = base64.b64encode(att.raw).decode('utf-8')
                 return {
                     'has_attachment': True,
-                    'data': att.datas,
-                    'name': att.name or f"announcement_{self.id}.pdf",
-                    'source': 'attachment_id',
+                    'data': datas,
+                    'name': name,
+                    'source': 'ir_attachment',
                     'id': att.id,
                 }
+        except Exception as e:
+            _logger.warning("Error searching linked ir.attachment: %s", e)
 
         # 4. Fallback for test announcements to verify download functionality
         if any(w in (self.name or '') for w in ['اختبار', 'تجربة', 'test', 'Test']):
@@ -81,9 +107,10 @@ class JandalahAnnouncement(models.Model):
                 'data': SAMPLE_PDF_B64,
                 'name': 'خطاب_تعميم_رسمي_اختبار.pdf',
                 'source': 'sample',
+                'id': None,
             }
 
-        return {'has_attachment': False, 'data': None, 'name': None, 'source': None}
+        return {'has_attachment': False, 'data': None, 'name': None, 'source': None, 'id': None}
 
     ack_ids = fields.One2many('jandalah.announcement.ack', 'announcement_id', string='إقرارات الاطلاع')
     ack_count = fields.Integer(string='عدد المطلعين', compute='_compute_ack_count')

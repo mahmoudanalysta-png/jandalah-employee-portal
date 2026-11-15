@@ -5,6 +5,7 @@ from odoo.addons.portal.controllers.portal import CustomerPortal, pager as porta
 import json
 import pytz
 import base64
+import urllib.parse
 from datetime import datetime, timedelta, date
 import xmlrpc.client
 import logging
@@ -1425,8 +1426,16 @@ self.addEventListener('fetch', event => {
         if not att_info['has_attachment'] or not att_info['data']:
             return request.redirect('/my/announcements?error=no_attachment')
 
-        file_data = base64.b64decode(att_info['data'])
+        try:
+            file_data = base64.b64decode(att_info['data'])
+        except Exception as e:
+            _logger.error("Failed to decode announcement file data: %s", e)
+            return request.redirect('/my/announcements?error=invalid_file')
+
         filename = att_info['name'] or f"announcement_{ann.id}.pdf"
+        if '.' not in filename:
+            filename = f"{filename}.pdf"
+
         content_type = 'application/pdf'
         if filename.lower().endswith(('.jpg', '.jpeg')):
             content_type = 'image/jpeg'
@@ -1435,9 +1444,11 @@ self.addEventListener('fetch', event => {
         elif not filename.lower().endswith('.pdf'):
             content_type = 'application/octet-stream'
 
+        ascii_filename = f"announcement_{ann.id}.pdf"
+        encoded_filename = urllib.parse.quote(filename)
         headers = [
             ('Content-Type', content_type),
-            ('Content-Disposition', f'attachment; filename="{filename}"'),
+            ('Content-Disposition', f'attachment; filename="{ascii_filename}"; filename*=UTF-8\'\'{encoded_filename}'),
             ('Content-Length', len(file_data)),
         ]
         return request.make_response(file_data, headers=headers)
@@ -1533,8 +1544,16 @@ self.addEventListener('fetch', event => {
         if not att_info['has_attachment'] or not att_info['data']:
             return request.redirect('/my/penalties?error=no_attachment')
 
-        file_data = base64.b64decode(att_info['data'])
+        try:
+            file_data = base64.b64decode(att_info['data'])
+        except Exception as e:
+            _logger.error("Failed to decode penalty file data: %s", e)
+            return request.redirect('/my/penalties?error=invalid_file')
+
         filename = att_info['name'] or f"penalty_{p.id}.pdf"
+        if '.' not in filename:
+            filename = f"{filename}.pdf"
+
         content_type = 'application/pdf'
         if filename.lower().endswith(('.jpg', '.jpeg')):
             content_type = 'image/jpeg'
@@ -1543,9 +1562,11 @@ self.addEventListener('fetch', event => {
         elif not filename.lower().endswith('.pdf'):
             content_type = 'application/octet-stream'
 
+        ascii_filename = f"penalty_{p.id}.pdf"
+        encoded_filename = urllib.parse.quote(filename)
         headers = [
             ('Content-Type', content_type),
-            ('Content-Disposition', f'attachment; filename="{filename}"'),
+            ('Content-Disposition', f'attachment; filename="{ascii_filename}"; filename*=UTF-8\'\'{encoded_filename}'),
             ('Content-Length', len(file_data)),
         ]
         return request.make_response(file_data, headers=headers)

@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
+import base64
+import logging
 from odoo import models, fields, api
+
+_logger = logging.getLogger(__name__)
 
 class JandalahHrPenalty(models.Model):
     _name = 'jandalah.hr.penalty'
@@ -34,46 +38,71 @@ class JandalahHrPenalty(models.Model):
 
     employee_comment = fields.Text(string='إفادة وتبرير الموظف')
     response_date = fields.Datetime(string='تاريخ وساعة الرد')
-    attachment_id = fields.Many2one('ir.attachment', string='المستند الرسمي (سجل قديم)')
+    attachment_id = fields.Many2one('ir.attachment', string='المستند الرسمي / PDF')
     attachment_file = fields.Binary(string='رفع المستند الرسمي (PDF / صورة / مستند)', attachment=True)
     attachment_name = fields.Char(string='اسم الملف المرفق')
 
     def get_official_attachment_info(self):
         """Safely retrieves attachment metadata and data for penalty."""
         self.ensure_one()
-        if self.attachment_file or self.attachment_name:
+        # 1. Direct binary field on model (only if content exists)
+        if self.attachment_file:
+            name = self.attachment_name or f"penalty_{self.id}.pdf"
+            if '.' not in name:
+                name = f"{name}.pdf"
             return {
                 'has_attachment': True,
                 'data': self.attachment_file,
-                'name': self.attachment_name or f"penalty_{self.id}.pdf",
+                'name': name,
                 'source': 'binary',
+                'id': None,
             }
 
-        Att = self.env['ir.attachment'].sudo()
-        att = Att.search([
-            ('res_model', '=', 'jandalah.hr.penalty'),
-            ('res_id', '=', self.id),
-            ('name', '!=', 'loader.js'),
-            ('name', 'not like', '%.js'),
-        ], order='id desc', limit=1)
-        if att and (att.datas or att.db_datas or att.store_fname):
-            return {
-                'has_attachment': True,
-                'data': att.datas,
-                'name': att.name or f"penalty_{self.id}.pdf",
-                'source': 'ir_attachment',
-                'id': att.id,
-            }
-
+        # 2. Many2one attachment_id
         if self.attachment_id:
-            att = self.attachment_id
-            if att.name and att.name != 'loader.js' and not att.name.endswith('.js') and (att.datas or att.db_datas or att.store_fname):
+            try:
+                att = self.attachment_id.sudo()
+                name = att.name or f"penalty_{self.id}.pdf"
+                if name != 'loader.js' and not name.lower().endswith('.js'):
+                    if '.' not in name:
+                        name = f"{name}.pdf"
+                    datas = att.datas
+                    if not datas and getattr(att, 'raw', False):
+                        datas = base64.b64encode(att.raw).decode('utf-8')
+                    return {
+                        'has_attachment': True,
+                        'data': datas,
+                        'name': name,
+                        'source': 'attachment_id',
+                        'id': att.id,
+                    }
+            except Exception as e:
+                _logger.warning("Error reading penalty attachment_id: %s", e)
+
+        # 3. Linked ir.attachment
+        try:
+            Att = self.env['ir.attachment'].sudo()
+            att = Att.search([
+                ('res_model', '=', 'jandalah.hr.penalty'),
+                ('res_id', '=', self.id),
+                ('name', '!=', 'loader.js'),
+                ('name', 'not like', '%.js'),
+            ], order='id desc', limit=1)
+            if att:
+                name = att.name or f"penalty_{self.id}.pdf"
+                if '.' not in name:
+                    name = f"{name}.pdf"
+                datas = att.datas
+                if not datas and getattr(att, 'raw', False):
+                    datas = base64.b64encode(att.raw).decode('utf-8')
                 return {
                     'has_attachment': True,
-                    'data': att.datas,
-                    'name': att.name or f"penalty_{self.id}.pdf",
-                    'source': 'attachment_id',
+                    'data': datas,
+                    'name': name,
+                    'source': 'ir_attachment',
                     'id': att.id,
                 }
+        except Exception as e:
+            _logger.warning("Error searching penalty linked ir.attachment: %s", e)
 
-        return {'has_attachment': False, 'data': None, 'name': None, 'source': None}
+        return {'has_attachment': False, 'data': None, 'name': None, 'source': None, 'id': None}
