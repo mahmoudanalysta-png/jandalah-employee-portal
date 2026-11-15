@@ -324,15 +324,18 @@ class JandalahCustomerPortal(CustomerPortal):
 
                 # Dynamic Shift Completion: If employee is on an afternoon/evening shift (e.g. check-in after midday),
                 # the expected shift end is dynamically calculated from check-in + required working hours
-                if open_att.check_in:
-                    in_dt = open_att.check_in
-                    if not getattr(in_dt, 'tzinfo', None):
-                        in_dt = pytz.utc.localize(in_dt)
-                    in_local = in_dt.astimezone(emp_tz)
-                    in_min = in_local.hour * 60 + in_local.minute
-                    expected_end_min = in_min + int(round(standard_hours * 60))
-                    if expected_end_min > work_end_min:
-                        work_end_min = expected_end_min
+                try:
+                    if open_att.check_in:
+                        in_dt = open_att.check_in
+                        if not getattr(in_dt, 'tzinfo', None):
+                            in_dt = pytz.utc.localize(in_dt)
+                        in_local = in_dt.astimezone(user_tz)
+                        in_min = in_local.hour * 60 + in_local.minute
+                        expected_end_min = in_min + int(round(standard_hours * 60))
+                        if expected_end_min > work_end_min:
+                            work_end_min = expected_end_min
+                except Exception as ex_shift:
+                    _logger.warning("Error computing dynamic shift end: %s", ex_shift)
 
                 now_min = now_local.hour * 60 + now_local.minute
                 if now_min > (work_end_min + 5):
