@@ -11,16 +11,11 @@ _logger = logging.getLogger(__name__)
 class JandalahSalesPortal(CustomerPortal):
 
     def _prepare_home_portal_values(self, counters):
+        # NOTE: Do NOT add non-counter keys here.
+        # Odoo 18 frontend JS calls /my/counters and sets textContent on
+        # [data-placeholder_count='key'] elements. Any key without a matching
+        # DOM element causes: TypeError: Cannot set properties of null (setting 'textContent')
         values = super()._prepare_home_portal_values(counters)
-        emp = self._get_salesperson_employee()
-        is_sales = False
-        if emp:
-            job_name = (emp.sudo().job_id and emp.sudo().job_id.name or '').strip().lower()
-            job_title = (emp.sudo().job_title or '').strip().lower()
-            sales_keywords = ['اخصائي مبيعات', 'أخصائي مبيعات', 'sales specialist']
-            if any(k in job_name or k in job_title for k in sales_keywords):
-                is_sales = True
-        values['is_sales_employee'] = is_sales
         return values
 
     def _get_salesperson_employee(self):
