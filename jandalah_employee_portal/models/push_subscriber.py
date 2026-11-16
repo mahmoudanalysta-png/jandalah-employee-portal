@@ -1,9 +1,19 @@
 # -*- coding: utf-8 -*-
 import json
 import logging
+import base64
+from datetime import datetime
 from odoo import models, fields, api
 
 _logger = logging.getLogger(__name__)
+
+# Standard VAPID Keypair for Jandalah PWA Push Notifications (RFC 8292)
+VAPID_PUBLIC_KEY = "BDEmktt-z8gbD_wFgEfK_1EZspp_W04tbpR7dtkT9Z1TVYZ6t71Q7F47LGYN8OOFhVnICBjLPYyvarRPfzg2ZiE"
+VAPID_PRIVATE_PEM = b"""-----BEGIN PRIVATE KEY-----
+MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgrmtKa9XWC678x/q4
+aD9gTLwKrQI22MFwqjDv4KnyqsahRANCAAQxJpLbfs/IGw/8BYBHyv9RGbKaf1tO
+LW6Ue3bZE/WdU1WGere9UOxeOyxmDfDjhYVZyAgYyz2Mr2q0T384NmYh
+-----END PRIVATE KEY-----"""
 
 class JandalahPushSubscriber(models.Model):
     _name = 'jandalah.push.subscriber'
@@ -84,16 +94,43 @@ class JandalahPushSubscriber(models.Model):
             'url': url,
             'icon': '/jandalah_employee_portal/static/src/img/icon-192.png',
             'badge': '/jandalah_employee_portal/static/src/img/icon-192.png',
+            'tag': f"jandalah-{self.id}-{int(datetime.utcnow().timestamp())}",
         })
-        _logger.info("Push notification queued for employee %s (%s): %s - %s", self.employee_id.name, self.endpoint[:40], title, body)
-        # WebPush dispatch via standard library if available
+        _logger.info("Push notification dispatch for %s (%s): %s", self.employee_id.name, self.endpoint[:40], title)
+
         try:
             from pywebpush import webpush
+            from py_vapid import Vapid
+
+            sub_info = None
+            if self.subscription_json:
+                try:
+                    sub_info = json.loads(self.subscription_json)
+                except Exception:
+                    sub_info = None
+
+            if not sub_info or not isinstance(sub_info, dict):
+                sub_info = {
+                    'endpoint': self.endpoint,
+                    'keys': {
+                        'p256dh': self.p256dh,
+                        'auth': self.auth,
+                    }
+                }
+
+            if not sub_info.get('keys') or not sub_info['keys'].get('p256dh'):
+                _logger.warning("Sub %s missing p256dh key, skipping WebPush.", self.id)
+                return False
+
+            vapid_obj = Vapid.from_pem(VAPID_PRIVATE_PEM)
             webpush(
-                subscription_info=json.loads(self.subscription_json or '{}'),
+                subscription_info=sub_info,
                 data=payload,
+                vapid_private_key=vapid_obj,
                 vapid_claims={"sub": "mailto:support@jandalah.com"}
             )
-        except Exception:
-            # Fallback logged cleanly without crash
-            pass
+            _logger.info("WebPush delivered successfully to %s", self.employee_id.name)
+            return True
+        except Exception as e_push:
+            _logger.warning("WebPush dispatch exception for sub %s: %s", self.id, e_push)
+            return False

@@ -232,11 +232,9 @@
                                         data-bs-toggle="modal" data-bs-target="#notificationsCenterModal"
                                         title="مركز التنبيهات والإشعارات">
                                     <i class="fa fa-bell text-primary fs-5"/>
-                                    <t t-if="total_active_notifications &gt; 0">
-                                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-white" style="font-size: 10px;">
-                                            <t t-esc="total_active_notifications"/>
-                                        </span>
-                                    </t>
+                                    <span id="bell_badge_counter" t-attf-class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-white #{'d-none' if total_active_notifications == 0 else ''}" style="font-size: 10px;">
+                                        <t t-esc="total_active_notifications"/>
+                                    </span>
                                 </button>
                                 <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#pwaHelpModal">
                                     <i class="fa fa-mobile me-1"/> دليل تثبيت التطبيق
@@ -1002,6 +1000,19 @@
                         return false;
                     }
 
+                    const JANDALAH_VAPID_PUBKEY = 'BDEmktt-z8gbD_wFgEfK_1EZspp_W04tbpR7dtkT9Z1TVYZ6t71Q7F47LGYN8OOFhVnICBjLPYyvarRPfzg2ZiE';
+
+                    function urlBase64ToUint8Array(base64String) {
+                        const padding = '='.repeat((4 - base64String.length % 4) % 4);
+                        const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+                        const rawData = window.atob(base64);
+                        const outputArray = new Uint8Array(rawData.length);
+                        for (let i = 0; i &lt; rawData.length; ++i) {
+                            outputArray[i] = rawData.charCodeAt(i);
+                        }
+                        return outputArray;
+                    }
+
                     async function registerDevicePush(sub) {
                         try {
                             const endpoint = sub ? sub.endpoint : ('device-' + navigator.userAgent);
@@ -1045,8 +1056,23 @@
                                     if (!reg) {
                                         reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
                                     }
-                                    let sub = reg.pushManager ? await reg.pushManager.getSubscription() : null;
-                                    await registerDevicePush(sub);
+                                    if (reg &amp;&amp; reg.pushManager) {
+                                        let sub = await reg.pushManager.getSubscription();
+                                        if (!sub) {
+                                            try {
+                                                const convertedVapidKey = urlBase64ToUint8Array(JANDALAH_VAPID_PUBKEY);
+                                                sub = await reg.pushManager.subscribe({
+                                                    userVisibleOnly: true,
+                                                    applicationServerKey: convertedVapidKey
+                                                });
+                                            } catch(subErr) {
+                                                console.warn('PushManager subscribe with VAPID failed:', subErr);
+                                            }
+                                        }
+                                        await registerDevicePush(sub);
+                                    } else {
+                                        await registerDevicePush(null);
+                                    }
                                 } catch(e) {
                                     await registerDevicePush(null);
                                 }
@@ -1062,6 +1088,8 @@
                                 data: { url: '/my' }
                             };
                             await showNativeNotification(title, options);
+                            // Run initial poll right after permission granted
+                            pollPendingNotifications();
                         } else if (perm === 'denied') {
                             alert('تم رفض إذن الإشعارات من المتصفح. يمكنك تفعيلها يدوياً من إعدادات الموقع في المتصفح.');
                         }
@@ -1109,10 +1137,12 @@
                         }
                     }
 
-                    // Background notifications poller for live active tabs (every 45s)
-                    let lastPolledAlerts = new Set();
+                    // Real-Time Smart Poller for Bell Notifications (Every 10s & on focus/unlock)
+                    let isPollingRunning = false;
                     async function pollPendingNotifications() {
+                        if (isPollingRunning) return;
                         if (!('Notification' in window) || Notification.permission !== 'granted') return;
+                        isPollingRunning = true;
                         try {
                             const res = await fetch('/my/notifications/poll', {
                                 method: 'POST',
@@ -1121,15 +1151,23 @@
                             });
                             const data = await res.json();
                             const notifs = (data.result &amp;&amp; (data.result.alerts || data.result.notifications)) ? (data.result.alerts || data.result.notifications) : [];
+                            
+                            let seenAlerts = {};
+                            try {
+                                seenAlerts = JSON.parse(localStorage.getItem('jandalah_seen_alerts_v1') || '{}');
+                            } catch(e) { seenAlerts = {}; }
+
+                            let hasNew = false;
                             for (let n of notifs) {
                                 const key = n.id || (n.tag || (n.title + n.body));
-                                if (!lastPolledAlerts.has(key)) {
-                                    lastPolledAlerts.add(key);
+                                if (!seenAlerts[key]) {
+                                    seenAlerts[key] = Date.now();
+                                    hasNew = true;
                                     const opts = {
                                         body: n.body,
                                         icon: '/jandalah_employee_portal/static/src/img/icon-192.png',
                                         badge: '/jandalah_employee_portal/static/src/img/icon-192.png',
-                                        vibrate: [300, 100, 300],
+                                        vibrate: [350, 150, 350],
                                         tag: n.tag || ('jandalah-poll-' + key),
                                         renotify: true,
                                         data: { url: n.url || '/my' }
@@ -1137,8 +1175,33 @@
                                     await showNativeNotification(n.title, opts);
                                 }
                             }
+
+                            if (hasNew) {
+                                try {
+                                    const now = Date.now();
+                                    for (let k in seenAlerts) {
+                                        if (now - seenAlerts[k] &gt; 7 * 86400 * 1000) delete seenAlerts[k];
+                                    }
+                                    localStorage.setItem('jandalah_seen_alerts_v1', JSON.stringify(seenAlerts));
+                                } catch(e) {}
+                            }
+
+                            // Dynamic Live Bell Badge update
+                            if (data.result &amp;&amp; typeof data.result.total_active !== 'undefined') {
+                                const badge = document.getElementById('bell_badge_counter');
+                                if (badge) {
+                                    if (data.result.total_active &gt; 0) {
+                                        badge.textContent = data.result.total_active;
+                                        badge.classList.remove('d-none');
+                                    } else {
+                                        badge.classList.add('d-none');
+                                    }
+                                }
+                            }
                         } catch(err) {
-                            // silent poll failure
+                            console.debug('Polling debug notice:', err);
+                        } finally {
+                            isPollingRunning = false;
                         }
                     }
 
@@ -1147,17 +1210,40 @@
                             updatePushUIState(Notification.permission);
                             if (Notification.permission === 'granted') {
                                 if ('serviceWorker' in navigator) {
-                                    navigator.serviceWorker.getRegistration().then(reg => {
+                                    navigator.serviceWorker.getRegistration().then(async reg => {
                                         if (reg &amp;&amp; reg.pushManager) {
-                                            reg.pushManager.getSubscription().then(sub => registerDevicePush(sub));
+                                            let sub = await reg.pushManager.getSubscription();
+                                            if (!sub) {
+                                                try {
+                                                    const convertedVapidKey = urlBase64ToUint8Array(JANDALAH_VAPID_PUBKEY);
+                                                    sub = await reg.pushManager.subscribe({
+                                                        userVisibleOnly: true,
+                                                        applicationServerKey: convertedVapidKey
+                                                    });
+                                                } catch(err) {}
+                                            }
+                                            registerDevicePush(sub);
                                         } else {
                                             registerDevicePush(null);
                                         }
-                                    });
+                                    }).catch(() => registerDevicePush(null));
                                 }
-                                setInterval(pollPendingNotifications, 45000);
+                                // Instant poll 1.5s after page load
+                                setTimeout(pollPendingNotifications, 1500);
+                                // Fast recurring poll every 10 seconds
+                                setInterval(pollPendingNotifications, 10000);
                             }
                         }
+                    });
+
+                    // Immediate poll when user unlocks phone or switches back to tab
+                    document.addEventListener('visibilitychange', function() {
+                        if (document.visibilityState === 'visible') {
+                            pollPendingNotifications();
+                        }
+                    });
+                    window.addEventListener('focus', function() {
+                        pollPendingNotifications();
                     });
                 </script>
             </t>

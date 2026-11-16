@@ -568,6 +568,14 @@ self.addEventListener('notificationclick', event => {
             ]
         )
 
+    @http.route('/jandalah/vapid_key', type='json', auth='public', methods=['POST', 'GET'], csrf=False)
+    def get_vapid_key(self, **kw):
+        """Returns standard VAPID public key for WebPush client subscriptions."""
+        return {
+            'status': 'success',
+            'public_key': 'BDEmktt-z8gbD_wFgEfK_1EZspp_W04tbpR7dtkT9Z1TVYZ6t71Q7F47LGYN8OOFhVnICBjLPYyvarRPfzg2ZiE'
+        }
+
     @http.route('/my/push/subscribe', type='json', auth='user', methods=['POST'], csrf=False)
     def push_subscribe(self, endpoint=None, keys=None, device_name=None, raw_json=None, **kw):
         """Registers the employee mobile browser for real Web Push notifications."""
@@ -598,7 +606,7 @@ self.addEventListener('notificationclick', event => {
         Subscriber = request.env['jandalah.push.subscriber'].sudo()
         sent_count = Subscriber.notify_employee(
             employee=emp,
-            title='شركة جندله | تجربة الإشعارات',
+            title='شركة جندله | تجربة الإشعارات 🔔',
             body=f'مرحباً {emp.name}، تم تفعيل إشعارات الهاتف المنبثقة بنجاح على جهازك!',
             url='/my'
         )
@@ -606,63 +614,152 @@ self.addEventListener('notificationclick', event => {
 
     @http.route('/my/notifications/poll', type='json', auth='user', methods=['POST'], csrf=False)
     def notifications_poll(self, **kw):
-        """Returns pending urgent notifications for the employee (shift end, unread announcements, penalties)."""
+        """
+        Real-time poller for all Bell (مركز التنبيهات) events:
+        1. Announcements & Decisions (تعاميم وقرارات إدارية)
+        2. Penalties & Inquiries (جزاءات وتحقيقات إدارية)
+        3. Assigned Assets (عهد عينية ورقمية بانتظار الإقرار)
+        4. Approved Leaves (اعتماد إجازات الموظف)
+        5. Team Leaves for Supervisors (طلبات إجازات الفريق بانتظار الاعتماد)
+        6. Overdue Shift Checkout (تنبيه انتهاء الدوام والانصراف)
+        """
         emp = self._get_employee()
-        if not emp:
-            return {'status': 'error', 'alerts': []}
-
+        user = request.env.user
         alerts = []
-        # 1. Unread announcements
-        Ann = request.env['jandalah.announcement'].sudo()
-        Ack = request.env['jandalah.announcement.ack'].sudo()
-        my_acked_ids = set(Ack.search([('employee_id', '=', emp.id)]).mapped('announcement_id.id'))
-        all_ann = Ann.search([('active', '=', True)], order='date desc, id desc', limit=5)
-        for a in all_ann:
-            if a.is_visible_for(emp) and a.id not in my_acked_ids:
-                alerts.append({
-                    'id': f'ann_{a.id}',
-                    'title': 'تعميم إداري جديد 📢',
-                    'body': f'{a.name} - صادر عن: {a.issued_by or "الإدارة"}',
-                    'url': '/my/announcements',
-                    'tag': f'ann_{a.id}'
-                })
-                break
 
-        # 2. Pending penalties requiring employee response
-        Penalty = request.env['jandalah.hr.penalty'].sudo()
-        pending_pen = Penalty.search([
-            ('employee_id', '=', emp.id),
-            ('state', '=', 'issued'),
-            ('employee_response', '=', False)
-        ], limit=1)
-        if pending_pen:
-            alerts.append({
-                'id': f'pen_{pending_pen.id}',
-                'title': 'تنبيه إداري رسمي ⚠️',
-                'body': f'لديك إجراء إداري بانتظار إفادتك: {pending_pen.penalty_type}',
-                'url': '/my/penalties',
-                'tag': f'pen_{pending_pen.id}'
-            })
+        # 1. Announcements & Administrative Decisions
+        try:
+            Ann = request.env['jandalah.announcement'].sudo()
+            Ack = request.env['jandalah.announcement.ack'].sudo()
+            my_acked_ids = set()
+            if emp:
+                my_acked_ids = set(Ack.search([('employee_id', '=', emp.id)]).mapped('announcement_id.id'))
+            all_ann = Ann.search([('active', '=', True)], order='date desc, id desc', limit=10)
+            for a in all_ann:
+                is_vis = a.is_visible_for(emp) if emp else (a.target_type == 'all')
+                if is_vis and a.id not in my_acked_ids:
+                    alerts.append({
+                        'id': f'ann_{a.id}',
+                        'type': 'announcement',
+                        'title': f'تعميم إداري جديد: {a.name}',
+                        'body': f'صادر عن: {a.issued_by or "الإدارة العامة"}. يرجى الاطلاع والإقرار.',
+                        'url': '/my/announcements',
+                        'tag': f'ann_{a.id}'
+                    })
+        except Exception as e_ann:
+            _logger.warning("Error polling announcements: %s", e_ann)
 
-        # 3. Overdue shift end reminder
-        open_att = request.env['hr.attendance'].sudo().search([
-            ('employee_id', '=', emp.id),
-            ('check_out', '=', False)
-        ], order='check_in desc', limit=1)
-        if open_att and open_att.check_in:
-            user_tz_name = get_current_user_tz()
-            user_tz = pytz.timezone(user_tz_name)
-            check_in_local = pytz.utc.localize(open_att.check_in).astimezone(user_tz)
-            now_local = pytz.utc.localize(datetime.utcnow()).astimezone(user_tz)
-            if (now_local - check_in_local).total_seconds() / 3600.0 >= 8.0:
-                alerts.append({
-                    'id': f'att_overdue_{open_att.id}',
-                    'title': 'تنبيه انتهاء الدوام ⏰',
-                    'body': f'مرحباً {emp.name}، لقد أتممت ساعات العمل المقررة اليوم. يرجى تسجيل الانصراف من البوابة.',
-                    'url': '/my',
-                    'tag': f'att_overdue_{open_att.id}'
-                })
-        return {'status': 'success', 'alerts': alerts, 'notifications': alerts}
+        if emp:
+            # 2. Pending Penalties
+            try:
+                Penalty = request.env['jandalah.hr.penalty'].sudo()
+                pending_pens = Penalty.search([
+                    ('employee_id', '=', emp.id),
+                    ('state', '=', 'issued'),
+                    ('employee_response', '=', False)
+                ], limit=5)
+                for p in pending_pens:
+                    alerts.append({
+                        'id': f'pen_{p.id}',
+                        'type': 'penalty',
+                        'title': 'تنبيه إداري رسمي ⚠️',
+                        'body': f'لديك إجراء إداري بانتظار إفادتك: {p.name or p.penalty_type}',
+                        'url': '/my/penalties',
+                        'tag': f'pen_{p.id}'
+                    })
+            except Exception as e_pen:
+                _logger.warning("Error polling penalties: %s", e_pen)
+
+            # 3. Pending Assets
+            try:
+                Asset = request.env['jandalah.hr.asset'].sudo()
+                pending_assets = Asset.search([
+                    ('employee_id', '=', emp.id),
+                    ('state', '=', 'assigned')
+                ], limit=5)
+                for ast in pending_assets:
+                    alerts.append({
+                        'id': f'asset_{ast.id}',
+                        'type': 'asset',
+                        'title': 'إقرار استلام عهدة 💻',
+                        'body': f'تم تسليمك عهدة جديدة ({ast.name}). يرجى تأكيد استلامها.',
+                        'url': '/my/assets',
+                        'tag': f'asset_{ast.id}'
+                    })
+            except Exception as e_ast:
+                _logger.warning("Error polling assets: %s", e_ast)
+
+            # 4. Approved Leaves (Past 5 days)
+            try:
+                five_days_ago = fields.Datetime.to_string(datetime.utcnow() - timedelta(days=5))
+                approved_leaves = request.env['hr.leave'].sudo().search([
+                    ('employee_id', '=', emp.id),
+                    ('state', '=', 'validate'),
+                    ('write_date', '>=', five_days_ago)
+                ], order='write_date desc', limit=3)
+                for al in approved_leaves:
+                    st_name = al.holiday_status_id.name if al.holiday_status_id else 'إجازة'
+                    alerts.append({
+                        'id': f'leave_appr_{al.id}',
+                        'type': 'leave_approved',
+                        'title': 'تمت الموافقة على طلب إجازتك ✅',
+                        'body': f'تم اعتماد طلبك ({st_name}) بنجاح من قبل الإدارة.',
+                        'url': '/my/leaves',
+                        'tag': f'leave_appr_{al.id}'
+                    })
+            except Exception as e_lv:
+                _logger.warning("Error polling approved leaves: %s", e_lv)
+
+            # 5. Supervisor Pending Team Leaves
+            try:
+                subordinates = self._get_subordinates(emp)
+                if subordinates:
+                    team_leaves = request.env['hr.leave'].sudo().search([
+                        ('employee_id', 'in', subordinates.ids),
+                        ('state', 'in', ['confirm', 'validate1'])
+                    ], order='create_date desc', limit=5)
+                    for tl in team_leaves:
+                        st_name = tl.holiday_status_id.name if tl.holiday_status_id else 'إجازة'
+                        alerts.append({
+                            'id': f'team_leave_{tl.id}',
+                            'type': 'team_leave',
+                            'title': 'طلب إجازة جديد لفريقك 📋',
+                            'body': f'الموظف {tl.employee_id.name} تقدم بطلب ({st_name}) بانتظار موافقتك.',
+                            'url': '/my/team/leaves',
+                            'tag': f'team_leave_{tl.id}'
+                        })
+            except Exception as e_tlv:
+                _logger.warning("Error polling team leaves: %s", e_tlv)
+
+            # 6. Overdue Shift Checkout Reminder
+            try:
+                open_att = request.env['hr.attendance'].sudo().search([
+                    ('employee_id', '=', emp.id),
+                    ('check_out', '=', False)
+                ], order='check_in desc', limit=1)
+                if open_att and open_att.check_in:
+                    user_tz_name = get_current_user_tz()
+                    user_tz = pytz.timezone(user_tz_name)
+                    check_in_local = pytz.utc.localize(open_att.check_in).astimezone(user_tz)
+                    now_local = pytz.utc.localize(datetime.utcnow()).astimezone(user_tz)
+                    if check_in_local.date() == now_local.date() and (now_local - check_in_local).total_seconds() / 3600.0 >= 8.25:
+                        alerts.append({
+                            'id': f'att_overdue_{open_att.id}_{now_local.strftime("%Y%m%d")}',
+                            'type': 'overdue_attendance',
+                            'title': 'تنبيه انتهاء الدوام ⏰',
+                            'body': f'مرحباً {emp.name}، لقد أتممت ساعات العمل المقررة اليوم. يرجى تسجيل الانصراف الآن.',
+                            'url': '/my',
+                            'tag': f'att_overdue_{open_att.id}'
+                        })
+            except Exception as e_att:
+                _logger.warning("Error polling attendance: %s", e_att)
+
+        return {
+            'status': 'success',
+            'alerts': alerts,
+            'notifications': alerts,
+            'total_active': len(alerts)
+        }
 
     @http.route('/my/attendance/toggle', type='json', auth='user', methods=['POST'], csrf=False)
     def attendance_toggle(self, latitude=None, longitude=None, browser=None, tz=None, **kw):
