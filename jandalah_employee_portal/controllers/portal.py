@@ -432,22 +432,19 @@ class JandalahCustomerPortal(CustomerPortal):
         })
         return values
 
-    @http.route(['/my', '/my/home'], type='http', auth="user", website=True)
-    def home(self, **kw):
-        """Overrides portal home to guarantee all Jandalah ESS dashboard values are injected into qcontext."""
-        response = super().home(**kw)
-        if hasattr(response, 'qcontext'):
-            response.qcontext.update(self._get_jandalah_dashboard_values())
-        return response
-
     def _prepare_home_portal_values(self, counters):
-        """Only returns document counters to prevent Odoo 18 frontend TypeError on missing counter elements."""
+        """
+        Odoo 18 FIX:
+        - HTTP page load: super() calls this with counters=[] (empty list) → bool([]) is False
+          → we ADD jandalah ESS data → template renders correctly ✓
+        - RPC /my/counters call: JS sends counters=['key1','key2',...] (non-empty list) → bool([...]) is True
+          → we return ONLY super() values → no textContent crash ✓
+        """
         values = super()._prepare_home_portal_values(counters)
-        # In Odoo 18, when called via RPC /my/counters, counters is a list of requested placeholder keys.
-        # Returning non-counter dict items here causes client TypeError: Cannot set properties of null (setting 'textContent').
         if counters and isinstance(counters, (list, tuple, set)):
+            # RPC call — return only numeric counters, never ESS objects
             return values
-        # For legacy synchronous calls where counters is None:
+        # HTTP page load — inject all jandalah dashboard data
         values.update(self._get_jandalah_dashboard_values())
         return values
 
