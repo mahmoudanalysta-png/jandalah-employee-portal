@@ -169,6 +169,30 @@
                     </div>
                 </div>
 
+                <!-- Mobile Push Notifications Activation Banner -->
+                <div id="mobile_push_notification_card" class="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-white d-none" style="border-right: 5px solid #198754 !important;">
+                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="bg-success bg-opacity-10 text-success rounded-circle d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; min-width: 48px;">
+                                <i class="fa fa-bell-o fs-4"/>
+                            </div>
+                            <div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <h6 class="fw-bold mb-0 text-dark">تفعيل إشعارات الهاتف المنبثقة (شاشة القفل)</h6>
+                                    <span class="badge bg-success rounded-pill px-2">مثل الواتساب</span>
+                                </div>
+                                <small class="text-muted">لتصلك تنبيهات تسجيل الحضور والانصراف، والتعاميم والقرارات الإدارية على شاشة قفل هاتفك مباشرة مثل الواتساب حتى والتطبيق مغلق.</small>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <button id="btn_enable_push" type="button" class="btn btn-success fw-bold rounded-pill px-4 shadow-sm" onclick="enablePushNotifications();">
+                                <i class="fa fa-bell me-1"/> تفعيل التنبيهات الآن
+                            </button>
+                            <button type="button" class="btn-close ms-1" onclick="dismissPushBanner();" aria-label="Close"></button>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- ESS Main Dashboard -->
                 <div class="card border-0 shadow-sm rounded-4 mb-4 bg-light">
                     <div class="card-body p-4">
@@ -478,6 +502,27 @@
                                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                             </div>
                             <div class="modal-body p-4">
+                                <!-- Mobile Push Notification Status Card -->
+                                <div class="card border-0 rounded-3 p-3 mb-3" style="background-color: #f0fdf4; border: 1px solid #bbf7d0 !important;">
+                                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <i class="fa fa-bell text-success fs-5"/>
+                                            <div>
+                                                <strong class="d-block text-dark small">إشعارات الهاتف المنبثقة (شاشة القفل)</strong>
+                                                <span id="push_modal_status_text" class="text-muted" style="font-size: 11px;">تصلك التنبيهات مثل الواتساب حتى والتطبيق مغلق.</span>
+                                            </div>
+                                        </div>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <button id="btn_modal_push_test" type="button" class="btn btn-sm btn-outline-success rounded-pill px-3 fw-bold" onclick="testPushNotification();">
+                                                <i class="fa fa-paper-plane me-1"/> تجربة إشعار فوري
+                                            </button>
+                                            <button id="btn_modal_push_enable" type="button" class="btn btn-sm btn-success rounded-pill px-3 fw-bold d-none" onclick="enablePushNotifications();">
+                                                <i class="fa fa-bell me-1"/> تفعيل الآن
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <t t-if="total_active_notifications == 0">
                                     <div class="text-center py-4">
                                         <div class="text-success fs-1 mb-2">
@@ -849,6 +894,188 @@
                             feedback.innerHTML = '<i class="fa fa-times-circle me-1"></i> تعذر الاتصال بالسيرفر. يرجى المحاولة ثانية.';
                         });
                     }
+
+                    // 5. Mobile Web Push and System Notification System
+                    function dismissPushBanner() {
+                        const card = document.getElementById('mobile_push_notification_card');
+                        if (card) card.classList.add('d-none');
+                        sessionStorage.setItem('jandalah_push_dismissed', '1');
+                    }
+
+                    function updatePushUIState(permission) {
+                        const card = document.getElementById('mobile_push_notification_card');
+                        const statusTxt = document.getElementById('push_modal_status_text');
+                        const btnModalEnable = document.getElementById('btn_modal_push_enable');
+                        const btnModalTest = document.getElementById('btn_modal_push_test');
+
+                        if (permission === 'granted') {
+                            if (card) card.classList.add('d-none');
+                            if (statusTxt) statusTxt.innerHTML = '<span class="text-success fw-bold"><i class="fa fa-check-circle me-1"></i> مفعلة على هذا الجهاز (تصلك الإشعارات على شاشة القفل)</span>';
+                            if (btnModalEnable) btnModalEnable.classList.add('d-none');
+                            if (btnModalTest) btnModalTest.classList.remove('d-none');
+                        } else if (permission === 'denied') {
+                            if (card) card.classList.add('d-none');
+                            if (statusTxt) statusTxt.innerHTML = '<span class="text-danger fw-bold"><i class="fa fa-ban me-1"></i> الإشعارات محظورة في إعدادات المتصفح</span>';
+                            if (btnModalEnable) btnModalEnable.classList.add('d-none');
+                        } else {
+                            if (card &amp;&amp; sessionStorage.getItem('jandalah_push_dismissed') !== '1') {
+                                card.classList.remove('d-none');
+                            }
+                            if (statusTxt) statusTxt.innerText = 'اضغط تفعيل لتلقي الإشعارات المنبثقة على شاشة القفل.';
+                            if (btnModalEnable) btnModalEnable.classList.remove('d-none');
+                            if (btnModalTest) btnModalTest.classList.add('d-none');
+                        }
+                    }
+
+                    async function registerDevicePush(sub) {
+                        try {
+                            const endpoint = sub ? sub.endpoint : ('device-' + navigator.userAgent);
+                            let keys = null;
+                            let raw_json = null;
+                            if (sub) {
+                                const raw = sub.toJSON();
+                                keys = raw.keys || {};
+                                raw_json = JSON.stringify(raw);
+                            }
+                            await fetch('/my/push/subscribe', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    jsonrpc: '2.0',
+                                    method: 'call',
+                                    params: {
+                                        endpoint: endpoint,
+                                        keys: keys,
+                                        device_name: /iPhone|iPad/i.test(navigator.userAgent) ? 'Apple iOS' : (/Android/i.test(navigator.userAgent) ? 'Android Mobile' : 'متصفح الحاسوب'),
+                                        raw_json: raw_json
+                                    }
+                                })
+                            });
+                        } catch(e) {
+                            console.warn('Push sync error:', e);
+                        }
+                    }
+
+                    async function enablePushNotifications() {
+                        if (!('Notification' in window)) {
+                            alert('متصفح جهازك لا يدعم الإشعارات المنبثقة.');
+                            return;
+                        }
+                        const perm = await Notification.requestPermission();
+                        updatePushUIState(perm);
+                        if (perm === 'granted') {
+                            let reg = null;
+                            if ('serviceWorker' in navigator) {
+                                reg = await navigator.serviceWorker.ready;
+                                try {
+                                    let sub = await reg.pushManager.getSubscription();
+                                    await registerDevicePush(sub);
+                                } catch(e) {
+                                    await registerDevicePush(null);
+                                }
+                            }
+                            // Trigger welcome lock-screen notification
+                            const title = 'شركة جندله | تم تفعيل الإشعارات بنجاح';
+                            const options = {
+                                body: 'تهانينا! ستصلك تنبيهات تسجيل الحضور، والتعاميم والقرارات على شاشة قفل هاتفك مثل الواتساب.',
+                                icon: '/jandalah_employee_portal/static/src/img/icon-192.png',
+                                badge: '/jandalah_employee_portal/static/src/img/icon-192.png',
+                                vibrate: [300, 100, 300, 100, 300],
+                                tag: 'jandalah-welcome',
+                                renotify: true,
+                                data: { url: '/my' }
+                            };
+                            if (reg &amp;&amp; reg.showNotification) {
+                                reg.showNotification(title, options);
+                            } else {
+                                new Notification(title, options);
+                            }
+                        } else if (perm === 'denied') {
+                            alert('تم رفض إذن الإشعارات من المتصفح. يمكنك تفعيلها يدوياً من إعدادات الموقع في المتصفح.');
+                        }
+                    }
+
+                    async function testPushNotification() {
+                        if (!('Notification' in window) || Notification.permission !== 'granted') {
+                            enablePushNotifications();
+                            return;
+                        }
+                        try {
+                            const reg = ('serviceWorker' in navigator) ? await navigator.serviceWorker.ready : null;
+                            const title = 'شركة جندله | تجربة إشعار فوري 🔔';
+                            const options = {
+                                body: 'هكذا تظهر إشعارات جندله المنبثقة على شاشة القفل وشريط التنبيهات مع الصوت والاهتزاز!',
+                                icon: '/jandalah_employee_portal/static/src/img/icon-192.png',
+                                badge: '/jandalah_employee_portal/static/src/img/icon-192.png',
+                                vibrate: [400, 150, 400],
+                                tag: 'jandalah-test',
+                                renotify: true,
+                                data: { url: '/my' }
+                            };
+                            if (reg &amp;&amp; reg.showNotification) {
+                                reg.showNotification(title, options);
+                            } else {
+                                new Notification(title, options);
+                            }
+                            fetch('/my/push/test', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ jsonrpc: '2.0', method: 'call', params: {} })
+                            });
+                        } catch(e) {
+                            console.error('Test push error:', e);
+                        }
+                    }
+
+                    // Background notifications poller for live active tabs (every 45s)
+                    let lastPolledAlerts = new Set();
+                    async function pollPendingNotifications() {
+                        if (!('Notification' in window) || Notification.permission !== 'granted') return;
+                        try {
+                            const res = await fetch('/my/notifications/poll', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ jsonrpc: '2.0', method: 'call', params: {} })
+                            });
+                            const data = await res.json();
+                            const notifs = (data.result &amp;&amp; data.result.notifications) ? data.result.notifications : [];
+                            const reg = ('serviceWorker' in navigator) ? await navigator.serviceWorker.ready : null;
+                            for (let n of notifs) {
+                                const key = n.id + '-' + n.type;
+                                if (!lastPolledAlerts.has(key)) {
+                                    lastPolledAlerts.add(key);
+                                    const opts = {
+                                        body: n.body,
+                                        icon: '/jandalah_employee_portal/static/src/img/icon-192.png',
+                                        badge: '/jandalah_employee_portal/static/src/img/icon-192.png',
+                                        vibrate: [300, 100, 300],
+                                        tag: 'jandalah-poll-' + n.id,
+                                        renotify: true,
+                                        data: { url: n.url || '/my' }
+                                    };
+                                    if (reg &amp;&amp; reg.showNotification) {
+                                        reg.showNotification(n.title, opts);
+                                    }
+                                }
+                            }
+                        } catch(err) {
+                            // silent poll failure
+                        }
+                    }
+
+                    document.addEventListener('DOMContentLoaded', function() {
+                        if ('Notification' in window) {
+                            updatePushUIState(Notification.permission);
+                            if (Notification.permission === 'granted') {
+                                if ('serviceWorker' in navigator) {
+                                    navigator.serviceWorker.ready.then(reg => {
+                                        reg.pushManager.getSubscription().then(sub => registerDevicePush(sub));
+                                    });
+                                }
+                                setInterval(pollPendingNotifications, 45000);
+                            }
+                        }
+                    });
                 </script>
             </t>
         </xpath>
@@ -1051,15 +1278,30 @@
                             <div class="row g-2 py-3 text-center">
                                 <div class="col-7">
                                     <div class="bg-light p-2 rounded-3 border">
-                                        <small class="text-muted d-block">الفترة المطلوبة:</small>
-                                        <span class="fw-bold text-dark small d-block">من <t t-esc="l['request_date_from']"/></span>
-                                        <span class="fw-bold text-dark small d-block">إلى <t t-esc="l['request_date_to']"/></span>
+                                        <small class="text-muted d-block">
+                                            <t t-if="l.get('is_hourly')">تاريخ الإذن الساعي:</t>
+                                            <t t-else="">الفترة المطلوبة:</t>
+                                        </small>
+                                        <t t-if="l.get('is_hourly')">
+                                            <span class="fw-bold text-dark small d-block"><t t-esc="l['request_date_from']"/></span>
+                                        </t>
+                                        <t t-else="">
+                                            <span class="fw-bold text-dark small d-block">من <t t-esc="l['request_date_from']"/></span>
+                                            <span class="fw-bold text-dark small d-block">إلى <t t-esc="l['request_date_to']"/></span>
+                                        </t>
                                     </div>
                                 </div>
                                 <div class="col-5">
                                     <div class="bg-light p-2 rounded-3 border h-100 d-flex flex-column justify-content-center">
-                                        <small class="text-muted d-block">المدة الإجمالية:</small>
-                                        <span class="fw-bold text-primary fs-5"><t t-esc="l['number_of_days']"/> يوم</span>
+                                        <small class="text-muted d-block">المدة:</small>
+                                        <t t-if="l.get('is_hourly')">
+                                            <span class="badge bg-primary text-white rounded-pill px-2.5 py-1.5 fs-6">
+                                                <i class="fa fa-clock-o me-1"/> <t t-esc="l.get('hours_display') or 'إذن ساعات'"/>
+                                            </span>
+                                        </t>
+                                        <t t-else="">
+                                            <span class="fw-bold text-primary fs-5"><t t-esc="l['number_of_days']"/> يوم</span>
+                                        </t>
                                     </div>
                                 </div>
                             </div>
@@ -1124,8 +1366,15 @@
                                         </td>
                                         <td><t t-esc="l['request_date_from']"/></td>
                                         <td><t t-esc="l['request_date_to']"/></td>
-                                        <td class="fw-bold text-primary">
-                                            <t t-esc="l['number_of_days']"/> يوم
+                                        <td class="fw-bold">
+                                            <t t-if="l.get('is_hourly')">
+                                                <span class="badge bg-primary text-white rounded-pill px-2.5 py-1">
+                                                    <i class="fa fa-clock-o me-1"/> <t t-esc="l.get('hours_display') or 'إذن ساعات'"/>
+                                                </span>
+                                            </t>
+                                            <t t-else="">
+                                                <span class="text-primary"><t t-esc="l['number_of_days']"/> يوم</span>
+                                            </t>
                                         </td>
                                         <td class="text-muted small">
                                             <t t-esc="l['name'] or '-'"/>
@@ -1178,27 +1427,63 @@
                                 </div>
                                 <div class="modal-body p-4">
                                     <div class="mb-3">
-                                        <label class="form-label fw-bold">نوع الإجازة <span class="text-danger">*</span></label>
-                                        <select name="holiday_status_id" class="form-select rounded-3" required="required">
-                                            <option value="">اختر نوع الإجازة...</option>
+                                        <label class="form-label fw-bold">نوع الإجازة أو الطلب <span class="text-danger">*</span></label>
+                                        <select name="holiday_status_id" id="holiday_status_select" class="form-select rounded-3" required="required">
+                                            <option value="">اختر نوع الإجازة أو الإذن...</option>
                                             <t t-foreach="leave_types" t-as="lt">
-                                                <option t-att-value="lt.id"><t t-esc="lt.name"/></option>
+                                                <option t-att-value="lt['id']" t-att-data-is-hourly="'1' if lt.get('is_hourly') else '0'"><t t-esc="lt['name']"/></option>
                                             </t>
                                         </select>
                                     </div>
-                                    <div class="row g-2 mb-3">
+
+                                    <!-- 1. Normal Days Section -->
+                                    <div id="days_section" class="row g-2 mb-3">
                                         <div class="col-6">
                                             <label class="form-label fw-bold">من تاريخ <span class="text-danger">*</span></label>
-                                            <input type="date" name="request_date_from" class="form-control rounded-3" required="required"/>
+                                            <input type="date" name="request_date_from" id="request_date_from" class="form-control rounded-3" required="required"/>
                                         </div>
                                         <div class="col-6">
                                             <label class="form-label fw-bold">إلى تاريخ <span class="text-danger">*</span></label>
-                                            <input type="date" name="request_date_to" class="form-control rounded-3" required="required"/>
+                                            <input type="date" name="request_date_to" id="request_date_to" class="form-control rounded-3" required="required"/>
                                         </div>
                                     </div>
+
+                                    <!-- 2. Hourly Permission Section (Auto shown for permissions / hourly) -->
+                                    <div id="hourly_permission_section" class="d-none">
+                                        <input type="hidden" name="is_hourly" id="is_hourly_input" value="0"/>
+                                        <div class="alert alert-primary py-2 px-3 mb-3 rounded-3 small" style="background-color: #eff6ff; border: 1px solid #bfdbfe;">
+                                            <i class="fa fa-clock-o me-1 text-primary"/>
+                                            <b>طلب إذن ساعي:</b> حدد تاريخ الإذن وساعات الاستئذان (الحد الأقصى للإذن <b>3 ساعات</b> خلال يوم العمل). تخصم ساعات الإذن المعتمد تلقائياً من احتساب التأخير الصباحي عند الحضور.
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label fw-bold">تاريخ الإذن <span class="text-danger">*</span></label>
+                                            <input type="date" name="permission_date" id="permission_date" class="form-control rounded-3"/>
+                                        </div>
+                                        <div class="row g-2 mb-3">
+                                            <div class="col-6">
+                                                <label class="form-label fw-bold">من الساعة <span class="text-danger">*</span></label>
+                                                <input type="time" name="request_hour_from" id="request_hour_from" class="form-control rounded-3" value="09:00"/>
+                                            </div>
+                                            <div class="col-6">
+                                                <label class="form-label fw-bold">إلى الساعة <span class="text-danger">*</span></label>
+                                                <input type="time" name="request_hour_to" id="request_hour_to" class="form-control rounded-3" value="12:00"/>
+                                            </div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label fw-bold">عدد ساعات الإذن المحسوبة</label>
+                                            <div class="input-group">
+                                                <input type="number" step="0.5" min="0.5" max="3.0" name="permission_hours" id="permission_hours" class="form-control rounded-start-3" value="3.0"/>
+                                                <span class="input-group-text rounded-end-3 bg-light">ساعات (أقصى حد: 3)</span>
+                                            </div>
+                                            <div id="perm_hours_warning" class="text-danger small mt-1 fw-bold d-none">
+                                                <i class="fa fa-exclamation-triangle me-1"/> الحد الأقصى المسموح به للإذن هو 3 ساعات فقط في اليوم وفق لائحة العمل.
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     <div class="mb-3">
                                         <label class="form-label fw-bold">السبب / ملاحظات إضافية</label>
-                                        <textarea name="name" class="form-control rounded-3" rows="2" placeholder="اكتب سبب طلب الإجازة..."></textarea>
+                                        <textarea name="name" class="form-control rounded-3" rows="2" placeholder="اكتب سبب طلب الإجازة أو الإذن..."></textarea>
                                     </div>
                                     <div class="mb-3">
                                         <label class="form-label fw-bold d-flex justify-content-between align-items-center mb-1">
@@ -1225,17 +1510,94 @@
 
                 <script type="text/javascript">
                     document.addEventListener('DOMContentLoaded', function() {
-                        var sel = document.querySelector('select[name="holiday_status_id"]');
-                        if (sel) {
-                            sel.addEventListener('change', function() {
-                                var txt = sel.options[sel.selectedIndex].text;
-                                var alertBox = document.getElementById('sick_leave_alert');
-                                if (alertBox) {
-                                    if (txt.indexOf('مرض') !== -1 || txt.toLowerCase().indexOf('sick') !== -1) {
-                                        alertBox.classList.remove('d-none');
-                                    } else {
-                                        alertBox.classList.add('d-none');
+                        var sel = document.getElementById('holiday_status_select');
+                        var daysSec = document.getElementById('days_section');
+                        var hourlySec = document.getElementById('hourly_permission_section');
+                        var reqFrom = document.getElementById('request_date_from');
+                        var reqTo = document.getElementById('request_date_to');
+                        var permDate = document.getElementById('permission_date');
+                        var isHourlyInput = document.getElementById('is_hourly_input');
+                        var hFrom = document.getElementById('request_hour_from');
+                        var hTo = document.getElementById('request_hour_to');
+                        var pHours = document.getElementById('permission_hours');
+                        var hWarn = document.getElementById('perm_hours_warning');
+                        var alertBox = document.getElementById('sick_leave_alert');
+
+                        function updateSection() {
+                            if (!sel || sel.selectedIndex &lt; 0) return;
+                            var opt = sel.options[sel.selectedIndex];
+                            var isHourly = opt.getAttribute('data-is-hourly') === '1';
+                            var txt = opt.text || '';
+                            if (txt.indexOf('إذن') !== -1 || txt.indexOf('اذن') !== -1 || txt.indexOf('استئذان') !== -1 || txt.indexOf('ساعي') !== -1) {
+                                isHourly = true;
+                            }
+
+                            if (isHourly) {
+                                if (daysSec) daysSec.classList.add('d-none');
+                                if (reqFrom) reqFrom.removeAttribute('required');
+                                if (reqTo) reqTo.removeAttribute('required');
+                                if (hourlySec) hourlySec.classList.remove('d-none');
+                                if (permDate) {
+                                    permDate.setAttribute('required', 'required');
+                                    if (!permDate.value) {
+                                        var today = new Date().toISOString().split('T')[0];
+                                        permDate.value = today;
                                     }
+                                }
+                                if (isHourlyInput) isHourlyInput.value = '1';
+                                calcPermHours();
+                            } else {
+                                if (daysSec) daysSec.classList.remove('d-none');
+                                if (reqFrom) reqFrom.setAttribute('required', 'required');
+                                if (reqTo) reqTo.setAttribute('required', 'required');
+                                if (hourlySec) hourlySec.classList.add('d-none');
+                                if (permDate) permDate.removeAttribute('required');
+                                if (isHourlyInput) isHourlyInput.value = '0';
+                            }
+
+                            if (alertBox) {
+                                if (txt.indexOf('مرض') !== -1 || txt.toLowerCase().indexOf('sick') !== -1) {
+                                    alertBox.classList.remove('d-none');
+                                } else {
+                                    alertBox.classList.add('d-none');
+                                }
+                            }
+                        }
+
+                        function calcPermHours() {
+                            if (!hFrom || !hTo || !pHours) return;
+                            var vf = hFrom.value;
+                            var vt = hTo.value;
+                            if (vf &amp;&amp; vt) {
+                                var tf = vf.split(':');
+                                var tt = vt.split(':');
+                                var diff = (parseInt(tt[0]) + parseInt(tt[1])/60.0) - (parseInt(tf[0]) + parseInt(tf[1])/60.0);
+                                if (diff &lt;= 0) diff = 1.0;
+                                if (diff &gt; 3.0) {
+                                    if (hWarn) hWarn.classList.remove('d-none');
+                                    pHours.value = 3.0;
+                                } else {
+                                    if (hWarn) hWarn.classList.add('d-none');
+                                    pHours.value = Math.round(diff * 10) / 10;
+                                }
+                            }
+                        }
+
+                        if (sel) {
+                            sel.addEventListener('change', updateSection);
+                        }
+                        if (hFrom &amp;&amp; hTo) {
+                            hFrom.addEventListener('change', calcPermHours);
+                            hTo.addEventListener('change', calcPermHours);
+                        }
+                        if (pHours) {
+                            pHours.addEventListener('input', function() {
+                                var v = parseFloat(pHours.value);
+                                if (v &gt; 3.0) {
+                                    pHours.value = 3.0;
+                                    if (hWarn) hWarn.classList.remove('d-none');
+                                } else {
+                                    if (hWarn) hWarn.classList.add('d-none');
                                 }
                             });
                         }
@@ -1705,15 +2067,30 @@
                             <div class="row g-2 py-3 text-center">
                                 <div class="col-7">
                                     <div class="bg-light p-2 rounded-3 border">
-                                        <small class="text-muted d-block">الفترة المطلوبة:</small>
-                                        <span class="fw-bold text-dark small d-block">من <t t-esc="pl['request_date_from']"/></span>
-                                        <span class="fw-bold text-dark small d-block">إلى <t t-esc="pl['request_date_to']"/></span>
+                                        <small class="text-muted d-block">
+                                            <t t-if="pl.get('is_hourly')">تاريخ الإذن الساعي:</t>
+                                            <t t-else="">الفترة المطلوبة:</t>
+                                        </small>
+                                        <t t-if="pl.get('is_hourly')">
+                                            <span class="fw-bold text-dark small d-block"><t t-esc="pl['request_date_from']"/></span>
+                                        </t>
+                                        <t t-else="">
+                                            <span class="fw-bold text-dark small d-block">من <t t-esc="pl['request_date_from']"/></span>
+                                            <span class="fw-bold text-dark small d-block">إلى <t t-esc="pl['request_date_to']"/></span>
+                                        </t>
                                     </div>
                                 </div>
                                 <div class="col-5">
                                     <div class="bg-light p-2 rounded-3 border h-100 d-flex flex-column justify-content-center">
-                                        <small class="text-muted d-block">المدة الإجمالية:</small>
-                                        <span class="fw-bold text-primary fs-5"><t t-esc="pl['number_of_days']"/> يوم</span>
+                                        <small class="text-muted d-block">المدة:</small>
+                                        <t t-if="pl.get('is_hourly')">
+                                            <span class="badge bg-primary text-white rounded-pill px-2.5 py-1.5 fs-6">
+                                                <i class="fa fa-clock-o me-1"/> <t t-esc="pl.get('hours_display') or 'إذن ساعات'"/>
+                                            </span>
+                                        </t>
+                                        <t t-else="">
+                                            <span class="fw-bold text-primary fs-5"><t t-esc="pl['number_of_days']"/> يوم</span>
+                                        </t>
                                     </div>
                                 </div>
                             </div>
@@ -1810,8 +2187,15 @@
                                         </td>
                                         <td><t t-esc="pl['request_date_from']"/></td>
                                         <td><t t-esc="pl['request_date_to']"/></td>
-                                        <td class="fw-bold text-primary">
-                                            <t t-esc="pl['number_of_days']"/> يوم
+                                        <td class="fw-bold">
+                                            <t t-if="pl.get('is_hourly')">
+                                                <span class="badge bg-primary text-white rounded-pill px-2.5 py-1">
+                                                    <i class="fa fa-clock-o me-1"/> <t t-esc="pl.get('hours_display') or 'إذن ساعات'"/>
+                                                </span>
+                                            </t>
+                                            <t t-else="">
+                                                <span class="text-primary"><t t-esc="pl['number_of_days']"/> يوم</span>
+                                            </t>
                                         </td>
                                         <td class="text-muted small">
                                             <t t-esc="pl['name'] or '-'"/>

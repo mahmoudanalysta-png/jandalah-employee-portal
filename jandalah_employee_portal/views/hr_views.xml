@@ -358,6 +358,27 @@
         <field name="view_mode">list,form</field>
     </record>
 
+    <!-- ==================== Push Notification Subscribers Views ==================== -->
+    <record id="view_jandalah_push_subscriber_list" model="ir.ui.view">
+        <field name="name">jandalah.push.subscriber.list</field>
+        <field name="model">jandalah.push.subscriber</field>
+        <field name="arch" type="xml">
+            <list string="مشتركو إشعارات الهاتف المنبثقة">
+                <field name="employee_id"/>
+                <field name="device_name"/>
+                <field name="endpoint"/>
+                <field name="last_seen"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_jandalah_push_subscribers" model="ir.actions.act_window">
+        <field name="name">مشتركو إشعارات الهاتف</field>
+        <field name="res_model">jandalah.push.subscriber</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
     <!-- ==================== Menus ==================== -->
     <menuitem id="menu_jandalah_hr_portal_management"
               name="بوابة الخدمات الذاتية"
@@ -388,6 +409,12 @@
               parent="menu_jandalah_hr_portal_management"
               action="action_jandalah_location_requests"
               sequence="40"/>
+
+    <menuitem id="menu_jandalah_push_subscribers_sub"
+              name="مشتركو إشعارات الهاتف"
+              parent="menu_jandalah_hr_portal_management"
+              action="action_jandalah_push_subscribers"
+              sequence="50"/>
 
     <!-- Auto-sync validated leaves to attendance records on module install / update -->
     <function model="hr.attendance" name="sync_all_validated_leaves"/>

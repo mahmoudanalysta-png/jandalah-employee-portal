@@ -4,3 +4,4 @@ from . import announcement
 from . import penalty
 from . import asset
 from . import location_request
+from . import push_subscriber

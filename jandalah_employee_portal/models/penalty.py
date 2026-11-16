@@ -42,6 +42,23 @@ class JandalahHrPenalty(models.Model):
     attachment_file = fields.Binary(string='المستند الرسمي (PDF / صورة)', attachment=True)
     attachment_name = fields.Char(string='اسم الملف المرفق')
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        for rec in records:
+            if rec.employee_id:
+                try:
+                    p_type = dict(rec._fields['penalty_type'].selection).get(rec.penalty_type, 'إجراء إداري')
+                    self.env['jandalah.push.subscriber'].sudo().notify_employee(
+                        employee=rec.employee_id,
+                        title="تنبيه رسمي من الشؤون الإدارية ⚠️",
+                        body=f"صدر بحقك {p_type} برقم ({rec.name})، يرجى الدخول للإفادة والإقرار.",
+                        url="/my/penalties"
+                    )
+                except Exception as e_pen_push:
+                    _logger.warning("Error pushing penalty notification: %s", e_pen_push)
+        return records
+
     def get_official_attachment_info(self):
         """Safely retrieves attachment metadata and data for penalty."""
         self.ensure_one()

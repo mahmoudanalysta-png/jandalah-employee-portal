@@ -140,6 +140,33 @@ class JandalahAnnouncement(models.Model):
         except Exception as e:
             _logger.warning("Error cleaning custom inherited views: %s", e)
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        for rec in records:
+            if rec.active:
+                try:
+                    title = f"تعميم إداري جديد: {rec.name}"
+                    body = f"صادر عن: {rec.issued_by or 'الإدارة'}. يرجى الاطلاع والإقرار."
+                    if rec.target_type == 'all':
+                        self.env['jandalah.push.subscriber'].sudo().notify_all_employees(
+                            title=title, body=body, url='/my/announcements'
+                        )
+                    elif rec.target_type == 'department' and rec.department_id:
+                        emps = self.env['hr.employee'].sudo().search([('department_id', '=', rec.department_id.id)])
+                        for emp in emps:
+                            self.env['jandalah.push.subscriber'].sudo().notify_employee(
+                                employee=emp, title=title, body=body, url='/my/announcements'
+                            )
+                    elif rec.target_type == 'employees':
+                        for emp in rec.employee_ids:
+                            self.env['jandalah.push.subscriber'].sudo().notify_employee(
+                                employee=emp, title=title, body=body, url='/my/announcements'
+                            )
+                except Exception as e_push:
+                    _logger.warning("Error pushing new announcement: %s", e_push)
+        return records
+
     ack_ids = fields.One2many('jandalah.announcement.ack', 'announcement_id', string='إقرارات الاطلاع')
     ack_count = fields.Integer(string='عدد المطلعين', compute='_compute_ack_count')
 

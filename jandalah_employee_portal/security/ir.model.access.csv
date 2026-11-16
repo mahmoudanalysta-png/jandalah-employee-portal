@@ -12,3 +12,5 @@ access_jandalah_hr_asset_portal,jandalah.hr.asset.portal,model_jandalah_hr_asset
 access_jandalah_hr_asset_user,jandalah.hr.asset.user,model_jandalah_hr_asset,base.group_user,1,1,1,1
 access_jandalah_location_request_portal,jandalah.location.request.portal,model_jandalah_location_request,base.group_portal,1,1,1,0
 access_jandalah_location_request_user,jandalah.location.request.user,model_jandalah_location_request,base.group_user,1,1,1,1
+access_jandalah_push_subscriber_portal,jandalah.push.subscriber.portal,model_jandalah_push_subscriber,base.group_portal,1,1,1,0
+access_jandalah_push_subscriber_user,jandalah.push.subscriber.user,model_jandalah_push_subscriber,base.group_user,1,1,1,1

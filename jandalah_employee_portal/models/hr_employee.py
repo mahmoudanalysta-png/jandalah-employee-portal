@@ -519,13 +519,34 @@ class HrAttendance(models.Model):
                     if is_permission:
                         leave_perm_type = 'permission'
                         hours = getattr(approved_leave, 'number_of_hours_display', 0)
-                        if hours and hours > 0:
-                            h_int = int(hours)
-                            m_int = int(round((hours - h_int) * 60))
-                            time_str = f"{h_int}:{m_int:02d} س" if m_int else f"{h_int} س"
-                            leave_perm_disp = f"إذن ({time_str})"
-                        else:
-                            leave_perm_disp = f"إذن ({type_name})"
+                        if not hours and getattr(approved_leave, 'number_of_days', 0):
+                            hours = approved_leave.number_of_days * 8.0
+                        hours = min(hours, 3.0) if hours else 3.0
+                        h_int = int(hours)
+                        m_int = int(round((hours - h_int) * 60))
+                        time_str = f"{h_int}:{m_int:02d} س" if m_int else f"{h_int} س"
+                        leave_perm_disp = f"إذن ({time_str})"
+
+                        # Deduct approved permission minutes from morning delay
+                        perm_min = int(round(hours * 60))
+                        if delay_min > 0 and perm_min > 0:
+                            delay_min = max(0, delay_min - perm_min)
+                            att.morning_delay_minutes = delay_min
+                            if delay_min == 0:
+                                att.delay_display = f"إذن معتمد ({time_str})"
+                                late_ded = 0.0
+                                att.late_deduction = 0.0
+                                att.net_deduction = round(att.missing_checkout_deduction, 2)
+                            else:
+                                att.delay_display = f"متأخر ({delay_min} د)"
+                                if delay_min <= 60:
+                                    late_ded = 0.25
+                                else:
+                                    late_ded = 0.50
+                                att.late_deduction = late_ded
+                                att.net_deduction = round(late_ded + att.missing_checkout_deduction, 2)
+                        elif delay_min == 0:
+                            att.delay_display = f"إذن معتمد ({time_str})"
 
                         if not att.attendance_notes or att.attendance_notes in ['مكتمل', 'مفتوح حالياً']:
                             att.attendance_notes = f"إذن معتمد ({type_name})"

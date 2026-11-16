@@ -509,16 +509,75 @@ class JandalahCustomerPortal(CustomerPortal):
     @http.route('/jandalah/sw.js', type='http', auth='public', methods=['GET'], csrf=False)
     def portal_pwa_sw(self, **kw):
         sw_code = """
-const CACHE_NAME = 'jandalah-ess-v2';
+const CACHE_NAME = 'jandalah-ess-v3';
+
 self.addEventListener('install', event => {
     self.skipWaiting();
 });
+
 self.addEventListener('activate', event => {
     event.waitUntil(self.clients.claim());
 });
+
 self.addEventListener('fetch', event => {
     event.respondWith(
         fetch(event.request).catch(() => caches.match(event.request))
+    );
+});
+
+// Mobile Push Notifications (Like WhatsApp & Native Apps)
+self.addEventListener('push', event => {
+    let payload = {
+        title: 'شركة جندله | بوابة الموظفين',
+        body: 'لديك تنبيه رسمي جديد من إدارة الشركة',
+        url: '/my',
+        tag: 'jandalah-alert-' + Date.now()
+    };
+    try {
+        if (event.data) {
+            const raw = event.data.json();
+            payload = Object.assign(payload, raw);
+        }
+    } catch(e) {
+        if (event.data) {
+            payload.body = event.data.text();
+        }
+    }
+
+    const options = {
+        body: payload.body,
+        icon: '/jandalah_employee_portal/static/src/img/icon-192.png',
+        badge: '/jandalah_employee_portal/static/src/img/icon-192.png',
+        vibrate: [300, 100, 300, 100, 300],
+        tag: payload.tag || 'jandalah-general',
+        renotify: true,
+        requireInteraction: true,
+        data: { url: payload.url || '/my' },
+        actions: [
+            { action: 'open', title: 'فتح التطبيق' }
+        ]
+    };
+
+    event.waitUntil(
+        self.registration.showNotification(payload.title, options)
+    );
+});
+
+self.addEventListener('notificationclick', event => {
+    event.notification.close();
+    const targetUrl = (event.notification.data && event.notification.data.url) ? event.notification.data.url : '/my';
+    event.waitUntil(
+        clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
+            for (let client of windowClients) {
+                if (client.url && client.url.includes('/my') && 'focus' in client) {
+                    client.navigate(targetUrl);
+                    return client.focus();
+                }
+            }
+            if (clients.openWindow) {
+                return clients.openWindow(targetUrl);
+            }
+        })
     );
 });
 """
@@ -530,6 +589,84 @@ self.addEventListener('fetch', event => {
                 ('Cache-Control', 'no-cache'),
             ]
         )
+
+    @http.route('/my/push/subscribe', type='json', auth='user', methods=['POST'], csrf=False)
+    def push_subscribe(self, endpoint=None, keys=None, device_name=None, raw_json=None, **kw):
+        """Registers the employee mobile browser for real Web Push notifications."""
+        emp = self._get_employee()
+        if not emp or not endpoint:
+            return {'status': 'error', 'message': 'بيانات الاشتراك غير مكتملة'}
+
+        p256dh = keys.get('p256dh') if keys else None
+        auth = keys.get('auth') if keys else None
+        Subscriber = request.env['jandalah.push.subscriber'].sudo()
+        sub = Subscriber.register_subscription(
+            employee=emp,
+            endpoint=endpoint,
+            p256dh=p256dh,
+            auth=auth,
+            device_name=device_name or 'هاتف محمول',
+            raw_json=raw_json
+        )
+        return {'status': 'success', 'subscriber_id': sub.id}
+
+    @http.route('/my/push/test', type='json', auth='user', methods=['POST'], csrf=False)
+    def push_test(self, **kw):
+        """Triggers an instant push notification test for the logged-in employee."""
+        emp = self._get_employee()
+        if not emp:
+            return {'status': 'error', 'message': 'لا يوجد ملف موظف مرتبط'}
+
+        Subscriber = request.env['jandalah.push.subscriber'].sudo()
+        sent_count = Subscriber.notify_employee(
+            employee=emp,
+            title='شركة جندله | تجربة الإشعارات',
+            body=f'مرحباً {emp.name}، تم تفعيل إشعارات الهاتف المنبثقة بنجاح على جهازك!',
+            url='/my'
+        )
+        return {'status': 'success', 'sent_count': sent_count}
+
+    @http.route('/my/notifications/poll', type='json', auth='user', methods=['POST'], csrf=False)
+    def notifications_poll(self, **kw):
+        """Returns pending urgent notifications for the employee (shift end, unread announcements, penalties)."""
+        emp = self._get_employee()
+        if not emp:
+            return {'status': 'error', 'alerts': []}
+
+        alerts = []
+        # 1. Unread announcements
+        Ann = request.env['jandalah.announcement'].sudo()
+        Ack = request.env['jandalah.announcement.ack'].sudo()
+        my_acked_ids = set(Ack.search([('employee_id', '=', emp.id)]).mapped('announcement_id.id'))
+        all_ann = Ann.search([('active', '=', True)], order='date desc, id desc', limit=5)
+        for a in all_ann:
+            if a.is_visible_for(emp) and a.id not in my_acked_ids:
+                alerts.append({
+                    'id': f'ann_{a.id}',
+                    'title': 'تعميم إداري جديد 📢',
+                    'body': f'{a.name} - صادر عن: {a.issued_by or "الإدارة"}',
+                    'url': '/my/announcements',
+                    'tag': f'ann_{a.id}'
+                })
+                break
+
+        # 2. Pending penalties requiring employee response
+        Penalty = request.env['jandalah.hr.penalty'].sudo()
+        pending_pen = Penalty.search([
+            ('employee_id', '=', emp.id),
+            ('state', '=', 'issued'),
+            ('employee_response', '=', False)
+        ], limit=1)
+        if pending_pen:
+            alerts.append({
+                'id': f'pen_{pending_pen.id}',
+                'title': 'تنبيه إداري رسمي ⚠️',
+                'body': f'لديك إجراء إداري بانتظار إفادتك: {pending_pen.penalty_type}',
+                'url': '/my/penalties',
+                'tag': f'pen_{pending_pen.id}'
+            })
+
+        return {'status': 'success', 'alerts': alerts}
 
     @http.route('/my/attendance/toggle', type='json', auth='user', methods=['POST'], csrf=False)
     def attendance_toggle(self, latitude=None, longitude=None, browser=None, tz=None, **kw):
@@ -773,9 +910,42 @@ self.addEventListener('fetch', event => {
                     delay_minutes = punch_min - work_start_min
                     is_late = True
 
+            # Check for approved permission on this attendance date to deduct hours from delay
+            att_date = in_local.date() if in_local else None
+            is_perm = False
+            perm_time_str = ''
+            if att_date and emp:
+                appr_l = request.env['hr.leave'].sudo().search([
+                    ('employee_id', '=', emp.id),
+                    ('state', '=', 'validate'),
+                    ('request_date_from', '<=', att_date),
+                    ('request_date_to', '>=', att_date),
+                ], limit=1)
+                if appr_l:
+                    t_name = appr_l.holiday_status_id.name or ''
+                    if (getattr(appr_l, 'request_unit_hours', False) or
+                        (hasattr(appr_l, 'number_of_hours_display') and appr_l.number_of_hours_display > 0 and appr_l.number_of_hours_display < 8) or
+                        any(k in t_name for k in ['إذن', 'اذن', 'استئذان', 'ساعي', 'خروج'])):
+                        is_perm = True
+                        h_val = getattr(appr_l, 'number_of_hours_display', 0.0)
+                        if not h_val and getattr(appr_l, 'number_of_days', 0.0):
+                            h_val = appr_l.number_of_days * 8.0
+                        h_val = min(h_val, 3.0) if h_val else 3.0
+                        perm_min = int(round(h_val * 60))
+                        perm_time_str = f"{int(h_val)} س" if h_val.is_integer() else f"{h_val:g} س"
+                        if delay_minutes > 0 and perm_min > 0:
+                            delay_minutes = max(0, delay_minutes - perm_min)
+                            if delay_minutes == 0:
+                                is_late = False
+
             delay_display = 'على الموعد'
             if is_late and delay_minutes > 0:
-                delay_display = f"متأخر ({delay_minutes} د)"
+                if is_perm:
+                    delay_display = f"متأخر ({delay_minutes} د بعد الإذن)"
+                else:
+                    delay_display = f"متأخر ({delay_minutes} د)"
+            elif is_perm:
+                delay_display = f"إذن معتمد ({perm_time_str})"
             elif is_leave_day or not in_local:
                 delay_display = '-'
 
@@ -842,6 +1012,18 @@ self.addEventListener('fetch', event => {
         offset = (page - 1) * items_per_page
         raw_leaves = Leave.search(domain, order='request_date_from desc', limit=items_per_page, offset=offset)
         leave_types = request.env['hr.leave.type'].sudo().search([('active', '=', True)])
+        leave_types_data = []
+        for lt in leave_types:
+            is_hourly = False
+            if hasattr(lt, 'request_unit') and lt.request_unit == 'hour':
+                is_hourly = True
+            elif any(k in (lt.name or '') for k in ['إذن', 'اذن', 'استئذان', 'ساعي', 'ساعات', 'خروج']):
+                is_hourly = True
+            leave_types_data.append({
+                'id': lt.id,
+                'name': lt.name,
+                'is_hourly': is_hourly,
+            })
 
         # Pre-extract all leave data into pure safe Python dicts to eliminate QWeb AttributeError / AccessError
         leaves_data = []
@@ -868,6 +1050,17 @@ self.addEventListener('fetch', event => {
             date_from_val = l.request_date_from or (l.date_from.date() if l.date_from else '')
             date_to_val = l.request_date_to or (l.date_to.date() if l.date_to else '')
 
+            is_hourly_req = (
+                getattr(l, 'request_unit_hours', False) or
+                (hasattr(l, 'number_of_hours_display') and l.number_of_hours_display > 0 and l.number_of_hours_display < 8) or
+                any(k in leave_type for k in ['إذن', 'اذن', 'استئذان', 'ساعي', 'خروج'])
+            )
+            hours_disp = ''
+            if is_hourly_req:
+                h_val = getattr(l, 'number_of_hours_display', 0.0) or (l.number_of_days * 8.0 if l.number_of_days < 1 else 3.0)
+                h_val = min(h_val, 3.0)
+                hours_disp = f"{int(h_val)} س" if h_val.is_integer() else f"{h_val:g} س"
+
             state_labels = {
                 'confirm': 'بانتظار موافقة المدير المباشر',
                 'validate1': 'بانتظار موافقة الموارد البشرية',
@@ -882,6 +1075,8 @@ self.addEventListener('fetch', event => {
                 'request_date_from': str(date_from_val or '-'),
                 'request_date_to': str(date_to_val or '-'),
                 'number_of_days': l.number_of_days or 1.0,
+                'is_hourly': is_hourly_req,
+                'hours_display': hours_disp,
                 'name': l.name or '',
                 'state': l.state,
                 'state_desc': state_labels.get(l.state, l.state),
@@ -893,7 +1088,7 @@ self.addEventListener('fetch', event => {
         values.update({
             'employee': emp,
             'leaves': leaves_data,
-            'leave_types': leave_types,
+            'leave_types': leave_types_data,
             'page_name': 'leaves',
             'pager': pager,
             'success': success,
@@ -904,22 +1099,98 @@ self.addEventListener('fetch', event => {
         return request.render('jandalah_employee_portal.portal_my_leaves_view', values)
 
     @http.route('/my/leaves/submit', type='http', auth='user', methods=['POST'], website=True, csrf=True)
-    def portal_leave_submit(self, holiday_status_id=None, request_date_from=None, request_date_to=None, name=None, **kw):
+    def portal_leave_submit(self, holiday_status_id=None, request_date_from=None, request_date_to=None, name=None, permission_date=None, request_hour_from=None, request_hour_to=None, permission_hours=None, is_hourly=None, **kw):
         emp = self._get_employee()
         if not emp:
             return request.redirect('/my/leaves?error=no_employee')
 
-        if not holiday_status_id or not request_date_from or not request_date_to:
+        if not holiday_status_id:
             return request.redirect('/my/leaves?error=missing_fields')
 
+        lt = request.env['hr.leave.type'].sudo().browse(int(holiday_status_id))
+        is_hourly_type = (
+            is_hourly == '1' or
+            bool(permission_date) or
+            (hasattr(lt, 'request_unit') and lt.request_unit == 'hour') or
+            any(k in (lt.name or '') for k in ['إذن', 'اذن', 'استئذان', 'ساعي', 'ساعات', 'خروج'])
+        )
+
         try:
-            leave_vals = {
-                'holiday_status_id': int(holiday_status_id),
-                'employee_id': emp.id,
-                'request_date_from': request_date_from,
-                'request_date_to': request_date_to,
-                'name': name.strip() if name else 'طلب إجازة من البوابة',
-            }
+            calc_hours = 2.0
+            if is_hourly_type:
+                perm_date = permission_date or request_date_from or str(fields.Date.today())
+                h_from = request_hour_from or '09:00'
+                h_to = request_hour_to or '12:00'
+
+                try:
+                    if permission_hours:
+                        calc_hours = float(permission_hours)
+                    elif h_from and h_to:
+                        hf = [int(x) for x in h_from.split(':')]
+                        ht = [int(x) for x in h_to.split(':')]
+                        calc_hours = (ht[0] + ht[1]/60.0) - (hf[0] + hf[1]/60.0)
+                        if calc_hours <= 0:
+                            calc_hours = 2.0
+                except Exception:
+                    calc_hours = 2.0
+
+                # Strict Maximum of 3 hours for permissions as per company policy
+                calc_hours = min(max(calc_hours, 0.5), 3.0)
+
+                leave_vals = {
+                    'holiday_status_id': lt.id,
+                    'employee_id': emp.id,
+                    'request_date_from': perm_date,
+                    'request_date_to': perm_date,
+                    'name': name.strip() if name else f"طلب إذن استئذان ({calc_hours:g} س)",
+                }
+                if 'request_unit_hours' in request.env['hr.leave']._fields:
+                    leave_vals['request_unit_hours'] = True
+                if 'request_hour_from' in request.env['hr.leave']._fields:
+                    leave_vals['request_hour_from'] = h_from
+                if 'request_hour_to' in request.env['hr.leave']._fields:
+                    leave_vals['request_hour_to'] = h_to
+                if 'number_of_hours_display' in request.env['hr.leave']._fields:
+                    leave_vals['number_of_hours_display'] = calc_hours
+
+                user_tz_name = get_current_user_tz()
+                user_tz = pytz.timezone(user_tz_name)
+                try:
+                    hf = [int(x) for x in h_from.split(':')]
+                    ht = [int(x) for x in h_to.split(':')]
+                    d_obj = fields.Date.from_string(perm_date)
+                    dt_f = user_tz.localize(datetime.combine(d_obj, datetime.time(hf[0], hf[1])))
+                    dt_t = user_tz.localize(datetime.combine(d_obj, datetime.time(ht[0], ht[1])))
+                    leave_vals['date_from'] = dt_f.astimezone(pytz.utc).replace(tzinfo=None)
+                    leave_vals['date_to'] = dt_t.astimezone(pytz.utc).replace(tzinfo=None)
+                except Exception as e_time:
+                    _logger.warning("Error computing permission datetime: %s", e_time)
+
+            else:
+                if not request_date_from or not request_date_to:
+                    return request.redirect('/my/leaves?error=missing_fields')
+                leave_vals = {
+                    'holiday_status_id': lt.id,
+                    'employee_id': emp.id,
+                    'request_date_from': request_date_from,
+                    'request_date_to': request_date_to,
+                    'name': name.strip() if name else 'طلب إجازة من البوابة',
+                }
+
+            new_leave = request.env['hr.leave'].sudo().create(leave_vals)
+
+            # Mobile Push Notification to direct supervisor
+            if emp.parent_id:
+                try:
+                    req_label = f"إذن ({calc_hours:g} س)" if is_hourly_type else f"إجازة ({lt.name})"
+                    request.env['jandalah.push.subscriber'].sudo().notify_employee(
+                        employee=emp.parent_id,
+                        title="طلب موظف جديد ⏳",
+                        body=f"قدم الموظف {emp.name} طلب {req_label} بانتظار موافقتك.",
+                        url="/my/team/leaves"
+                    )
+                except Exception as e_push:
+                    _logger.warning("Error pushing leave request to supervisor: %s", e_push)
             new_leave = request.env['hr.leave'].sudo().create(leave_vals)
 
             # Handle file attachment (Medical report / excuse document)
@@ -1188,6 +1459,17 @@ self.addEventListener('fetch', event => {
             date_from_val = l.request_date_from or (l.date_from.date() if l.date_from else '')
             date_to_val = l.request_date_to or (l.date_to.date() if l.date_to else '')
 
+            is_hourly_req = (
+                getattr(l, 'request_unit_hours', False) or
+                (hasattr(l, 'number_of_hours_display') and l.number_of_hours_display > 0 and l.number_of_hours_display < 8) or
+                any(k in leave_type for k in ['إذن', 'اذن', 'استئذان', 'ساعي', 'خروج'])
+            )
+            hours_disp = ''
+            if is_hourly_req:
+                h_val = getattr(l, 'number_of_hours_display', 0.0) or (l.number_of_days * 8.0 if l.number_of_days < 1 else 3.0)
+                h_val = min(h_val, 3.0)
+                hours_disp = f"{int(h_val)} س" if h_val.is_integer() else f"{h_val:g} س"
+
             pending_leaves_data.append({
                 'id': l.id,
                 'employee_name': emp_name,
@@ -1197,6 +1479,8 @@ self.addEventListener('fetch', event => {
                 'request_date_from': str(date_from_val or '-'),
                 'request_date_to': str(date_to_val or '-'),
                 'number_of_days': l.number_of_days or 1.0,
+                'is_hourly': is_hourly_req,
+                'hours_display': hours_disp,
                 'name': l.name or '',
                 'has_attachment': has_attachment,
             })
@@ -1229,6 +1513,17 @@ self.addEventListener('fetch', event => {
             date_from_val = l.request_date_from or (l.date_from.date() if l.date_from else '')
             date_to_val = l.request_date_to or (l.date_to.date() if l.date_to else '')
 
+            is_hourly_hist = (
+                getattr(l, 'request_unit_hours', False) or
+                (hasattr(l, 'number_of_hours_display') and l.number_of_hours_display > 0 and l.number_of_hours_display < 8) or
+                any(k in leave_type for k in ['إذن', 'اذن', 'استئذان', 'ساعي', 'خروج'])
+            )
+            hours_disp_hist = ''
+            if is_hourly_hist:
+                h_val_hist = getattr(l, 'number_of_hours_display', 0.0) or (l.number_of_days * 8.0 if l.number_of_days < 1 else 3.0)
+                h_val_hist = min(h_val_hist, 3.0)
+                hours_disp_hist = f"{int(h_val_hist)} س" if h_val_hist.is_integer() else f"{h_val_hist:g} س"
+
             history_leaves_data.append({
                 'id': l.id,
                 'employee_name': emp_name,
@@ -1237,6 +1532,8 @@ self.addEventListener('fetch', event => {
                 'request_date_from': str(date_from_val or '-'),
                 'request_date_to': str(date_to_val or '-'),
                 'number_of_days': l.number_of_days or 1.0,
+                'is_hourly': is_hourly_hist,
+                'hours_display': hours_disp_hist,
                 'state': l.state,
                 'refusal_reason': refusal_reason,
                 'has_attachment': has_attachment,
@@ -1303,6 +1600,19 @@ self.addEventListener('fetch', event => {
                         leave.sudo().action_approve()
                     elif hasattr(leave, 'action_validate'):
                         leave.sudo().action_validate()
+
+                try:
+                    req_type = leave.holiday_status_id.name or "إجازة/إذن"
+                    st_msg = "تم اعتماد طلبك نهائياً ✅" if leave.state == 'validate' else "تم اعتماد طلبك مبدئياً وبانتظار الموارد البشرية ⏳"
+                    request.env['jandalah.push.subscriber'].sudo().notify_employee(
+                        employee=leave.employee_id,
+                        title="تحديث حالة طلبك 📋",
+                        body=f"{st_msg} ({req_type}).",
+                        url="/my/leaves"
+                    )
+                except Exception as e_push_app:
+                    _logger.warning("Error pushing approval to employee: %s", e_push_app)
+
                 return request.redirect('/my/team/leaves?success=approved')
             elif action == 'refuse':
                 reason = (refusal_reason or kw.get('reason') or '').strip()
@@ -1323,6 +1633,18 @@ self.addEventListener('fetch', event => {
 
                 if hasattr(leave, 'action_refuse'):
                     leave.sudo().action_refuse()
+
+                try:
+                    req_type = leave.holiday_status_id.name or "إجازة/إذن"
+                    request.env['jandalah.push.subscriber'].sudo().notify_employee(
+                        employee=leave.employee_id,
+                        title="تم رفض طلبك ❌",
+                        body=f"تم رفض طلبك ({req_type}). سبب الرفض: {reason or 'لم يحدد'}",
+                        url="/my/leaves"
+                    )
+                except Exception as e_push_res:
+                    _logger.warning("Error pushing refusal to employee: %s", e_push_res)
+
                 return request.redirect('/my/team/leaves?success=refused')
         except Exception as e:
             _logger.error("Error executing supervisor leave action: %s", e)
