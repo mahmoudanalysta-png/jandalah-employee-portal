@@ -257,217 +257,198 @@ class JandalahCustomerPortal(CustomerPortal):
                 ])
         return subs
 
-    def _prepare_home_portal_values(self, counters):
-        values = super()._prepare_home_portal_values(counters)
-        emp = self._get_employee()
-        if emp:
-            user_tz_name = get_current_user_tz()
-            user_tz = pytz.timezone(user_tz_name)
-            now_local = pytz.utc.localize(datetime.utcnow()).astimezone(user_tz)
-            today_local_date = now_local.date()
+    def _get_jandalah_dashboard_values(self, emp=None):
+        """Prepares all employee dashboard, attendance, notifications, and supervisor values for /my."""
+        values = {}
+        if not emp:
+            emp = self._get_employee()
+        if not emp:
+            return values
 
-            open_att = request.env['hr.attendance'].sudo().search([
-                ('employee_id', '=', emp.id),
-                ('check_out', '=', False)
-            ], order='check_in desc', limit=1)
+        user_tz_name = get_current_user_tz()
+        user_tz = pytz.timezone(user_tz_name)
+        now_local = pytz.utc.localize(datetime.utcnow()).astimezone(user_tz)
+        today_local_date = now_local.date()
 
-            # Enforce Midnight Rule: If open attendance is from prior date, it is expired
-            is_checked_in = False
-            if open_att and open_att.check_in:
-                check_in_local = pytz.utc.localize(open_att.check_in).astimezone(user_tz)
-                if check_in_local.date() == today_local_date:
-                    is_checked_in = True
-                else:
-                    open_att = False
-            
-            last_att = request.env['hr.attendance'].sudo().search([
-                ('employee_id', '=', emp.id)
-            ], order='check_in desc', limit=1)
+        open_att = request.env['hr.attendance'].sudo().search([
+            ('employee_id', '=', emp.id),
+            ('check_out', '=', False)
+        ], order='check_in desc', limit=1)
 
-            # Smart Overdue Checkout Alert (Shift completion reminder)
-            is_overdue_checkout = False
-            overdue_checkout_msg = ''
-            if is_checked_in and open_att:
-                calendar = None
-                contract = getattr(emp, 'contract_id', None)
-                if contract and contract.resource_calendar_id:
-                    calendar = contract.resource_calendar_id
-                elif hasattr(emp, 'contract_ids'):
-                    running = emp.contract_ids.filtered(lambda c: c.state == 'open' and c.resource_calendar_id)
-                    if running:
-                        calendar = running[0].resource_calendar_id
-                    elif emp.contract_ids:
-                        with_cal = emp.contract_ids.filtered(lambda c: c.resource_calendar_id)
-                        if with_cal:
-                            calendar = with_cal[0].resource_calendar_id
+        # Enforce Midnight Rule: If open attendance is from prior date, it is expired
+        is_checked_in = False
+        if open_att and open_att.check_in:
+            check_in_local = pytz.utc.localize(open_att.check_in).astimezone(user_tz)
+            if check_in_local.date() == today_local_date:
+                is_checked_in = True
+            else:
+                open_att = False
+        
+        last_att = request.env['hr.attendance'].sudo().search([
+            ('employee_id', '=', emp.id)
+        ], order='check_in desc', limit=1)
 
-                if not calendar and emp.resource_calendar_id:
-                    calendar = emp.resource_calendar_id
-                elif not calendar and emp.company_id and emp.company_id.resource_calendar_id:
-                    calendar = emp.company_id.resource_calendar_id
+        # Smart Overdue Checkout Alert (Shift completion reminder)
+        is_overdue_checkout = False
+        overdue_checkout_msg = ''
+        if is_checked_in and open_att:
+            calendar = None
+            contract = getattr(emp, 'contract_id', None)
+            if contract and contract.resource_calendar_id:
+                calendar = contract.resource_calendar_id
+            elif hasattr(emp, 'contract_ids'):
+                running = emp.contract_ids.filtered(lambda c: c.state == 'open' and c.resource_calendar_id)
+                if running:
+                    calendar = running[0].resource_calendar_id
+                elif emp.contract_ids:
+                    with_cal = emp.contract_ids.filtered(lambda c: c.resource_calendar_id)
+                    if with_cal:
+                        calendar = with_cal[0].resource_calendar_id
+            if not calendar and emp.resource_calendar_id:
+                calendar = emp.resource_calendar_id
 
-                standard_hours = 8.0
-                if calendar:
-                    standard_hours = getattr(calendar, 'hours_per_day', 8.0) or 8.0
-
-                work_end_min = 17 * 60  # Default: 5:00 PM (17:00)
-                if calendar and calendar.attendance_ids:
-                    w_day = str(now_local.weekday())
-                    sched = calendar.attendance_ids.filtered(lambda s: s.dayofweek == w_day)
-                    if not sched:
-                        sched = calendar.attendance_ids
-                    if sched:
-                        max_end = max(sched.mapped('hour_to'))
-                        work_end_min = int(round(max_end * 60))
-                        tot_h = sum(s.hour_to - s.hour_from for s in sched)
-                        if tot_h > 0:
-                            standard_hours = tot_h
-
-                # Dynamic Shift Completion: If employee is on an afternoon/evening shift (e.g. check-in after midday),
-                # the expected shift end is dynamically calculated from check-in + required working hours
-                try:
-                    if open_att.check_in:
-                        in_dt = open_att.check_in
-                        if not getattr(in_dt, 'tzinfo', None):
-                            in_dt = pytz.utc.localize(in_dt)
-                        in_local = in_dt.astimezone(user_tz)
-                        in_min = in_local.hour * 60 + in_local.minute
-                        expected_end_min = in_min + int(round(standard_hours * 60))
-                        if expected_end_min > work_end_min:
-                            work_end_min = expected_end_min
-                except Exception as ex_shift:
-                    _logger.warning("Error computing dynamic shift end: %s", ex_shift)
-
-                now_min = now_local.hour * 60 + now_local.minute
-                if now_min > (work_end_min + 5):
+            shift_hours = calendar.hours_per_day if calendar and calendar.hours_per_day else 8.0
+            if open_att.check_in:
+                check_in_dt = pytz.utc.localize(open_att.check_in).astimezone(user_tz)
+                elapsed_hours = (now_local - check_in_dt).total_seconds() / 3600.0
+                if elapsed_hours >= (shift_hours + 0.25):
                     is_overdue_checkout = True
-                    end_h = (work_end_min // 60) % 24
-                    end_m = work_end_min % 60
-                    am_pm = 'مساءً' if end_h >= 12 else 'صباحاً'
-                    h12 = end_h if end_h <= 12 else (end_h - 12)
-                    if h12 == 0:
-                        h12 = 12
-                    time_end_str = f"{h12}:{end_m:02d} {am_pm}"
-                    overdue_checkout_msg = f"انتهى موعد دوامك الرسمي في تمام ({time_end_str})، يُرجى تسجيل الانصراف الآن."
+                    over_mins = int((elapsed_hours - shift_hours) * 60)
+                    overdue_checkout_msg = f'انتهت ساعات دوامك المقررة ({int(shift_hours)} ساعات) منذ {over_mins} دقيقة. يرجى تسجيل الانصراف الآن!'
 
-            # Check supervisor/manager status
-            subordinates = self._get_subordinates(emp)
-            is_supervisor = bool(subordinates)
-            team_checked_in = 0
-            team_pending_leaves = 0
+        # Supervisor / Team Attendance Real-Time Stats
+        subordinates = self._get_subordinates(emp)
+        is_supervisor = bool(subordinates)
+        team_checked_in = 0
+        team_pending_leaves = 0
+        if is_supervisor:
+            team_checked_in = request.env['hr.attendance'].sudo().search_count([
+                ('employee_id', 'in', subordinates.ids),
+                ('check_out', '=', False)
+            ])
+            team_pending_leaves = request.env['hr.leave'].sudo().search_count([
+                ('employee_id', 'in', subordinates.ids),
+                ('state', 'in', ['confirm', 'validate1'])
+            ])
 
-            if is_supervisor:
-                sub_ids = subordinates.ids
-                # Team members currently checked in
-                team_checked_in = request.env['hr.attendance'].sudo().search_count([
-                    ('employee_id', 'in', sub_ids),
-                    ('check_out', '=', False)
-                ])
-                # Team leave requests awaiting approval
-                team_pending_leaves = request.env['hr.leave'].sudo().search_count([
-                    ('employee_id', 'in', sub_ids),
-                    ('state', '=', 'confirm')
-                ])
+        # Counts for announcements, assets, penalties, and location requests
+        unread_announcements = 0
+        pending_assets = 0
+        pending_penalties = 0
+        pending_locations = 0
 
-            # Counts for announcements, assets, penalties, and location requests
-            unread_announcements = 0
-            pending_assets = 0
-            pending_penalties = 0
-            pending_locations = 0
+        try:
+            # Announcements visible to this employee without ack
+            Ann = request.env['jandalah.announcement'].sudo()
+            Ack = request.env['jandalah.announcement.ack'].sudo()
+            my_acked_ids = Ack.search([('employee_id', '=', emp.id)]).mapped('announcement_id.id')
+            all_ann = Ann.search([('active', '=', True)])
+            unread_announcements = sum(1 for a in all_ann if a.is_visible_for(emp) and a.id not in my_acked_ids)
+        except Exception:
+            pass
 
-            try:
-                # Announcements visible to this employee without ack
-                Ann = request.env['jandalah.announcement'].sudo()
-                Ack = request.env['jandalah.announcement.ack'].sudo()
-                my_acked_ids = Ack.search([('employee_id', '=', emp.id)]).mapped('announcement_id.id')
-                all_ann = Ann.search([('active', '=', True)])
-                unread_announcements = sum(1 for a in all_ann if a.is_visible_for(emp) and a.id not in my_acked_ids)
-            except Exception:
-                pass
+        try:
+            # Assets assigned to this employee awaiting acknowledgment
+            pending_assets = request.env['jandalah.hr.asset'].sudo().search_count([
+                ('employee_id', '=', emp.id),
+                ('state', '=', 'assigned')
+            ])
+        except Exception:
+            pass
 
-            try:
-                # Assets assigned to this employee awaiting acknowledgment
-                pending_assets = request.env['jandalah.hr.asset'].sudo().search_count([
-                    ('employee_id', '=', emp.id),
-                    ('state', '=', 'assigned')
-                ])
-            except Exception:
-                pass
+        try:
+            # Penalties issued awaiting employee response
+            pending_penalties = request.env['jandalah.hr.penalty'].sudo().search_count([
+                ('employee_id', '=', emp.id),
+                ('state', '=', 'issued')
+            ])
+        except Exception:
+            pass
 
-            try:
-                # Penalties issued awaiting employee response
-                pending_penalties = request.env['jandalah.hr.penalty'].sudo().search_count([
-                    ('employee_id', '=', emp.id),
-                    ('state', '=', 'issued')
-                ])
-            except Exception:
-                pass
+        try:
+            # Active/pending location requests
+            pending_locations = request.env['jandalah.location.request'].sudo().search_count([
+                ('employee_id', '=', emp.id),
+                ('state', '=', 'confirm')
+            ])
+        except Exception:
+            pass
 
-            try:
-                # Active/pending location requests
-                pending_locations = request.env['jandalah.location.request'].sudo().search_count([
-                    ('employee_id', '=', emp.id),
-                    ('state', '=', 'confirm')
-                ])
-            except Exception:
-                pass
+        # Check if this employee's job position is 'اخصائي مبيعات'
+        is_sales_employee = False
+        try:
+            job_title_str = (emp.sudo().job_title or '').strip().lower()
+            job_name_str = (emp.sudo().job_id and emp.sudo().job_id.name or '').strip().lower()
+            sales_keywords = ['اخصائي مبيعات', 'أخصائي مبيعات', 'sales specialist']
+            if any(kw in job_name_str or kw in job_title_str for kw in sales_keywords):
+                is_sales_employee = True
+        except Exception:
+            pass
 
-            # Check if this employee's job position is 'اخصائي مبيعات'
-            is_sales_employee = False
-            try:
-                job_title_str = (emp.sudo().job_title or '').strip().lower()
-                job_name_str = (emp.sudo().job_id and emp.sudo().job_id.name or '').strip().lower()
-                sales_keywords = ['اخصائي مبيعات', 'أخصائي مبيعات', 'sales specialist']
-                if any(kw in job_name_str or kw in job_title_str for kw in sales_keywords):
-                    is_sales_employee = True
-            except Exception:
-                pass
+        # Recent Manager Approved Leaves (Within past 5 days)
+        recent_approved_leaves_count = 0
+        try:
+            five_days_ago = fields.Datetime.to_string(datetime.utcnow() - timedelta(days=5))
+            recent_approved_leaves_count = request.env['hr.leave'].sudo().search_count([
+                ('employee_id', '=', emp.id),
+                ('state', '=', 'validate'),
+                ('write_date', '>=', five_days_ago)
+            ])
+        except Exception:
+            pass
 
-            # Recent Manager Approved Leaves (Within past 5 days)
-            recent_approved_leaves_count = 0
-            try:
-                five_days_ago = fields.Datetime.to_string(datetime.utcnow() - timedelta(days=5))
-                recent_approved_leaves_count = request.env['hr.leave'].sudo().search_count([
-                    ('employee_id', '=', emp.id),
-                    ('state', '=', 'validate'),
-                    ('write_date', '>=', five_days_ago)
-                ])
-            except Exception:
-                pass
+        # Total notifications for header bell and central dashboard
+        total_active_notifications = (
+            unread_announcements +
+            pending_assets +
+            pending_penalties +
+            (1 if is_overdue_checkout else 0) +
+            (1 if recent_approved_leaves_count > 0 else 0) +
+            (team_pending_leaves if is_supervisor else 0)
+        )
 
-            # Total notifications for header bell and central dashboard
-            total_active_notifications = (
-                unread_announcements +
-                pending_assets +
-                pending_penalties +
-                (1 if is_overdue_checkout else 0) +
-                (1 if recent_approved_leaves_count > 0 else 0) +
-                (team_pending_leaves if is_supervisor else 0)
-            )
+        values.update({
+            'employee': emp,
+            'is_sales_employee': is_sales_employee,
+            'is_checked_in': is_checked_in,
+            'open_attendance': open_att,
+            'last_attendance': last_att,
+            'is_overdue_checkout': is_overdue_checkout,
+            'overdue_checkout_msg': overdue_checkout_msg,
+            'attendance_count': request.env['hr.attendance'].sudo().search_count([('employee_id', '=', emp.id)]),
+            'leaves_count': request.env['hr.leave'].sudo().search_count([('employee_id', '=', emp.id)]),
+            'recent_approved_leaves_count': recent_approved_leaves_count,
+            'unread_announcements': unread_announcements,
+            'pending_assets': pending_assets,
+            'pending_penalties': pending_penalties,
+            'pending_locations': pending_locations,
+            'total_active_notifications': total_active_notifications,
+            'format_tz': format_tz_dynamic,
+            # Supervisor values
+            'is_supervisor': is_supervisor,
+            'subordinates_count': len(subordinates),
+            'team_checked_in_count': team_checked_in,
+            'team_pending_leaves_count': team_pending_leaves,
+        })
+        return values
 
-            values.update({
-                'employee': emp,
-                'is_sales_employee': is_sales_employee,
-                'is_checked_in': is_checked_in,
-                'open_attendance': open_att,
-                'last_attendance': last_att,
-                'is_overdue_checkout': is_overdue_checkout,
-                'overdue_checkout_msg': overdue_checkout_msg,
-                'attendance_count': request.env['hr.attendance'].sudo().search_count([('employee_id', '=', emp.id)]),
-                'leaves_count': request.env['hr.leave'].sudo().search_count([('employee_id', '=', emp.id)]),
-                'recent_approved_leaves_count': recent_approved_leaves_count,
-                'unread_announcements': unread_announcements,
-                'pending_assets': pending_assets,
-                'pending_penalties': pending_penalties,
-                'pending_locations': pending_locations,
-                'total_active_notifications': total_active_notifications,
-                'format_tz': format_tz_dynamic,
-                # Supervisor values
-                'is_supervisor': is_supervisor,
-                'subordinates_count': len(subordinates),
-                'team_checked_in_count': team_checked_in,
-                'team_pending_leaves_count': team_pending_leaves,
-            })
+    @http.route(['/my', '/my/home'], type='http', auth="user", website=True)
+    def home(self, **kw):
+        """Overrides portal home to guarantee all Jandalah ESS dashboard values are injected into qcontext."""
+        response = super().home(**kw)
+        if hasattr(response, 'qcontext'):
+            response.qcontext.update(self._get_jandalah_dashboard_values())
+        return response
+
+    def _prepare_home_portal_values(self, counters):
+        """Only returns document counters to prevent Odoo 18 frontend TypeError on missing counter elements."""
+        values = super()._prepare_home_portal_values(counters)
+        # In Odoo 18, when called via RPC /my/counters, counters is a list of requested placeholder keys.
+        # Returning non-counter dict items here causes client TypeError: Cannot set properties of null (setting 'textContent').
+        if counters and isinstance(counters, (list, tuple, set)):
+            return values
+        # For legacy synchronous calls where counters is None:
+        values.update(self._get_jandalah_dashboard_values())
         return values
 
     @http.route('/jandalah/manifest.json', type='http', auth='public', methods=['GET'], csrf=False)
@@ -506,7 +487,7 @@ class JandalahCustomerPortal(CustomerPortal):
             ]
         )
 
-    @http.route('/jandalah/sw.js', type='http', auth='public', methods=['GET'], csrf=False)
+    @http.route(['/sw.js', '/jandalah/sw.js'], type='http', auth='public', methods=['GET'], csrf=False)
     def portal_pwa_sw(self, **kw):
         sw_code = """
 const CACHE_NAME = 'jandalah-ess-v3';
@@ -666,7 +647,25 @@ self.addEventListener('notificationclick', event => {
                 'tag': f'pen_{pending_pen.id}'
             })
 
-        return {'status': 'success', 'alerts': alerts}
+        # 3. Overdue shift end reminder
+        open_att = request.env['hr.attendance'].sudo().search([
+            ('employee_id', '=', emp.id),
+            ('check_out', '=', False)
+        ], order='check_in desc', limit=1)
+        if open_att and open_att.check_in:
+            user_tz_name = get_current_user_tz()
+            user_tz = pytz.timezone(user_tz_name)
+            check_in_local = pytz.utc.localize(open_att.check_in).astimezone(user_tz)
+            now_local = pytz.utc.localize(datetime.utcnow()).astimezone(user_tz)
+            if (now_local - check_in_local).total_seconds() / 3600.0 >= 8.0:
+                alerts.append({
+                    'id': f'att_overdue_{open_att.id}',
+                    'title': 'تنبيه انتهاء الدوام ⏰',
+                    'body': f'مرحباً {emp.name}، لقد أتممت ساعات العمل المقررة اليوم. يرجى تسجيل الانصراف من البوابة.',
+                    'url': '/my',
+                    'tag': f'att_overdue_{open_att.id}'
+                })
+        return {'status': 'success', 'alerts': alerts, 'notifications': alerts}
 
     @http.route('/my/attendance/toggle', type='json', auth='user', methods=['POST'], csrf=False)
     def attendance_toggle(self, latitude=None, longitude=None, browser=None, tz=None, **kw):
