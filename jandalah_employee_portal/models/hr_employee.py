@@ -146,6 +146,21 @@ class HrAttendance(models.Model):
     distance_from_work = fields.Float(string='المسافة عن موقع العمل (متر)', digits=(10, 2))
     is_outside_geofence = fields.Boolean(string='خارج النطاق الجغرافي المسموح', default=False)
 
+    def init(self):
+        super().init()
+        try:
+            self.env.cr.execute("""
+                UPDATE hr_attendance
+                SET delay_display = 'متأخر (' || (morning_delay_minutes / 60)::text || ':' || lpad((morning_delay_minutes % 60)::text, 2, '0') || ' س)'
+                WHERE morning_delay_minutes > 0 AND delay_display LIKE 'متأخر (% د)';
+
+                UPDATE hr_attendance
+                SET delay_display = 'متأخر (' || (morning_delay_minutes / 60)::text || ':' || lpad((morning_delay_minutes % 60)::text, 2, '0') || ' س بعد الإذن)'
+                WHERE morning_delay_minutes > 0 AND delay_display LIKE 'متأخر (% د بعد الإذن)';
+            """)
+        except Exception as e:
+            _logger.warning("Could not migrate hr_attendance delay_display format: %s", e)
+
     @api.constrains('check_in', 'check_out', 'employee_id')
     def _check_validity(self):
         """Allows new day check-in even if previous day check-out is omitted (Midnight rule)."""
@@ -459,7 +474,9 @@ class HrAttendance(models.Model):
 
             att.morning_delay_minutes = delay_min
             if delay_min > 0:
-                att.delay_display = f"متأخر ({delay_min} د)"
+                h = delay_min // 60
+                m = delay_min % 60
+                att.delay_display = f"متأخر ({h}:{m:02d} س)"
             elif in_local:
                 att.delay_display = "على الموعد"
             else:
@@ -546,7 +563,9 @@ class HrAttendance(models.Model):
                                 att.late_deduction = 0.0
                                 att.net_deduction = round(att.missing_checkout_deduction, 2)
                             else:
-                                att.delay_display = f"متأخر ({delay_min} د)"
+                                h = delay_min // 60
+                                m = delay_min % 60
+                                att.delay_display = f"متأخر ({h}:{m:02d} س)"
                                 if delay_min <= 60:
                                     late_ded = 0.25
                                 else:

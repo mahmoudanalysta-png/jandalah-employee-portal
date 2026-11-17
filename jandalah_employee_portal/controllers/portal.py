@@ -1188,10 +1188,13 @@ self.addEventListener('notificationclick', event => {
 
             delay_display = 'على الموعد'
             if is_late and delay_minutes > 0:
+                dh = delay_minutes // 60
+                dm = delay_minutes % 60
+                d_time_str = f"{dh}:{dm:02d} س"
                 if is_perm:
-                    delay_display = f"متأخر ({delay_minutes} د بعد الإذن)"
+                    delay_display = f"متأخر ({d_time_str} بعد الإذن)"
                 else:
-                    delay_display = f"متأخر ({delay_minutes} د)"
+                    delay_display = f"متأخر ({d_time_str})"
             elif is_perm:
                 delay_display = f"إذن معتمد ({perm_time_str})"
             elif is_leave_day or not in_local:
