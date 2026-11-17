@@ -1123,7 +1123,8 @@
                                 renotify: true,
                                 data: { url: '/my' }
                             };
-                            await showNativeNotification(title, options);
+                            showLiveToast(title, options.body, '/my');
+                        await showNativeNotification(title, options);
                             // Run initial poll right after permission granted
                             pollPendingNotifications();
                         } else if (perm === 'denied') {
@@ -1156,6 +1157,7 @@
                             data: { url: '/my' }
                         };
 
+                        showLiveToast(title, options.body, '/my');
                         await showNativeNotification(title, options);
 
                         // Also ping server
@@ -1245,10 +1247,14 @@
                         }
                     }
 
-                    // Real-Time Smart Poller for Bell Notifications (Shows ONCE per event, remembers in localStorage)
+                    // Real-Time Smart Poller for Bell Notifications (Shows in-app banner once per session)
+                    try {
+                        localStorage.removeItem('jandalah_seen_alerts_v1');
+                        localStorage.removeItem('jandalah_seen_alerts_v2');
+                    } catch(e) {}
                     let seenAlerts = {};
                     try {
-                        seenAlerts = JSON.parse(localStorage.getItem('jandalah_seen_alerts_v2') || '{}');
+                        seenAlerts = JSON.parse(sessionStorage.getItem('jandalah_seen_alerts_v3') || '{}');
                     } catch(e) {
                         seenAlerts = {};
                     }
@@ -1271,7 +1277,7 @@
                                 if (!seenAlerts[key]) {
                                     seenAlerts[key] = Date.now();
                                     hasNew = true;
-                                    // 1. Live floating in-app banner with chime and vibration (ONCE ONLY)!
+                                    // 1. Live floating in-app banner with chime and vibration!
                                     showLiveToast(n.title, n.body, n.url);
                                     // 2. Android system status bar / lockscreen notification!
                                     const opts = {
@@ -1280,7 +1286,7 @@
                                         badge: '/jandalah_employee_portal/static/src/img/icon-192.png',
                                         vibrate: [350, 150, 350],
                                         tag: n.tag || ('jandalah-poll-' + key),
-                                        renotify: false,
+                                        renotify: true,
                                         requireInteraction: false,
                                         data: { url: n.url || '/my' }
                                     };
@@ -1290,7 +1296,7 @@
 
                             if (hasNew) {
                                 try {
-                                    localStorage.setItem('jandalah_seen_alerts_v2', JSON.stringify(seenAlerts));
+                                    sessionStorage.setItem('jandalah_seen_alerts_v3', JSON.stringify(seenAlerts));
                                 } catch(e) {}
                             }
 
