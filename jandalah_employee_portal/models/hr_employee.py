@@ -135,6 +135,14 @@ class HrEmployee(models.Model):
 class HrAttendance(models.Model):
     _inherit = 'hr.attendance'
 
+    company_id = fields.Many2one(
+        'res.company',
+        string='الشركة',
+        related='employee_id.company_id',
+        store=True,
+        readonly=True,
+        index=True
+    )
     distance_from_work = fields.Float(string='المسافة عن موقع العمل (متر)', digits=(10, 2))
     is_outside_geofence = fields.Boolean(string='خارج النطاق الجغرافي المسموح', default=False)
 

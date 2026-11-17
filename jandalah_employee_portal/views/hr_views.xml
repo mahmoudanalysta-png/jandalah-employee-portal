@@ -30,6 +30,9 @@
         <field name="model">hr.attendance</field>
         <field name="inherit_id" ref="hr_attendance.hr_attendance_view_form"/>
         <field name="arch" type="xml">
+            <xpath expr="//field[@name='employee_id']" position="after">
+                <field name="company_id" readonly="1" options="{'no_open': True}"/>
+            </xpath>
             <xpath expr="//field[@name='check_out']" position="after">
                 <field name="distance_from_work"/>
                 <field name="is_outside_geofence"/>
@@ -51,6 +54,7 @@
 
             <!-- 2. Date column & Leave / Permission status badge -->
             <xpath expr="//field[@name='employee_id']" position="after">
+                <field name="company_id" string="الشركة" optional="show"/>
                 <field name="attendance_date" string="التاريخ"/>
                 <field name="leave_permission_display" string="إجازة / إذن" widget="badge" 
                        decoration-info="leave_permission_display != '-'" 
