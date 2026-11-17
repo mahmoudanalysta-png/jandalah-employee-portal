@@ -650,6 +650,20 @@
                                                 <a href="/my/team/leaves" class="btn btn-sm btn-primary rounded-pill px-3 fw-bold">اعتماد</a>
                                             </div>
                                         </t>
+
+                                        <!-- 7. Pending location requests -->
+                                        <t t-if="pending_locations &gt; 0">
+                                            <div class="p-3 rounded-3 border d-flex align-items-center justify-content-between bg-light">
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <i class="fa fa-map-marker text-primary fs-4"/>
+                                                    <div>
+                                                        <strong class="d-block text-dark small">طلب عمل من موقع مؤقت</strong>
+                                                        <span class="text-muted" style="font-size: 12px;">لديك <t t-esc="pending_locations"/> طلب موقع قيد مراجعة المشرف</span>
+                                                    </div>
+                                                </div>
+                                                <span class="badge bg-warning text-dark rounded-pill px-3 py-2">قيد المراجعة</span>
+                                            </div>
+                                        </t>
                                     </div>
                                 </t>
                             </div>
