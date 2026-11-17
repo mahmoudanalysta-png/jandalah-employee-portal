@@ -16,8 +16,8 @@
                         </group>
                         <group string="موقع العمل من خرائط جوجل">
                             <field name="google_maps_url" widget="url" placeholder="الصق رابط موقع جوجل ماب هنا (مثل: https://maps.app.goo.gl/... أو 24.7136, 46.6753)"/>
-                            <field name="work_latitude" readonly="1" force_save="1"/>
-                            <field name="work_longitude" readonly="1" force_save="1"/>
+                            <field name="work_latitude" invisible="1"/>
+                            <field name="work_longitude" invisible="1"/>
                         </group>
                     </group>
                 </page>
