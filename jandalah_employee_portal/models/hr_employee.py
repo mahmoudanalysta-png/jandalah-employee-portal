@@ -845,8 +845,8 @@ class HrLeave(models.Model):
                     }
                 )
 
-    def action_validate(self):
-        res = super(HrLeave, self).action_validate()
+    def action_validate(self, *args, **kwargs):
+        res = super(HrLeave, self).action_validate(*args, **kwargs)
         try:
             with self.env.cr.savepoint():
                 self._sync_leaves_to_attendance()
@@ -866,8 +866,8 @@ class HrLeave(models.Model):
                     _logger.warning("Error pushing leave validation notification: %s", e_push_val)
         return res
 
-    def action_approve(self):
-        res = super(HrLeave, self).action_approve()
+    def action_approve(self, *args, **kwargs):
+        res = super(HrLeave, self).action_approve(*args, **kwargs)
         try:
             with self.env.cr.savepoint():
                 self._sync_leaves_to_attendance()
@@ -875,8 +875,8 @@ class HrLeave(models.Model):
             _logger.exception("Error syncing leaves to attendance in action_approve: %s", e)
         return res
 
-    def action_refuse(self):
-        res = super(HrLeave, self).action_refuse()
+    def action_refuse(self, *args, **kwargs):
+        res = super(HrLeave, self).action_refuse(*args, **kwargs)
         try:
             with self.env.cr.savepoint():
                 Attendance = self.env['hr.attendance'].sudo()
