@@ -397,6 +397,44 @@ class JandalahCustomerPortal(CustomerPortal):
         except Exception:
             pass
 
+        # Leave Balances per type
+        leave_balances = []
+        try:
+            leave_types = request.env['hr.leave.type'].sudo().with_context(
+                employee_id=emp.id
+            ).search([('active', '=', True)], order='sequence asc')
+            for lt in leave_types:
+                try:
+                    # virtual_remaining_leaves is the most reliable field in Odoo 17/18
+                    remaining = 0.0
+                    max_allowed = 0.0
+                    if hasattr(lt, 'virtual_remaining_leaves'):
+                        remaining = lt.virtual_remaining_leaves or 0.0
+                    elif hasattr(lt, 'remaining_leaves'):
+                        remaining = lt.remaining_leaves or 0.0
+                    if hasattr(lt, 'max_leaves'):
+                        max_allowed = lt.max_leaves or 0.0
+
+                    is_unlimited = getattr(lt, 'leave_validation_type', '') == 'no_validation' or max_allowed == 0
+                    # Skip types with 0 balance and no allocation (not relevant to employee)
+                    if remaining <= 0 and max_allowed <= 0 and not is_unlimited:
+                        continue
+                    # Skip purely hourly permission types from balance list
+                    is_perm_type = any(k in (lt.name or '') for k in ['إذن', 'اذن', 'استئذان', 'ساعي', 'خروج'])
+                    if is_perm_type:
+                        continue
+                    leave_balances.append({
+                        'name': lt.name,
+                        'remaining': remaining,
+                        'max': max_allowed,
+                        'unlimited': is_unlimited,
+                        'color': 'success' if remaining > 5 else ('warning' if remaining > 0 else 'danger'),
+                    })
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
         # Total notifications for header bell and central dashboard
         total_active_notifications = (
             unread_announcements +
@@ -418,6 +456,7 @@ class JandalahCustomerPortal(CustomerPortal):
             'attendance_count': request.env['hr.attendance'].sudo().search_count([('employee_id', '=', emp.id)]),
             'leaves_count': request.env['hr.leave'].sudo().search_count([('employee_id', '=', emp.id)]),
             'recent_approved_leaves_count': recent_approved_leaves_count,
+            'leave_balances': leave_balances,
             'unread_announcements': unread_announcements,
             'pending_assets': pending_assets,
             'pending_penalties': pending_penalties,
@@ -1336,10 +1375,39 @@ self.addEventListener('notificationclick', event => {
             })
 
         values = self._prepare_portal_layout_values()
+        # Compute leave balances for the leaves page too
+        leave_balances_page = []
+        try:
+            lt_all = request.env['hr.leave.type'].sudo().with_context(employee_id=emp.id).search([('active', '=', True)], order='sequence asc')
+            for lt in lt_all:
+                try:
+                    remaining = getattr(lt, 'virtual_remaining_leaves', None)
+                    if remaining is None:
+                        remaining = getattr(lt, 'remaining_leaves', 0.0)
+                    max_allowed = getattr(lt, 'max_leaves', 0.0) or 0.0
+                    is_unlimited = max_allowed == 0
+                    is_perm_type = any(k in (lt.name or '') for k in ['إذن', 'اذن', 'استئذان', 'ساعي', 'خروج'])
+                    if is_perm_type:
+                        continue
+                    if remaining <= 0 and max_allowed <= 0 and not is_unlimited:
+                        continue
+                    leave_balances_page.append({
+                        'name': lt.name,
+                        'remaining': remaining,
+                        'max': max_allowed,
+                        'unlimited': is_unlimited,
+                        'color': 'success' if remaining > 5 else ('warning' if remaining > 0 else 'danger'),
+                    })
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
         values.update({
             'employee': emp,
             'leaves': leaves_data,
             'leave_types': leave_types_data,
+            'leave_balances': leave_balances_page,
             'page_name': 'leaves',
             'pager': pager,
             'success': success,
