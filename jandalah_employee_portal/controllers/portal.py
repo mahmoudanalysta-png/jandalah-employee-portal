@@ -529,7 +529,7 @@ self.addEventListener('push', event => {
         vibrate: [300, 100, 300, 100, 300],
         tag: payload.tag || 'jandalah-general',
         renotify: true,
-        requireInteraction: true,
+        requireInteraction: false,
         data: { url: payload.url || '/my' },
         actions: [
             { action: 'open', title: 'فتح التطبيق' }
