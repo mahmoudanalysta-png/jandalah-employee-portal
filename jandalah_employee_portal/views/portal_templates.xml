@@ -516,27 +516,6 @@
                                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                             </div>
                             <div class="modal-body p-4">
-                                <!-- Mobile Push Notification Status Card -->
-                                <div class="card border-0 rounded-3 p-3 mb-3" style="background-color: #f0fdf4; border: 1px solid #bbf7d0 !important;">
-                                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
-                                        <div class="d-flex align-items-center gap-2">
-                                            <i class="fa fa-bell text-success fs-5"/>
-                                            <div>
-                                                <strong class="d-block text-dark small">إشعارات الهاتف المنبثقة (شاشة القفل)</strong>
-                                                <span id="push_modal_status_text" class="text-muted" style="font-size: 11px;">تصلك التنبيهات مثل الواتساب حتى والتطبيق مغلق.</span>
-                                            </div>
-                                        </div>
-                                        <div class="d-flex align-items-center gap-2">
-                                            <button id="btn_modal_push_test" type="button" class="btn btn-sm btn-outline-success rounded-pill px-3 fw-bold" onclick="testPushNotification();">
-                                                <i class="fa fa-paper-plane me-1"/> تجربة إشعار فوري
-                                            </button>
-                                            <button id="btn_modal_push_enable" type="button" class="btn btn-sm btn-success rounded-pill px-3 fw-bold d-none" onclick="enablePushNotifications();">
-                                                <i class="fa fa-bell me-1"/> تفعيل الآن
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-
                                 <t t-if="total_active_notifications == 0">
                                     <div class="text-center py-4">
                                         <div class="text-success fs-1 mb-2">
