@@ -1137,7 +1137,7 @@
                         }
                     }
 
-                    // Real-Time Smart Poller for Bell Notifications (Every 10s & on focus/unlock)
+                    // Real-Time Smart Poller for Bell Notifications (Every 10s and on focus/unlock)
                     let isPollingRunning = false;
                     async function pollPendingNotifications() {
                         if (isPollingRunning) return;
