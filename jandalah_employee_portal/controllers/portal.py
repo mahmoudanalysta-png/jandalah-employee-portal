@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from odoo import http, fields, _
+from odoo import http, fields, _, SUPERUSER_ID
 from odoo.http import request
 from odoo.addons.portal.controllers.portal import CustomerPortal, pager as portal_pager
 import json
@@ -1830,27 +1830,41 @@ self.addEventListener('notificationclick', event => {
             return request.redirect('/my/team/leaves?error=unauthorized')
 
         try:
-            if action == 'approve':
-                if leave.state == 'confirm':
-                    # Supervisor Approval -> transitions to pending HR approval
-                    leave.sudo().write({'state': 'validate1'})
+            # Auto-heal: Ensure leave_manager_id is set to supervisor's user if missing
+            if leave.employee_id and not leave.employee_id.leave_manager_id:
+                sup_user = leave.employee_id.parent_id.user_id if leave.employee_id.parent_id else None
+                if sup_user:
                     try:
-                        leave.sudo().message_post(
-                            body=f"تم اعتماد الطلب من المدير المباشر ({emp.name}). الطلب الآن بانتظار موافقة إدارة الموارد البشرية."
+                        leave.employee_id.sudo().write({'leave_manager_id': sup_user.id})
+                    except Exception:
+                        pass
+
+            admin_leave = leave.sudo().with_user(SUPERUSER_ID)
+            if action == 'approve':
+                val_type = getattr(leave.holiday_status_id, 'leave_validation_type', 'manager')
+                if leave.state == 'confirm':
+                    if hasattr(admin_leave, 'action_approve'):
+                        admin_leave.action_approve()
+                    else:
+                        new_st = 'validate1' if val_type == 'both' else 'validate'
+                        admin_leave.write({'state': new_st})
+                    try:
+                        admin_leave.message_post(
+                            body=f"تم اعتماد الطلب من المدير المباشر ({emp.name})."
                         )
                     except Exception:
                         pass
                 elif leave.state == 'validate1' and is_hr_admin:
                     # Final HR Approval
-                    if hasattr(leave, 'action_validate'):
-                        leave.sudo().action_validate()
+                    if hasattr(admin_leave, 'action_validate'):
+                        admin_leave.action_validate()
                     else:
-                        leave.sudo().write({'state': 'validate'})
+                        admin_leave.write({'state': 'validate'})
                 else:
-                    if hasattr(leave, 'action_approve'):
-                        leave.sudo().action_approve()
-                    elif hasattr(leave, 'action_validate'):
-                        leave.sudo().action_validate()
+                    if hasattr(admin_leave, 'action_approve'):
+                        admin_leave.action_approve()
+                    elif hasattr(admin_leave, 'action_validate'):
+                        admin_leave.action_validate()
 
                 try:
                     req_type = leave.holiday_status_id.name or "إجازة/إذن"
@@ -1873,17 +1887,17 @@ self.addEventListener('notificationclick', event => {
                 if 'notes' in leave._fields:
                     write_vals['notes'] = reason
                 if write_vals:
-                    leave.sudo().write(write_vals)
+                    admin_leave.write(write_vals)
 
                 try:
-                    leave.sudo().message_post(
+                    admin_leave.message_post(
                         body=f"تم رفض طلب الإجازة من قبل المشرف المباشر ({emp.name}). سبب الرفض: {reason or 'لم يحدد'}"
                     )
                 except Exception:
                     pass
 
-                if hasattr(leave, 'action_refuse'):
-                    leave.sudo().action_refuse()
+                if hasattr(admin_leave, 'action_refuse'):
+                    admin_leave.action_refuse()
 
                 try:
                     req_type = leave.holiday_status_id.name or "إجازة/إذن"
