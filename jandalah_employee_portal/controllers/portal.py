@@ -689,9 +689,10 @@ self.addEventListener('notificationclick', event => {
             except Exception as e_ast:
                 _logger.warning("Error polling assets: %s", e_ast)
 
-            # 4. Approved Leaves (Past 5 days)
+            # 4. Approved & Refused Leaves (Past 5 days)
             try:
                 five_days_ago = fields.Datetime.to_string(datetime.utcnow() - timedelta(days=5))
+                # 4.a Approved
                 approved_leaves = request.env['hr.leave'].sudo().search([
                     ('employee_id', '=', emp.id),
                     ('state', '=', 'validate'),
@@ -707,13 +708,63 @@ self.addEventListener('notificationclick', event => {
                         'url': '/my/leaves',
                         'tag': f'leave_appr_{al.id}'
                     })
+                # 4.b Refused
+                refused_leaves = request.env['hr.leave'].sudo().search([
+                    ('employee_id', '=', emp.id),
+                    ('state', '=', 'refuse'),
+                    ('write_date', '>=', five_days_ago)
+                ], order='write_date desc', limit=3)
+                for rl in refused_leaves:
+                    st_name = rl.holiday_status_id.name if rl.holiday_status_id else 'إجازة'
+                    reason = getattr(rl, 'report_note', False) or getattr(rl, 'notes', '') or ''
+                    reason_str = f" - السبب: {reason}" if reason else ""
+                    alerts.append({
+                        'id': f'leave_ref_{rl.id}',
+                        'type': 'leave_refused',
+                        'title': 'تم رفض طلب إجازتك ❌',
+                        'body': f'عذراً، لم تتم الموافقة على طلب ({st_name}){reason_str}',
+                        'url': '/my/leaves',
+                        'tag': f'leave_ref_{rl.id}'
+                    })
             except Exception as e_lv:
-                _logger.warning("Error polling approved leaves: %s", e_lv)
+                _logger.warning("Error polling leaves: %s", e_lv)
 
-            # 5. Supervisor Pending Team Leaves
+            # 5. Location Requests (طلبات العمل الميداني / المواقع المؤقتة)
+            try:
+                # 5.a Employee recent location approvals/refusals
+                loc_reqs = request.env['jandalah.location.request'].sudo().search([
+                    ('employee_id', '=', emp.id),
+                    ('state', 'in', ['approve', 'refuse']),
+                    ('write_date', '>=', five_days_ago)
+                ], order='write_date desc', limit=3)
+                for lr in loc_reqs:
+                    if lr.state == 'approve':
+                        alerts.append({
+                            'id': f'loc_appr_{lr.id}',
+                            'type': 'location_approved',
+                            'title': 'تم اعتماد موقعك الميداني ✅',
+                            'body': f'تمت الموافقة على تواجدك في ({lr.temp_location_name}) من تاريخ {lr.date_from}.',
+                            'url': '/my',
+                            'tag': f'loc_appr_{lr.id}'
+                        })
+                    elif lr.state == 'refuse':
+                        r_str = f" - السبب: {lr.refusal_reason}" if lr.refusal_reason else ""
+                        alerts.append({
+                            'id': f'loc_ref_{lr.id}',
+                            'type': 'location_refused',
+                            'title': 'تم رفض طلب الموقع الميداني ❌',
+                            'body': f'لم تتم الموافقة على موقع ({lr.temp_location_name}){r_str}',
+                            'url': '/my',
+                            'tag': f'loc_ref_{lr.id}'
+                        })
+            except Exception as e_loc:
+                _logger.warning("Error polling location requests: %s", e_loc)
+
+            # 6. Supervisor Pending Team Requests (إجازات ومواقع الفريق)
             try:
                 subordinates = self._get_subordinates(emp)
                 if subordinates:
+                    # Team leaves
                     team_leaves = request.env['hr.leave'].sudo().search([
                         ('employee_id', 'in', subordinates.ids),
                         ('state', 'in', ['confirm', 'validate1'])
@@ -728,28 +779,66 @@ self.addEventListener('notificationclick', event => {
                             'url': '/my/team/leaves',
                             'tag': f'team_leave_{tl.id}'
                         })
+                    # Team location requests
+                    team_locs = request.env['jandalah.location.request'].sudo().search([
+                        ('employee_id', 'in', subordinates.ids),
+                        ('state', '=', 'confirm')
+                    ], order='create_date desc', limit=5)
+                    for tloc in team_locs:
+                        alerts.append({
+                            'id': f'team_loc_{tloc.id}',
+                            'type': 'team_location',
+                            'title': 'طلب موقع ميداني جديد 📍',
+                            'body': f'الموظف {tloc.employee_id.name} يطلب اعتماد العمل من ({tloc.temp_location_name})',
+                            'url': '/my',
+                            'tag': f'team_loc_{tloc.id}'
+                        })
             except Exception as e_tlv:
-                _logger.warning("Error polling team leaves: %s", e_tlv)
+                _logger.warning("Error polling team requests: %s", e_tlv)
 
-            # 6. Overdue Shift Checkout Reminder
+            # 7. Shift Completion & Morning Punch Reminders
             try:
+                user_tz_name = get_current_user_tz()
+                user_tz = pytz.timezone(user_tz_name)
+                now_local = pytz.utc.localize(datetime.utcnow()).astimezone(user_tz)
+                today_local_date = now_local.date()
+
                 open_att = request.env['hr.attendance'].sudo().search([
                     ('employee_id', '=', emp.id),
                     ('check_out', '=', False)
                 ], order='check_in desc', limit=1)
+
+                is_punched_today = False
                 if open_att and open_att.check_in:
-                    user_tz_name = get_current_user_tz()
-                    user_tz = pytz.timezone(user_tz_name)
                     check_in_local = pytz.utc.localize(open_att.check_in).astimezone(user_tz)
-                    now_local = pytz.utc.localize(datetime.utcnow()).astimezone(user_tz)
-                    if check_in_local.date() == now_local.date() and (now_local - check_in_local).total_seconds() / 3600.0 >= 8.25:
+                    if check_in_local.date() == today_local_date:
+                        is_punched_today = True
+                        # Overdue Shift End Reminder (>= 8.25 hours)
+                        if (now_local - check_in_local).total_seconds() / 3600.0 >= 8.25:
+                            alerts.append({
+                                'id': f'att_overdue_{open_att.id}_{now_local.strftime("%Y%m%d")}',
+                                'type': 'overdue_attendance',
+                                'title': 'تنبيه انتهاء الدوام ⏰',
+                                'body': f'مرحباً {emp.name}، لقد أتممت ساعات العمل المقررة اليوم. يرجى تسجيل الانصراف الآن.',
+                                'url': '/my',
+                                'tag': f'att_overdue_{open_att.id}'
+                            })
+
+                # Morning Punch Reminder (between 7:30 AM and 12:30 PM if not checked in today)
+                if not is_punched_today and 7 <= now_local.hour < 13:
+                    # check if any attendance was closed today
+                    done_att_today = request.env['hr.attendance'].sudo().search_count([
+                        ('employee_id', '=', emp.id),
+                        ('check_in', '>=', now_local.replace(hour=0, minute=0, second=0).astimezone(pytz.utc).strftime('%Y-%m-%d %H:%M:%S'))
+                    ])
+                    if done_att_today == 0:
                         alerts.append({
-                            'id': f'att_overdue_{open_att.id}_{now_local.strftime("%Y%m%d")}',
-                            'type': 'overdue_attendance',
-                            'title': 'تنبيه انتهاء الدوام ⏰',
-                            'body': f'مرحباً {emp.name}، لقد أتممت ساعات العمل المقررة اليوم. يرجى تسجيل الانصراف الآن.',
+                            'id': f'att_morning_{emp.id}_{now_local.strftime("%Y%m%d")}',
+                            'type': 'morning_attendance',
+                            'title': 'صباح الخير | تذكير تسجيل الحضور 🌅',
+                            'body': f'صباح الخير {emp.name}، تذكير بتسجيل بصمة الحضور بالـ GPS لبدء دوامك اليومي.',
                             'url': '/my',
-                            'tag': f'att_overdue_{open_att.id}'
+                            'tag': f'att_morning_{now_local.strftime("%Y%m%d")}'
                         })
             except Exception as e_att:
                 _logger.warning("Error polling attendance: %s", e_att)
@@ -760,6 +849,60 @@ self.addEventListener('notificationclick', event => {
             'notifications': alerts,
             'total_active': len(alerts)
         }
+
+    @http.route('/my/notifications/test_simulate', type='json', auth='user', methods=['POST'], csrf=False)
+    def notifications_test_simulate(self, sim_type=None, **kw):
+        """Allows Admin/HR manager to test-fire any notification instantly on their phone."""
+        user = request.env.user
+        emp = self._get_employee()
+        emp_name = emp.name if emp else user.name
+
+        samples = {
+            'announcement': {
+                'title': 'تعميم إداري جديد 📢',
+                'body': 'صادر عن الإدارة العامة: مواعيد العمل الرسمية والتعليمات المحدثة.',
+                'url': '/my/announcements'
+            },
+            'leave_approved': {
+                'title': 'تمت الموافقة على طلب إجازتك ✅',
+                'body': f'تهانينا {emp_name}، تم اعتماد طلب إجازتك السنوية بنجاح من قبل الإدارة.',
+                'url': '/my/leaves'
+            },
+            'leave_refused': {
+                'title': 'تم رفض طلب إجازتك ❌',
+                'body': f'عذراً {emp_name}، تعذر اعتماد طلب الإجازة لتعارضها مع جدول تغطية الفريق.',
+                'url': '/my/leaves'
+            },
+            'asset': {
+                'title': 'إقرار استلام عهدة جديدة 💻',
+                'body': 'تم تسليمك عهدة جديدة (حاسوب محمول Dell Latitude). يرجى تأكيد استلامها.',
+                'url': '/my/assets'
+            },
+            'penalty': {
+                'title': 'تنبيه إداري رسمي ⚠️',
+                'body': 'صدر قرار لفت نظر إداري برقم (PEN-042). يرجى الاطلاع والرد.',
+                'url': '/my/penalties'
+            },
+            'location': {
+                'title': 'طلب موقع ميداني جديد 📍',
+                'body': f'الموظف {emp_name} يطلب اعتماد العمل من موقع عميل خارجي بالـ GPS.',
+                'url': '/my'
+            },
+            'morning': {
+                'title': 'صباح الخير | تذكير تسجيل الحضور 🌅',
+                'body': f'صباح الخير {emp_name}، تذكير بتسجيل بصمة الحضور بالـ GPS لبدء دوامك اليومي.',
+                'url': '/my'
+            },
+            'overdue': {
+                'title': 'تنبيه انتهاء ساعات الدوام ⏰',
+                'body': f'مرحباً {emp_name}، لقد أتممت 8 ساعات عمل اليوم. يرجى تسجيل بصمة الانصراف.',
+                'url': '/my'
+            }
+        }
+        sim = samples.get(sim_type, samples['announcement']).copy()
+        sim['id'] = f"sim_{sim_type}_{int(datetime.utcnow().timestamp())}"
+        sim['tag'] = f"jandalah-sim-{sim_type}-{int(datetime.utcnow().timestamp())}"
+        return {'status': 'success', 'notification': sim}
 
     @http.route('/my/attendance/toggle', type='json', auth='user', methods=['POST'], csrf=False)
     def attendance_toggle(self, latitude=None, longitude=None, browser=None, tz=None, **kw):

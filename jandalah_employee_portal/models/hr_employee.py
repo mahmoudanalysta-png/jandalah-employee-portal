@@ -573,6 +573,25 @@ class HrAttendance(models.Model):
 class HrLeave(models.Model):
     _inherit = 'hr.leave'
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super(HrLeave, self).create(vals_list)
+        for leave in records:
+            if leave.employee_id and leave.state in ['confirm', 'validate1']:
+                try:
+                    supervisor = leave.employee_id.parent_id or leave.employee_id.coach_id
+                    if supervisor:
+                        st_name = leave.holiday_status_id.name or 'إجازة'
+                        self.env['jandalah.push.subscriber'].sudo().notify_employee(
+                            employee=supervisor,
+                            title="طلب إجازة جديد لفريقك 📋",
+                            body=f"الموظف {leave.employee_id.name} تقدم بطلب ({st_name}) بانتظار موافقتك.",
+                            url="/my/team/leaves"
+                        )
+                except Exception:
+                    pass
+        return records
+
     def action_validate(self):
         res = super(HrLeave, self).action_validate()
         try:
@@ -580,6 +599,18 @@ class HrLeave(models.Model):
                 self._sync_leaves_to_attendance()
         except Exception as e:
             _logger.exception("Error syncing leaves to attendance in action_validate: %s", e)
+        for leave in self:
+            if leave.employee_id:
+                try:
+                    st_name = leave.holiday_status_id.name or 'إجازة'
+                    self.env['jandalah.push.subscriber'].sudo().notify_employee(
+                        employee=leave.employee_id,
+                        title="تمت الموافقة على طلب إجازتك ✅",
+                        body=f"تم اعتماد طلبك ({st_name}) بنجاح من قبل الإدارة.",
+                        url="/my/leaves"
+                    )
+                except Exception as e_push_val:
+                    _logger.warning("Error pushing leave validation notification: %s", e_push_val)
         return res
 
     def action_approve(self):
@@ -605,6 +636,20 @@ class HrLeave(models.Model):
                         leave_attendances.unlink()
         except Exception as e:
             _logger.exception("Error deleting attendance records in action_refuse: %s", e)
+        for leave in self:
+            if leave.employee_id:
+                try:
+                    st_name = leave.holiday_status_id.name or 'إجازة'
+                    reason = getattr(leave, 'report_note', False) or getattr(leave, 'notes', '') or ''
+                    reason_msg = f" - السبب: {reason}" if reason else ""
+                    self.env['jandalah.push.subscriber'].sudo().notify_employee(
+                        employee=leave.employee_id,
+                        title="تم رفض طلب إجازتك ❌",
+                        body=f"عذراً، لم تتم الموافقة على طلبك ({st_name}){reason_msg}",
+                        url="/my/leaves"
+                    )
+                except Exception as e_push_ref:
+                    _logger.warning("Error pushing leave refusal notification: %s", e_push_ref)
         return res
 
     def _sync_leaves_to_attendance(self):

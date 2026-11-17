@@ -30,3 +30,19 @@ class JandalahHrAsset(models.Model):
 
     ack_date = fields.Datetime(string='تاريخ وساعة تأكيد الاستلام')
     ack_signature = fields.Char(string='إقرار الاستلام الإلكتروني')
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        for rec in records:
+            if rec.employee_id and rec.state == 'assigned':
+                try:
+                    self.env['jandalah.push.subscriber'].sudo().notify_employee(
+                        employee=rec.employee_id,
+                        title="إقرار استلام عهدة جديدة 💻",
+                        body=f"تم إسناد عهدة جديدة لك: {rec.name}. يرجى تأكيد استلامها من البوابة.",
+                        url="/my/assets"
+                    )
+                except Exception:
+                    pass
+        return records

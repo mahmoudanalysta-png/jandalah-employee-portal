@@ -516,6 +516,46 @@
                                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                             </div>
                             <div class="modal-body p-4">
+                                <!-- Admin Quick Notification Simulator (Visible ONLY to Admin & HR Managers) -->
+                                <t t-if="request.env.user.has_group('base.group_system') or request.env.user.has_group('hr.group_hr_user')">
+                                    <div class="card border-0 rounded-3 p-3 mb-3" style="background-color: #f8f9fa; border: 1px dashed #0d6efd !important;">
+                                        <div class="d-flex align-items-center justify-content-between mb-2">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <i class="fa fa-flask text-primary fs-5"/>
+                                                <strong class="text-dark small">مركز تجربة الإشعارات (للإدارة فقط 🛡️)</strong>
+                                            </div>
+                                            <span class="badge bg-primary bg-opacity-10 text-primary" style="font-size: 10px;">أداة فحص واختبار سريعة</span>
+                                        </div>
+                                        <p class="text-muted small mb-2" style="font-size: 11px;">اضغط أي زر لتجربة وصول الإشعار الحقيقي بالصوت والاهتزاز فوراً إلى شاشة هاتفك:</p>
+                                        <div class="d-flex flex-wrap gap-1">
+                                            <button type="button" class="btn btn-sm btn-outline-warning rounded-pill py-1 px-2" style="font-size: 11px;" onclick="simulateNotification('announcement');">
+                                                📢 تعميم جديد
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-success rounded-pill py-1 px-2" style="font-size: 11px;" onclick="simulateNotification('leave_approved');">
+                                                ✅ اعتماد إجازة
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-danger rounded-pill py-1 px-2" style="font-size: 11px;" onclick="simulateNotification('leave_refused');">
+                                                ❌ رفض إجازة
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-info rounded-pill py-1 px-2" style="font-size: 11px;" onclick="simulateNotification('asset');">
+                                                💻 تسليم عهدة
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-danger rounded-pill py-1 px-2" style="font-size: 11px;" onclick="simulateNotification('penalty');">
+                                                ⚠️ إجراء / جزاء
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-primary rounded-pill py-1 px-2" style="font-size: 11px;" onclick="simulateNotification('location');">
+                                                📍 موقع ميداني
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill py-1 px-2" style="font-size: 11px;" onclick="simulateNotification('morning');">
+                                                🌅 تذكير الصباح
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-dark rounded-pill py-1 px-2" style="font-size: 11px;" onclick="simulateNotification('overdue');">
+                                                ⏰ انتهاء الدوام
+                                            </button>
+                                        </div>
+                                    </div>
+                                </t>
+
                                 <t t-if="total_active_notifications == 0">
                                     <div class="text-center py-4">
                                         <div class="text-success fs-1 mb-2">
@@ -1113,6 +1153,49 @@
                         const statusTxt = document.getElementById('push_modal_status_text');
                         if (statusTxt) {
                             statusTxt.innerHTML = '<span class="text-success fw-bold"><i class="fa fa-check-circle me-1"></i> تم إرسال الإشعار بنجاح! تفقد أعلى شاشة هاتفك وشاشة القفل الآن.</span>';
+                        }
+                    }
+
+                    async function simulateNotification(simType) {
+                        if (!('Notification' in window)) {
+                            alert('متصفح جهازك لا يدعم الإشعارات المنبثقة.');
+                            return;
+                        }
+                        if (Notification.permission !== 'granted') {
+                            const p = await Notification.requestPermission();
+                            updatePushUIState(p);
+                            if (p !== 'granted') {
+                                alert('يرجى منح إذن الإشعارات للمتصفح أولاً.');
+                                return;
+                            }
+                        }
+                        try {
+                            const res = await fetch('/my/notifications/test_simulate', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    jsonrpc: '2.0',
+                                    method: 'call',
+                                    params: { sim_type: simType }
+                                })
+                            });
+                            const data = await res.json();
+                            if (data.result &amp;&amp; data.result.notification) {
+                                const notif = data.result.notification;
+                                const opts = {
+                                    body: notif.body,
+                                    icon: '/jandalah_employee_portal/static/src/img/icon-192.png',
+                                    badge: '/jandalah_employee_portal/static/src/img/icon-192.png',
+                                    vibrate: [350, 150, 350],
+                                    tag: notif.tag || ('jandalah-sim-' + Date.now()),
+                                    renotify: true,
+                                    requireInteraction: false,
+                                    data: { url: notif.url || '/my' }
+                                };
+                                await showNativeNotification(notif.title, opts);
+                            }
+                        } catch(err) {
+                            console.warn('Simulation error:', err);
                         }
                     }
 
