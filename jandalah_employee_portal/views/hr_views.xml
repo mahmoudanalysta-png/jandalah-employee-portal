@@ -10,13 +10,14 @@
             <xpath expr="//notebook" position="inside">
                 <page string="النطاق الجغرافي للحضور (Geofencing)" name="geofencing_settings" groups="hr.group_hr_user">
                     <group string="إعدادات الموقع المعتمد لتسجيل الحضور">
-                        <group>
+                        <group string="طبيعة العمل ونطاق السماح">
                             <field name="geofence_type"/>
                             <field name="work_radius_meters"/>
                         </group>
-                        <group>
-                            <field name="work_latitude"/>
-                            <field name="work_longitude"/>
+                        <group string="موقع العمل من خرائط جوجل">
+                            <field name="google_maps_url" widget="url" placeholder="الصق رابط موقع جوجل ماب هنا (مثل: https://maps.app.goo.gl/... أو 24.7136, 46.6753)"/>
+                            <field name="work_latitude" readonly="1" force_save="1"/>
+                            <field name="work_longitude" readonly="1" force_save="1"/>
                         </group>
                     </group>
                 </page>

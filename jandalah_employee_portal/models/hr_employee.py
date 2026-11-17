@@ -19,8 +19,111 @@ class HrEmployee(models.Model):
     
     work_latitude = fields.Float(string='خط عرض موقع العمل المعتمد', digits=(10, 7))
     work_longitude = fields.Float(string='خط طول موقع العمل المعتمد', digits=(10, 7))
+    google_maps_url = fields.Char(
+        string='موقع العمل من خرائط جوجل (Google Location)',
+        help='الصق رابط الموقع من خرائط جوجل أو الإحداثيات مباشرة (مثال: https://maps.app.goo.gl/... أو 24.7136, 46.6753)'
+    )
     work_radius_meters = fields.Integer(string='نطاق السماح الجغرافي (بالمتر)', default=500,
                                        help='المسافة المسموح بها حول الموقع بالأمتار (0 = غير مقيد)')
+
+    @api.onchange('google_maps_url')
+    def _onchange_google_maps_url(self):
+        if self.google_maps_url:
+            lat, lon = self._parse_google_maps_coordinates(self.google_maps_url)
+            if lat is not None and lon is not None:
+                self.work_latitude = lat
+                self.work_longitude = lon
+
+    def _parse_google_maps_coordinates(self, url_or_coords):
+        """Extracts latitude and longitude from Google Maps URLs, shortlinks, or raw coords."""
+        import re
+        if not url_or_coords:
+            return None, None
+
+        raw = str(url_or_coords).strip()
+
+        # 1. Raw coordinates pattern: e.g. "24.7136, 46.6753" or "24.7136 46.6753"
+        raw_match = re.match(r'^\s*([+-]?\d+(?:\.\d+)?)[,\s]+([+-]?\d+(?:\.\d+)?)\s*$', raw)
+        if raw_match:
+            try:
+                lat = float(raw_match.group(1))
+                lon = float(raw_match.group(2))
+                if -90 <= lat <= 90 and -180 <= lon <= 180:
+                    return lat, lon
+            except Exception:
+                pass
+
+        # 2. Shortlink redirect resolution: maps.app.goo.gl or goo.gl/maps
+        final_url = raw
+        if 'goo.gl' in raw:
+            try:
+                import urllib.request
+                req = urllib.request.Request(raw, headers={'User-Agent': 'Mozilla/5.0'})
+                with urllib.request.urlopen(req, timeout=3) as resp:
+                    final_url = resp.geturl()
+            except Exception:
+                final_url = raw
+
+        # 3. /@lat,lon pattern in URL
+        at_match = re.search(r'@([+-]?\d+\.\d+),([+-]?\d+\.\d+)', final_url)
+        if at_match:
+            try:
+                lat = float(at_match.group(1))
+                lon = float(at_match.group(2))
+                if -90 <= lat <= 90 and -180 <= lon <= 180:
+                    return lat, lon
+            except Exception:
+                pass
+
+        # 4. q=lat,lon or ll=lat,lon or query=lat,lon
+        q_match = re.search(r'[?&](?:q|ll|query|loc)=([+-]?\d+\.\d+),([+-]?\d+\.\d+)', final_url)
+        if q_match:
+            try:
+                lat = float(q_match.group(1))
+                lon = float(q_match.group(2))
+                if -90 <= lat <= 90 and -180 <= lon <= 180:
+                    return lat, lon
+            except Exception:
+                pass
+
+        # 5. Protobuf coordinates !3dlat!4dlon
+        proto_match = re.search(r'!3d([+-]?\d+\.\d+)!4d([+-]?\d+\.\d+)', final_url)
+        if proto_match:
+            try:
+                lat = float(proto_match.group(1))
+                lon = float(proto_match.group(2))
+                if -90 <= lat <= 90 and -180 <= lon <= 180:
+                    return lat, lon
+            except Exception:
+                pass
+
+        return None, None
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if vals.get('google_maps_url'):
+                lat, lon = self._parse_google_maps_coordinates(vals['google_maps_url'])
+                if lat is not None and lon is not None:
+                    vals['work_latitude'] = lat
+                    vals['work_longitude'] = lon
+            elif vals.get('work_latitude') and vals.get('work_longitude') and not vals.get('google_maps_url'):
+                vals['google_maps_url'] = f"https://www.google.com/maps?q={vals['work_latitude']},{vals['work_longitude']}"
+        return super(HrEmployee, self).create(vals_list)
+
+    def write(self, vals):
+        if vals.get('google_maps_url'):
+            lat, lon = self._parse_google_maps_coordinates(vals['google_maps_url'])
+            if lat is not None and lon is not None:
+                vals['work_latitude'] = lat
+                vals['work_longitude'] = lon
+        elif (vals.get('work_latitude') or vals.get('work_longitude')) and 'google_maps_url' not in vals:
+            for emp in self:
+                lat = vals.get('work_latitude', emp.work_latitude)
+                lon = vals.get('work_longitude', emp.work_longitude)
+                if lat and lon and not emp.google_maps_url:
+                    vals['google_maps_url'] = f"https://www.google.com/maps?q={lat},{lon}"
+        return super(HrEmployee, self).write(vals)
 
     def calculate_distance_meters(self, lat1, lon1, lat2, lon2):
         """Calculates spherical distance in meters between two coordinates using Haversine formula."""
@@ -618,6 +721,129 @@ class HrLeave(models.Model):
                 except Exception:
                     pass
         return records
+
+    @api.constrains('holiday_status_id', 'employee_id', 'request_date_from', 'number_of_hours_display', 'request_unit_hours')
+    def _check_permission_hours_limits(self):
+        for leave in self:
+            if leave.state in ['cancel', 'refuse']:
+                continue
+            tname = leave.holiday_status_id.name or ''
+            is_perm = (
+                getattr(leave, 'request_unit_hours', False) or
+                (hasattr(leave, 'number_of_hours_display') and leave.number_of_hours_display > 0 and leave.number_of_hours_display < 8) or
+                any(k in tname for k in ['إذن', 'اذن', 'استئذان', 'ساعي', 'خروج'])
+            )
+            if not is_perm:
+                continue
+
+            hours = getattr(leave, 'number_of_hours_display', 0.0) or (leave.number_of_days * 8.0 if leave.number_of_days < 1 else 3.0)
+
+            # 1. Daily limit check: max 3 hours
+            if hours > 3.0:
+                raise exceptions.ValidationError(_("الحد الأقصى المسموح به للإذن هو 3 ساعات في اليوم الواحد فقط."))
+
+            req_date = leave.request_date_from or (leave.date_from.date() if leave.date_from else None)
+            if not req_date or not leave.employee_id:
+                continue
+
+            # Check same-day total permissions
+            same_day_leaves = self.search([
+                ('employee_id', '=', leave.employee_id.id),
+                ('id', '!=', leave.id),
+                ('state', 'in', ['confirm', 'validate1', 'validate']),
+                ('request_date_from', '=', req_date),
+            ])
+            same_day_h = sum(
+                (l.number_of_hours_display or (l.number_of_days * 8.0 if l.number_of_days < 1 else 3.0))
+                for l in same_day_leaves
+                if (getattr(l, 'request_unit_hours', False) or any(k in (l.holiday_status_id.name or '') for k in ['إذن', 'اذن', 'استئذان', 'ساعي', 'خروج']))
+            )
+            if same_day_h + hours > 3.0:
+                raise exceptions.ValidationError(
+                    _("لا يمكن اعتماد الطلب: تجاوزت الحد الأقصى اليومي للأذونات (3 ساعات). يوجد بالفعل %(existing)s س مسجلة للموظف في هذا اليوم.") % {
+                        'existing': same_day_h
+                    }
+                )
+
+            # 2. Monthly limit check: max 9 hours per calendar month
+            if isinstance(req_date, str):
+                req_d = datetime.datetime.strptime(req_date, '%Y-%m-%d').date()
+            else:
+                req_d = req_date
+            m_start = req_d.replace(day=1)
+            if req_d.month == 12:
+                m_end = req_d.replace(year=req_d.year + 1, month=1, day=1) - datetime.timedelta(days=1)
+            else:
+                m_end = req_d.replace(month=req_d.month + 1, day=1) - datetime.timedelta(days=1)
+
+            month_leaves = self.search([
+                ('employee_id', '=', leave.employee_id.id),
+                ('id', '!=', leave.id),
+                ('state', 'in', ['confirm', 'validate1', 'validate']),
+                ('request_date_from', '>=', str(m_start)),
+                ('request_date_from', '<=', str(m_end)),
+            ])
+            month_h = sum(
+                (l.number_of_hours_display or (l.number_of_days * 8.0 if l.number_of_days < 1 else 3.0))
+                for l in month_leaves
+                if (getattr(l, 'request_unit_hours', False) or any(k in (l.holiday_status_id.name or '') for k in ['إذن', 'اذن', 'استئذان', 'ساعي', 'خروج']))
+            )
+            if month_h + hours > 9.0:
+                rem_m = max(0.0, 9.0 - month_h)
+                raise exceptions.ValidationError(
+                    _("لا يمكن اعتماد الطلب: تجاوزت الحد الأقصى الشهري للأذونات (9 ساعات شهرياً). المتبقي لهذا الشهر هو %(rem)s س فقط.") % {
+                        'rem': rem_m
+                    }
+                )
+
+    @api.constrains('holiday_status_id', 'employee_id', 'request_date_from', 'request_date_to', 'number_of_days')
+    def _check_leave_allocation_limits(self):
+        for leave in self:
+            if leave.state in ['cancel', 'refuse']:
+                continue
+            tname = leave.holiday_status_id.name or ''
+            is_perm = (
+                getattr(leave, 'request_unit_hours', False) or
+                (hasattr(leave, 'number_of_hours_display') and leave.number_of_hours_display > 0 and leave.number_of_hours_display < 8) or
+                any(k in tname for k in ['إذن', 'اذن', 'استئذان', 'ساعي', 'خروج'])
+            )
+            if is_perm:
+                continue
+
+            requires_alloc = getattr(leave.holiday_status_id, 'requires_allocation', 'yes') != 'no'
+            if not requires_alloc:
+                continue
+
+            # Check casual leave max 2 days
+            if 'عارضة' in tname and leave.number_of_days > 2:
+                raise exceptions.ValidationError(_("الحد الأقصى للإجازة العارضة هو يومان متتاليان فقط في المرة الواحدة."))
+
+            # Sum allocations
+            allocs = self.env['hr.leave.allocation'].sudo().search([
+                ('employee_id', '=', leave.employee_id.id),
+                ('holiday_status_id', '=', leave.holiday_status_id.id),
+                ('state', '=', 'validate')
+            ])
+            total_alloc = sum(allocs.mapped('number_of_days'))
+            if total_alloc <= 0:
+                continue
+
+            # Sum other taken leaves
+            other_leaves = self.search([
+                ('employee_id', '=', leave.employee_id.id),
+                ('holiday_status_id', '=', leave.holiday_status_id.id),
+                ('id', '!=', leave.id),
+                ('state', 'in', ['confirm', 'validate1', 'validate']),
+            ])
+            taken = sum(other_leaves.mapped('number_of_days'))
+            rem = max(0.0, total_alloc - taken)
+            if leave.number_of_days > rem:
+                raise exceptions.ValidationError(
+                    _("لا يمكن تقديم طلب الإجازة: الأيام المطلوبة (%(req)s) تتجاوز الرصيد المتبقي المتاح (%(rem)s يوم).") % {
+                        'req': leave.number_of_days,
+                        'rem': rem
+                    }
+                )
 
     def action_validate(self):
         res = super(HrLeave, self).action_validate()

@@ -334,30 +334,36 @@
                                                 تقديم طلبات الإجازات ومتابعة حالة اعتمادها بكل سهولة.
                                             </p>
 
-                                            <!-- Leave Balances Section -->
-                                            <t t-if="leave_balances">
+                                            <!-- Leave Balances & Monthly Permissions Section -->
+                                            <t t-if="leave_balances or monthly_perm_remaining is not None">
                                                 <div class="border rounded-3 p-2 mb-3 bg-light">
-                                                    <div class="d-flex align-items-center mb-2">
-                                                        <i class="fa fa-pie-chart me-2 text-success"/>
-                                                        <span class="fw-semibold small text-success">رصيد الإجازات المتبقي</span>
+                                                    <div class="d-flex align-items-center justify-content-between mb-2">
+                                                        <div>
+                                                            <i class="fa fa-pie-chart me-1 text-success"/>
+                                                            <span class="fw-semibold small text-success">الأرصدة المتاحة</span>
+                                                        </div>
+                                                        <small class="text-muted" style="font-size:0.7rem;">تتجدد شهرياً للأذونات</small>
                                                     </div>
                                                     <t t-foreach="leave_balances" t-as="lb">
                                                         <div class="d-flex justify-content-between align-items-center mb-1">
                                                             <small class="text-muted" style="max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
                                                                 <t t-esc="lb['name']"/>
                                                             </small>
-                                                            <t t-if="lb['unlimited']">
-                                                                <span class="badge bg-info text-white rounded-pill px-2 py-1 small">
-                                                                    <i class="fa fa-infinity me-1"/> غير محدود
-                                                                </span>
-                                                            </t>
-                                                            <t t-else="">
-                                                                <span t-attf-class="badge bg-#{lb['color']} text-white rounded-pill px-2 py-1 small fw-bold">
-                                                                    <t t-esc="lb['remaining']"/> يوم
-                                                                </span>
-                                                            </t>
+                                                            <span t-attf-class="badge bg-#{lb['color']} text-white rounded-pill px-2.5 py-0.5 small fw-bold">
+                                                                <t t-esc="lb['remaining_text']"/>
+                                                            </span>
                                                         </div>
                                                     </t>
+                                                    <!-- Monthly Permissions Row -->
+                                                    <div class="d-flex justify-content-between align-items-center pt-1 border-top mt-1">
+                                                        <small class="text-muted">
+                                                            <i class="fa fa-clock-o text-primary me-1"/>
+                                                            أذونات شهر (<t t-esc="monthly_perm_month_name or 'الحالي'"/>)
+                                                        </small>
+                                                        <span class="badge bg-primary text-white rounded-pill px-2.5 py-0.5 small fw-bold">
+                                                            متبقي <t t-esc="monthly_perm_remaining"/> من 9 س
+                                                        </span>
+                                                    </div>
                                                 </div>
                                             </t>
                                             <t t-else="">
@@ -1595,28 +1601,39 @@
                                             <div class="small text-muted mb-2 fw-semibold" style="min-height:2.5rem;display:flex;align-items:center;justify-content:center;">
                                                 <t t-esc="lb['name']"/>
                                             </div>
-                                            <t t-if="lb['unlimited']">
-                                                <span class="badge bg-info text-white rounded-pill px-3 py-2 fs-6">
-                                                    <i class="fa fa-infinity me-1"/> غير محدود
-                                                </span>
-                                            </t>
-                                            <t t-else="">
-                                                <span t-attf-class="badge bg-#{lb['color']} text-white rounded-pill px-3 py-2 fs-5 fw-bold">
-                                                    <t t-esc="lb['remaining']"/>
-                                                </span>
-                                                <div class="small text-muted mt-1">يوم متبقي</div>
-                                                <t t-if="lb['max'] &gt; 0">
-                                                    <div class="progress mt-2" style="height:5px;">
-                                                        <div t-attf-class="progress-bar bg-#{lb['color']}"
-                                                             t-attf-style="width:#{[lb['remaining']/lb['max']*100, 100][0] if lb['remaining']/lb['max']*100 &lt; 100 else 100}%">
-                                                        </div>
+                                            <span t-attf-class="badge bg-#{lb['color']} text-white rounded-pill px-3 py-2 fs-5 fw-bold">
+                                                <t t-esc="lb['remaining']"/>
+                                            </span>
+                                            <div class="small text-muted mt-1">يوم متبقي</div>
+                                            <t t-if="lb['max'] &gt; 0">
+                                                <div class="progress mt-2" style="height:5px;">
+                                                    <div t-attf-class="progress-bar bg-#{lb['color']}"
+                                                         t-attf-style="width:#{[lb['remaining']/lb['max']*100, 100][0] if lb['remaining']/lb['max']*100 &lt; 100 else 100}%">
                                                     </div>
-                                                    <div class="small text-muted mt-1">من <t t-esc="lb['max']"/> يوم</div>
-                                                </t>
+                                                </div>
+                                                <div class="small text-muted mt-1">من <t t-esc="lb['max']"/> يوم</div>
                                             </t>
                                         </div>
                                     </div>
                                 </t>
+                                <!-- Monthly Permissions Card -->
+                                <div class="col-6 col-md-4 col-lg-3">
+                                    <div class="border rounded-3 p-3 text-center h-100 bg-light" style="border-top: 4px solid #0d6efd !important;">
+                                        <div class="small text-primary mb-2 fw-bold" style="min-height:2.5rem;display:flex;align-items:center;justify-content:center;">
+                                            <i class="fa fa-clock-o me-1"/> أذونات شهر (<t t-esc="monthly_perm_month_name or 'الحالي'"/>)
+                                        </div>
+                                        <span class="badge bg-primary text-white rounded-pill px-3 py-2 fs-5 fw-bold">
+                                            <t t-esc="monthly_perm_remaining"/>
+                                        </span>
+                                        <div class="small text-muted mt-1">ساعات متبقية</div>
+                                        <div class="progress mt-2" style="height:5px;">
+                                            <div class="progress-bar bg-primary"
+                                                 t-attf-style="width:#{[monthly_perm_remaining/9.0*100, 100][0] if monthly_perm_remaining/9.0*100 &lt; 100 else 100}%">
+                                            </div>
+                                        </div>
+                                        <div class="small text-muted mt-1">من 9 ساعات شهرياً</div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1829,8 +1846,14 @@
                                     <div id="hourly_permission_section" class="d-none">
                                         <input type="hidden" name="is_hourly" id="is_hourly_input" value="0"/>
                                         <div class="alert alert-primary py-2 px-3 mb-3 rounded-3 small" style="background-color: #eff6ff; border: 1px solid #bfdbfe;">
-                                            <i class="fa fa-clock-o me-1 text-primary"/>
-                                            <b>طلب إذن ساعي:</b> حدد تاريخ الإذن وساعات الاستئذان (الحد الأقصى للإذن <b>3 ساعات</b> خلال يوم العمل). تخصم ساعات الإذن المعتمد تلقائياً من احتساب التأخير الصباحي عند الحضور.
+                                            <div class="fw-bold text-primary mb-1">
+                                                <i class="fa fa-clock-o me-1"/> ضوابط الاستئذان:
+                                            </div>
+                                            <div>
+                                                • الحد الأقصى للإذن هو <b>3 ساعات</b> في اليوم الواحد.<br/>
+                                                • الحد الأقصى الشهري هو <b>9 ساعات</b> (تتجدد تلقائياً كل شهر).<br/>
+                                                • رصيدك المتبقي لشهر (<t t-esc="monthly_perm_month_name or 'الحالي'"/>): <b><t t-esc="monthly_perm_remaining"/> ساعات</b> (استهلكت <t t-esc="monthly_perm_used"/> من 9 س).
+                                            </div>
                                         </div>
                                         <div class="mb-3">
                                             <label class="form-label fw-bold">تاريخ الإذن <span class="text-danger">*</span></label>

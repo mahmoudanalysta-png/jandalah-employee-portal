@@ -257,6 +257,148 @@ class JandalahCustomerPortal(CustomerPortal):
                 ])
         return subs
 
+    def _get_employee_leave_balances(self, emp):
+        """Computes strict day-based leave balances for regular and casual leaves, plus monthly permission hours."""
+        res = {
+            'balances': [],
+            'monthly_perm_used': 0.0,
+            'monthly_perm_remaining': 9.0,
+            'monthly_perm_text': '9 ساعات',
+        }
+        if not emp:
+            return res
+
+        try:
+            LeaveType = request.env['hr.leave.type'].sudo()
+            LeaveAlloc = request.env['hr.leave.allocation'].sudo()
+            LeaveReq = request.env['hr.leave'].sudo()
+
+            # 1. Ensure standard Leave Types exist:
+            # - إجازة اعتيادية: 21 days annual
+            # - إجازة عارضة: 6 days casual
+            standard_defaults = [
+                ('إجازة اعتيادية', 21),
+                ('إجازة عارضة', 6),
+            ]
+            for type_name, default_days in standard_defaults:
+                lt = LeaveType.search([('name', '=', type_name)], limit=1)
+                if not lt:
+                    try:
+                        lt = LeaveType.create({
+                            'name': type_name,
+                            'requires_allocation': 'yes',
+                            'leave_validation_type': 'both',
+                            'request_unit': 'day',
+                        })
+                    except Exception as e_cr:
+                        _logger.warning("Could not auto-create leave type %s: %s", type_name, e_cr)
+
+                if lt:
+                    # Check if employee has approved allocation for this type
+                    has_alloc = LeaveAlloc.search_count([
+                        ('employee_id', '=', emp.id),
+                        ('holiday_status_id', '=', lt.id),
+                        ('state', '=', 'validate')
+                    ])
+                    if not has_alloc:
+                        try:
+                            new_alloc = LeaveAlloc.create({
+                                'name': f"رصيد سنوي ({type_name}) - {emp.name}",
+                                'holiday_status_id': lt.id,
+                                'employee_id': emp.id,
+                                'number_of_days': default_days,
+                                'state': 'confirm',
+                            })
+                            if hasattr(new_alloc, 'action_validate'):
+                                new_alloc.action_validate()
+                            elif hasattr(new_alloc, 'action_approve'):
+                                new_alloc.action_approve()
+                            else:
+                                new_alloc.write({'state': 'validate'})
+                        except Exception as e_al:
+                            _logger.warning("Could not allocate for %s: %s", type_name, e_al)
+
+            # 2. Query leave types and compute days
+            all_types = LeaveType.search([('active', '=', True)], order='sequence asc, id asc')
+            balances = []
+            for lt in all_types:
+                # Exclude purely hourly permissions
+                is_perm = any(k in (lt.name or '') for k in ['إذن', 'اذن', 'استئذان', 'ساعي', 'خروج'])
+                if is_perm:
+                    continue
+
+                # Sum approved allocations
+                alloc_records = LeaveAlloc.search([
+                    ('employee_id', '=', emp.id),
+                    ('holiday_status_id', '=', lt.id),
+                    ('state', '=', 'validate')
+                ])
+                total_allocated = sum(alloc_records.mapped('number_of_days'))
+
+                # Sum confirmed / validated leaves taken
+                taken_records = LeaveReq.search([
+                    ('employee_id', '=', emp.id),
+                    ('holiday_status_id', '=', lt.id),
+                    ('state', 'in', ['validate', 'validate1', 'confirm'])
+                ])
+                total_taken = sum(taken_records.mapped('number_of_days'))
+
+                # Skip unpaid / generic demo types if they have 0 allocation
+                if total_allocated == 0 and any(k in (lt.name or '') for k in ['غير مدفوعة', 'بدون راتب', 'Unpaid']):
+                    continue
+
+                remaining = max(0.0, total_allocated - total_taken)
+                rem_val = int(remaining) if remaining.is_integer() else round(remaining, 1)
+                max_val = int(total_allocated) if total_allocated.is_integer() else round(total_allocated, 1)
+
+                unit_str = "أيام" if (3 <= rem_val <= 10) else "يوم"
+                remaining_text = f"{rem_val} {unit_str}"
+
+                balances.append({
+                    'id': lt.id,
+                    'name': lt.name,
+                    'remaining': rem_val,
+                    'remaining_text': remaining_text,
+                    'max': max_val,
+                    'unlimited': False,
+                    'color': 'success' if remaining >= 5 else ('warning' if remaining > 0 else 'danger'),
+                })
+            res['balances'] = balances
+
+            # 3. Compute current month's permission hours (Limit: 9 hours per month)
+            today_d = date.today()
+            m_start = today_d.replace(day=1)
+            if today_d.month == 12:
+                m_end = today_d.replace(year=today_d.year + 1, month=1, day=1) - timedelta(days=1)
+            else:
+                m_end = today_d.replace(month=today_d.month + 1, day=1) - timedelta(days=1)
+
+            month_leaves = LeaveReq.search([
+                ('employee_id', '=', emp.id),
+                ('state', 'in', ['confirm', 'validate1', 'validate']),
+                ('request_date_from', '>=', str(m_start)),
+                ('request_date_from', '<=', str(m_end)),
+            ])
+            used_h = 0.0
+            for ml in month_leaves:
+                m_tname = ml.holiday_status_id.name or ''
+                if (getattr(ml, 'request_unit_hours', False) or
+                    (hasattr(ml, 'number_of_hours_display') and ml.number_of_hours_display > 0 and ml.number_of_hours_display < 8) or
+                    any(k in m_tname for k in ['إذن', 'اذن', 'استئذان', 'ساعي', 'خروج'])):
+                    h_val = getattr(ml, 'number_of_hours_display', 0.0) or (ml.number_of_days * 8.0 if ml.number_of_days < 1 else 3.0)
+                    used_h += h_val
+
+            rem_h = max(0.0, 9.0 - used_h)
+            rem_h_disp = int(rem_h) if rem_h.is_integer() else round(rem_h, 1)
+            used_h_disp = int(used_h) if used_h.is_integer() else round(used_h, 1)
+            res['monthly_perm_used'] = used_h_disp
+            res['monthly_perm_remaining'] = rem_h_disp
+            res['monthly_perm_text'] = f"{rem_h_disp} س"
+        except Exception as e:
+            _logger.warning("Error in _get_employee_leave_balances: %s", e)
+
+        return res
+
     def _get_jandalah_dashboard_values(self, emp=None):
         """Prepares all employee dashboard, attendance, notifications, and supervisor values for /my."""
         values = {}
@@ -397,43 +539,13 @@ class JandalahCustomerPortal(CustomerPortal):
         except Exception:
             pass
 
-        # Leave Balances per type
-        leave_balances = []
-        try:
-            leave_types = request.env['hr.leave.type'].sudo().with_context(
-                employee_id=emp.id
-            ).search([('active', '=', True)], order='sequence asc')
-            for lt in leave_types:
-                try:
-                    # virtual_remaining_leaves is the most reliable field in Odoo 17/18
-                    remaining = 0.0
-                    max_allowed = 0.0
-                    if hasattr(lt, 'virtual_remaining_leaves'):
-                        remaining = lt.virtual_remaining_leaves or 0.0
-                    elif hasattr(lt, 'remaining_leaves'):
-                        remaining = lt.remaining_leaves or 0.0
-                    if hasattr(lt, 'max_leaves'):
-                        max_allowed = lt.max_leaves or 0.0
-
-                    is_unlimited = getattr(lt, 'leave_validation_type', '') == 'no_validation' or max_allowed == 0
-                    # Skip types with 0 balance and no allocation (not relevant to employee)
-                    if remaining <= 0 and max_allowed <= 0 and not is_unlimited:
-                        continue
-                    # Skip purely hourly permission types from balance list
-                    is_perm_type = any(k in (lt.name or '') for k in ['إذن', 'اذن', 'استئذان', 'ساعي', 'خروج'])
-                    if is_perm_type:
-                        continue
-                    leave_balances.append({
-                        'name': lt.name,
-                        'remaining': remaining,
-                        'max': max_allowed,
-                        'unlimited': is_unlimited,
-                        'color': 'success' if remaining > 5 else ('warning' if remaining > 0 else 'danger'),
-                    })
-                except Exception:
-                    pass
-        except Exception:
-            pass
+        # Leave Balances and Monthly Permission Stats (Strictly in DAYS & HOURS)
+        leave_info = self._get_employee_leave_balances(emp)
+        leave_balances = leave_info.get('balances', [])
+        monthly_perm_used = leave_info.get('monthly_perm_used', 0.0)
+        monthly_perm_remaining = leave_info.get('monthly_perm_remaining', 9.0)
+        monthly_perm_text = leave_info.get('monthly_perm_text', '9 ساعات')
+        monthly_perm_month_name = leave_info.get('monthly_perm_month_name', '')
 
         # Total notifications for header bell and central dashboard
         total_active_notifications = (
@@ -457,6 +569,10 @@ class JandalahCustomerPortal(CustomerPortal):
             'leaves_count': request.env['hr.leave'].sudo().search_count([('employee_id', '=', emp.id)]),
             'recent_approved_leaves_count': recent_approved_leaves_count,
             'leave_balances': leave_balances,
+            'monthly_perm_used': monthly_perm_used,
+            'monthly_perm_remaining': monthly_perm_remaining,
+            'monthly_perm_text': monthly_perm_text,
+            'monthly_perm_month_name': monthly_perm_month_name,
             'unread_announcements': unread_announcements,
             'pending_assets': pending_assets,
             'pending_penalties': pending_penalties,
@@ -1375,39 +1491,23 @@ self.addEventListener('notificationclick', event => {
             })
 
         values = self._prepare_portal_layout_values()
-        # Compute leave balances for the leaves page too
-        leave_balances_page = []
-        try:
-            lt_all = request.env['hr.leave.type'].sudo().with_context(employee_id=emp.id).search([('active', '=', True)], order='sequence asc')
-            for lt in lt_all:
-                try:
-                    remaining = getattr(lt, 'virtual_remaining_leaves', None)
-                    if remaining is None:
-                        remaining = getattr(lt, 'remaining_leaves', 0.0)
-                    max_allowed = getattr(lt, 'max_leaves', 0.0) or 0.0
-                    is_unlimited = max_allowed == 0
-                    is_perm_type = any(k in (lt.name or '') for k in ['إذن', 'اذن', 'استئذان', 'ساعي', 'خروج'])
-                    if is_perm_type:
-                        continue
-                    if remaining <= 0 and max_allowed <= 0 and not is_unlimited:
-                        continue
-                    leave_balances_page.append({
-                        'name': lt.name,
-                        'remaining': remaining,
-                        'max': max_allowed,
-                        'unlimited': is_unlimited,
-                        'color': 'success' if remaining > 5 else ('warning' if remaining > 0 else 'danger'),
-                    })
-                except Exception:
-                    pass
-        except Exception:
-            pass
+        # Compute leave balances and permission stats for the leaves page
+        leave_info = self._get_employee_leave_balances(emp)
+        leave_balances_page = leave_info.get('balances', [])
+        monthly_perm_used = leave_info.get('monthly_perm_used', 0.0)
+        monthly_perm_remaining = leave_info.get('monthly_perm_remaining', 9.0)
+        monthly_perm_text = leave_info.get('monthly_perm_text', '9 ساعات')
+        monthly_perm_month_name = leave_info.get('monthly_perm_month_name', '')
 
         values.update({
             'employee': emp,
             'leaves': leaves_data,
             'leave_types': leave_types_data,
             'leave_balances': leave_balances_page,
+            'monthly_perm_used': monthly_perm_used,
+            'monthly_perm_remaining': monthly_perm_remaining,
+            'monthly_perm_text': monthly_perm_text,
+            'monthly_perm_month_name': monthly_perm_month_name,
             'page_name': 'leaves',
             'pager': pager,
             'success': success,
@@ -1453,8 +1553,61 @@ self.addEventListener('notificationclick', event => {
                 except Exception:
                     calc_hours = 2.0
 
-                # Strict Maximum of 3 hours for permissions as per company policy
-                calc_hours = min(max(calc_hours, 0.5), 3.0)
+                calc_hours = round(calc_hours, 2)
+
+                # 1. Daily Limit Check: Strictly Maximum 3 hours per day
+                if calc_hours > 3.0:
+                    err_msg = f"لا يمكن تنفيذ الطلب: الحد الأقصى للإذن هو 3 ساعات في اليوم الواحد (طلبت {calc_hours:g} س)."
+                    return request.redirect(f'/my/leaves?error={urllib.parse.quote(err_msg)}')
+
+                LeaveReq = request.env['hr.leave'].sudo()
+                same_day_leaves = LeaveReq.search([
+                    ('employee_id', '=', emp.id),
+                    ('state', 'in', ['confirm', 'validate1', 'validate']),
+                    ('request_date_from', '=', perm_date),
+                ])
+                existing_day_h = 0.0
+                for sdl in same_day_leaves:
+                    s_tname = sdl.holiday_status_id.name or ''
+                    if (getattr(sdl, 'request_unit_hours', False) or
+                        (hasattr(sdl, 'number_of_hours_display') and sdl.number_of_hours_display > 0 and sdl.number_of_hours_display < 8) or
+                        any(k in s_tname for k in ['إذن', 'اذن', 'استئذان', 'ساعي', 'خروج'])):
+                        existing_day_h += getattr(sdl, 'number_of_hours_display', 0.0) or (sdl.number_of_days * 8.0 if sdl.number_of_days < 1 else 3.0)
+
+                if (existing_day_h + calc_hours) > 3.0:
+                    rem_day = max(0.0, 3.0 - existing_day_h)
+                    err_msg = f"لا يمكن تنفيذ الطلب: تجاوزت الحد اليومي (3 ساعات). لديك بالفعل {existing_day_h:g} س مسجلة لهذا اليوم والمتبقي لك {rem_day:g} س فقط."
+                    return request.redirect(f'/my/leaves?error={urllib.parse.quote(err_msg)}')
+
+                # 2. Monthly Limit Check: Strictly Maximum 9 hours per month (renews monthly)
+                try:
+                    p_date_obj = fields.Date.from_string(perm_date)
+                except Exception:
+                    p_date_obj = date.today()
+                m_start = p_date_obj.replace(day=1)
+                if p_date_obj.month == 12:
+                    m_end = p_date_obj.replace(year=p_date_obj.year + 1, month=1, day=1) - timedelta(days=1)
+                else:
+                    m_end = p_date_obj.replace(month=p_date_obj.month + 1, day=1) - timedelta(days=1)
+
+                month_leaves = LeaveReq.search([
+                    ('employee_id', '=', emp.id),
+                    ('state', 'in', ['confirm', 'validate1', 'validate']),
+                    ('request_date_from', '>=', str(m_start)),
+                    ('request_date_from', '<=', str(m_end)),
+                ])
+                monthly_used_h = 0.0
+                for ml in month_leaves:
+                    m_tname = ml.holiday_status_id.name or ''
+                    if (getattr(ml, 'request_unit_hours', False) or
+                        (hasattr(ml, 'number_of_hours_display') and ml.number_of_hours_display > 0 and ml.number_of_hours_display < 8) or
+                        any(k in m_tname for k in ['إذن', 'اذن', 'استئذان', 'ساعي', 'خروج'])):
+                        monthly_used_h += getattr(ml, 'number_of_hours_display', 0.0) or (ml.number_of_days * 8.0 if ml.number_of_days < 1 else 3.0)
+
+                if (monthly_used_h + calc_hours) > 9.0:
+                    rem_month = max(0.0, 9.0 - monthly_used_h)
+                    err_msg = f"لا يمكن تنفيذ الطلب: تجاوزت الحد الأقصى الشهري للأذونات (9 ساعات شهرياً). استهلكت هذا الشهر {monthly_used_h:g} س والمتبقي لك هو {rem_month:g} س فقط (طلبت {calc_hours:g} س)."
+                    return request.redirect(f'/my/leaves?error={urllib.parse.quote(err_msg)}')
 
                 leave_vals = {
                     'holiday_status_id': lt.id,
@@ -1488,12 +1641,52 @@ self.addEventListener('notificationclick', event => {
             else:
                 if not request_date_from or not request_date_to:
                     return request.redirect('/my/leaves?error=missing_fields')
+
+                d_from = fields.Date.from_string(request_date_from)
+                d_to = fields.Date.from_string(request_date_to)
+                if not d_from or not d_to or d_to < d_from:
+                    err_msg = "تاريخ نهاية الإجازة يجب أن يكون مساوياً أو بعد تاريخ البداية."
+                    return request.redirect(f'/my/leaves?error={urllib.parse.quote(err_msg)}')
+
+                requested_days = (d_to - d_from).days + 1
+
+                # 1. Casual leave limit: Max 2 consecutive days
+                if 'عارضة' in (lt.name or '') and requested_days > 2:
+                    err_msg = "لا يمكن تقديم الطلب: الحد الأقصى للإجازة العارضة هو يومان متتاليان فقط في المرة الواحدة."
+                    return request.redirect(f'/my/leaves?error={urllib.parse.quote(err_msg)}')
+
+                # 2. Strict Balance limit check: Prevent exceeding available balance
+                LeaveAlloc = request.env['hr.leave.allocation'].sudo()
+                LeaveReq = request.env['hr.leave'].sudo()
+
+                alloc_records = LeaveAlloc.search([
+                    ('employee_id', '=', emp.id),
+                    ('holiday_status_id', '=', lt.id),
+                    ('state', '=', 'validate')
+                ])
+                total_allocated = sum(alloc_records.mapped('number_of_days'))
+
+                taken_records = LeaveReq.search([
+                    ('employee_id', '=', emp.id),
+                    ('holiday_status_id', '=', lt.id),
+                    ('state', 'in', ['validate', 'validate1', 'confirm'])
+                ])
+                total_taken = sum(taken_records.mapped('number_of_days'))
+
+                requires_alloc = getattr(lt, 'requires_allocation', 'yes') != 'no'
+                if requires_alloc or total_allocated > 0:
+                    remaining_balance = max(0.0, total_allocated - total_taken)
+                    if requested_days > remaining_balance:
+                        rem_str = int(remaining_balance) if remaining_balance.is_integer() else f"{remaining_balance:g}"
+                        err_msg = f"لا يمكن تقديم الطلب: رصيدك المتبقي المتاح من ({lt.name}) هو {rem_str} يوم فقط، بينما طلبت {requested_days} يوم."
+                        return request.redirect(f'/my/leaves?error={urllib.parse.quote(err_msg)}')
+
                 leave_vals = {
                     'holiday_status_id': lt.id,
                     'employee_id': emp.id,
                     'request_date_from': request_date_from,
                     'request_date_to': request_date_to,
-                    'name': name.strip() if name else 'طلب إجازة من البوابة',
+                    'name': name.strip() if name else f'طلب إجازة ({lt.name}) من البوابة',
                 }
 
             new_leave = request.env['hr.leave'].sudo().create(leave_vals)
@@ -1510,7 +1703,6 @@ self.addEventListener('notificationclick', event => {
                     )
                 except Exception as e_push:
                     _logger.warning("Error pushing leave request to supervisor: %s", e_push)
-            new_leave = request.env['hr.leave'].sudo().create(leave_vals)
 
             # Handle file attachment (Medical report / excuse document)
             attachment_file = request.httprequest.files.get('attachment')
