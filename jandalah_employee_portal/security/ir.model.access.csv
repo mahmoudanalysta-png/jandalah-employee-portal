@@ -14,3 +14,7 @@ access_jandalah_location_request_portal,jandalah.location.request.portal,model_j
 access_jandalah_location_request_user,jandalah.location.request.user,model_jandalah_location_request,base.group_user,1,1,1,1
 access_jandalah_push_subscriber_portal,jandalah.push.subscriber.portal,model_jandalah_push_subscriber,base.group_portal,1,1,1,0
 access_jandalah_push_subscriber_user,jandalah.push.subscriber.user,model_jandalah_push_subscriber,base.group_user,1,1,1,1
+access_resource_calendar_portal,resource.calendar.portal,resource.model_resource_calendar,base.group_portal,1,0,0,0
+access_resource_calendar_attendance_portal,resource.calendar.attendance.portal,resource.model_resource_calendar_attendance,base.group_portal,1,0,0,0
+access_resource_calendar_leaves_portal,resource.calendar.leaves.portal,resource.model_resource_calendar_leaves,base.group_portal,1,0,0,0
+access_hr_employee_portal,hr.employee.portal,hr.model_hr_employee,base.group_portal,1,0,0,0

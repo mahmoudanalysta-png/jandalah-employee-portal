@@ -434,29 +434,35 @@ class JandalahCustomerPortal(CustomerPortal):
         is_overdue_checkout = False
         overdue_checkout_msg = ''
         if is_checked_in and open_att:
-            calendar = None
-            contract = getattr(emp, 'contract_id', None)
-            if contract and contract.resource_calendar_id:
-                calendar = contract.resource_calendar_id
-            elif hasattr(emp, 'contract_ids'):
-                running = emp.contract_ids.filtered(lambda c: c.state == 'open' and c.resource_calendar_id)
-                if running:
-                    calendar = running[0].resource_calendar_id
-                elif emp.contract_ids:
-                    with_cal = emp.contract_ids.filtered(lambda c: c.resource_calendar_id)
-                    if with_cal:
-                        calendar = with_cal[0].resource_calendar_id
-            if not calendar and emp.resource_calendar_id:
-                calendar = emp.resource_calendar_id
+            try:
+                calendar = None
+                emp_sudo = emp.sudo() if emp else False
+                contract = getattr(emp_sudo, 'contract_id', None) if emp_sudo else None
+                if contract and contract.sudo().resource_calendar_id:
+                    calendar = contract.sudo().resource_calendar_id
+                elif hasattr(emp_sudo, 'contract_ids'):
+                    running = emp_sudo.contract_ids.filtered(lambda c: c.state == 'open' and c.resource_calendar_id)
+                    if running:
+                        calendar = running[0].sudo().resource_calendar_id
+                    elif emp_sudo.contract_ids:
+                        with_cal = emp_sudo.contract_ids.filtered(lambda c: c.resource_calendar_id)
+                        if with_cal:
+                            calendar = with_cal[0].sudo().resource_calendar_id
+                if not calendar and emp_sudo and emp_sudo.resource_calendar_id:
+                    calendar = emp_sudo.resource_calendar_id
+                elif not calendar and emp_sudo and emp_sudo.company_id and emp_sudo.company_id.sudo().resource_calendar_id:
+                    calendar = emp_sudo.company_id.sudo().resource_calendar_id
 
-            shift_hours = calendar.hours_per_day if calendar and calendar.hours_per_day else 8.0
-            if open_att.check_in:
-                check_in_dt = pytz.utc.localize(open_att.check_in).astimezone(user_tz)
-                elapsed_hours = (now_local - check_in_dt).total_seconds() / 3600.0
-                if elapsed_hours >= (shift_hours + 0.25):
-                    is_overdue_checkout = True
-                    over_mins = int((elapsed_hours - shift_hours) * 60)
-                    overdue_checkout_msg = f'انتهت ساعات دوامك المقررة ({int(shift_hours)} ساعات) منذ {over_mins} دقيقة. يرجى تسجيل الانصراف الآن!'
+                shift_hours = calendar.sudo().hours_per_day if calendar and calendar.sudo().hours_per_day else 8.0
+                if open_att.check_in:
+                    check_in_dt = pytz.utc.localize(open_att.check_in).astimezone(user_tz)
+                    elapsed_hours = (now_local - check_in_dt).total_seconds() / 3600.0
+                    if elapsed_hours >= (shift_hours + 0.25):
+                        is_overdue_checkout = True
+                        over_mins = int((elapsed_hours - shift_hours) * 60)
+                        overdue_checkout_msg = f'انتهت ساعات دوامك المقررة ({int(shift_hours)} ساعات) منذ {over_mins} دقيقة. يرجى تسجيل الانصراف الآن!'
+            except Exception as e_cal:
+                _logger.warning("Error checking overdue checkout: %s", e_cal)
 
         # Supervisor / Team Attendance Real-Time Stats
         subordinates = self._get_subordinates(emp)
@@ -1280,38 +1286,42 @@ self.addEventListener('notificationclick', event => {
             is_late = False
             is_leave_day = getattr(a, 'is_leave_day', False)
             if in_local and not is_leave_day:
-                work_start_min = 8 * 60  # Default 8:00 AM
-                calendar = None
-                contract = getattr(emp, 'contract_id', None)
-                if contract and contract.resource_calendar_id:
-                    calendar = contract.resource_calendar_id
-                elif hasattr(emp, 'contract_ids'):
-                    running = emp.contract_ids.filtered(lambda c: c.state == 'open' and c.resource_calendar_id)
-                    if running:
-                        calendar = running[0].resource_calendar_id
-                    else:
-                        with_cal = emp.contract_ids.filtered(lambda c: c.resource_calendar_id)
-                        if with_cal:
-                            calendar = with_cal[0].resource_calendar_id
+                try:
+                    work_start_min = 8 * 60  # Default 8:00 AM
+                    calendar = None
+                    emp_sudo = emp.sudo() if emp else False
+                    contract = getattr(emp_sudo, 'contract_id', None) if emp_sudo else None
+                    if contract and contract.sudo().resource_calendar_id:
+                        calendar = contract.sudo().resource_calendar_id
+                    elif hasattr(emp_sudo, 'contract_ids'):
+                        running = emp_sudo.contract_ids.filtered(lambda c: c.state == 'open' and c.resource_calendar_id)
+                        if running:
+                            calendar = running[0].sudo().resource_calendar_id
+                        else:
+                            with_cal = emp_sudo.contract_ids.filtered(lambda c: c.resource_calendar_id)
+                            if with_cal:
+                                calendar = with_cal[0].sudo().resource_calendar_id
 
-                if not calendar and emp.resource_calendar_id:
-                    calendar = emp.resource_calendar_id
-                elif not calendar and emp.company_id and emp.company_id.resource_calendar_id:
-                    calendar = emp.company_id.resource_calendar_id
+                    if not calendar and emp_sudo and emp_sudo.resource_calendar_id:
+                        calendar = emp_sudo.resource_calendar_id
+                    elif not calendar and emp_sudo and emp_sudo.company_id and emp_sudo.company_id.sudo().resource_calendar_id:
+                        calendar = emp_sudo.company_id.sudo().resource_calendar_id
 
-                if calendar and calendar.attendance_ids:
-                    w_day = str(in_local.weekday())
-                    sched = calendar.attendance_ids.filtered(lambda s: s.dayofweek == w_day)
-                    if not sched:
-                        sched = calendar.attendance_ids
-                    if sched:
-                        work_start_min = int(round(min(sched.mapped('hour_from')) * 60))
+                    if calendar and calendar.sudo().attendance_ids:
+                        w_day = str(in_local.weekday())
+                        sched = calendar.sudo().attendance_ids.filtered(lambda s: s.dayofweek == w_day)
+                        if not sched:
+                            sched = calendar.sudo().attendance_ids
+                        if sched:
+                            work_start_min = int(round(min(sched.mapped('hour_from')) * 60))
 
-                punch_min = in_local.hour * 60 + in_local.minute
-                grace_min = 19
-                if punch_min > (work_start_min + grace_min):
-                    delay_minutes = punch_min - work_start_min
-                    is_late = True
+                    punch_min = in_local.hour * 60 + in_local.minute
+                    grace_min = 19
+                    if punch_min > (work_start_min + grace_min):
+                        delay_minutes = punch_min - work_start_min
+                        is_late = True
+                except Exception as e_att_cal:
+                    _logger.warning("Error computing attendance calendar delay: %s", e_att_cal)
 
             # Check for approved permission on this attendance date to deduct hours from delay
             att_date = in_local.date() if in_local else None

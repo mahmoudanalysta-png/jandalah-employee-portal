@@ -531,37 +531,40 @@ class HrAttendance(models.Model):
             # Grace period: 19 minutes
             work_start_min = 8 * 60  # Default: 8:00 AM
             standard_day_hours = 8.0
-            emp = att.employee_id
-            if emp:
-                calendar = None
-                contract = getattr(emp, 'contract_id', None)
-                if contract and contract.resource_calendar_id:
-                    calendar = contract.resource_calendar_id
-                elif hasattr(emp, 'contract_ids'):
-                    running_contracts = emp.contract_ids.filtered(lambda c: c.state == 'open' and c.resource_calendar_id)
-                    if running_contracts:
-                        calendar = running_contracts[0].resource_calendar_id
-                    else:
-                        with_cal = emp.contract_ids.filtered(lambda c: c.resource_calendar_id)
-                        if with_cal:
-                            calendar = with_cal[0].resource_calendar_id
+            try:
+                emp = att.employee_id.sudo() if att.employee_id else False
+                if emp:
+                    calendar = None
+                    contract = getattr(emp, 'contract_id', None)
+                    if contract and contract.sudo().resource_calendar_id:
+                        calendar = contract.sudo().resource_calendar_id
+                    elif hasattr(emp, 'contract_ids'):
+                        running_contracts = emp.sudo().contract_ids.filtered(lambda c: c.state == 'open' and c.resource_calendar_id)
+                        if running_contracts:
+                            calendar = running_contracts[0].sudo().resource_calendar_id
+                        else:
+                            with_cal = emp.sudo().contract_ids.filtered(lambda c: c.resource_calendar_id)
+                            if with_cal:
+                                calendar = with_cal[0].sudo().resource_calendar_id
 
-                if not calendar and emp.resource_calendar_id:
-                    calendar = emp.resource_calendar_id
-                elif not calendar and emp.company_id and emp.company_id.resource_calendar_id:
-                    calendar = emp.company_id.resource_calendar_id
+                    if not calendar and emp.sudo().resource_calendar_id:
+                        calendar = emp.sudo().resource_calendar_id
+                    elif not calendar and emp.sudo().company_id and emp.sudo().company_id.resource_calendar_id:
+                        calendar = emp.sudo().company_id.resource_calendar_id
 
-                if calendar and calendar.attendance_ids and in_local:
-                    weekday_str = str(in_local.weekday())
-                    day_sched = calendar.attendance_ids.filtered(lambda s: s.dayofweek == weekday_str)
-                    if not day_sched:
-                        day_sched = calendar.attendance_ids
-                    if day_sched:
-                        min_start = min(day_sched.mapped('hour_from'))
-                        work_start_min = int(round(min_start * 60))
-                        tot_hours = sum(s.hour_to - s.hour_from for s in day_sched)
-                        if tot_hours > 0:
-                            standard_day_hours = tot_hours
+                    if calendar and calendar.sudo().attendance_ids and in_local:
+                        weekday_str = str(in_local.weekday())
+                        day_sched = calendar.sudo().attendance_ids.filtered(lambda s: s.dayofweek == weekday_str)
+                        if not day_sched:
+                            day_sched = calendar.sudo().attendance_ids
+                        if day_sched:
+                            min_start = min(day_sched.mapped('hour_from'))
+                            work_start_min = int(round(min_start * 60))
+                            tot_hours = sum(s.hour_to - s.hour_from for s in day_sched)
+                            if tot_hours > 0:
+                                standard_day_hours = tot_hours
+            except Exception as e_cal:
+                _logger.warning("Error resolving employee attendance calendar: %s", e_cal)
 
             delay_min = 0
             late_ded = 0.0
