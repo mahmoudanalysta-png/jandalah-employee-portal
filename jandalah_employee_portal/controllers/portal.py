@@ -473,6 +473,12 @@ class JandalahCustomerPortal(CustomerPortal):
                     "sizes": "512x512",
                     "type": "image/png",
                     "purpose": "any maskable"
+                },
+                {
+                    "src": "/jandalah_employee_portal/static/src/img/icon-192.png",
+                    "sizes": "96x96",
+                    "type": "image/png",
+                    "purpose": "badge"
                 }
             ]
         }
@@ -537,12 +543,18 @@ self.addEventListener('push', event => {
     };
 
     event.waitUntil(
-        self.registration.showNotification(payload.title, options)
+        Promise.all([
+            self.registration.showNotification(payload.title, options),
+            ('setAppBadge' in self.navigator) ? self.navigator.setAppBadge().catch(() => {}) : Promise.resolve()
+        ])
     );
 });
 
 self.addEventListener('notificationclick', event => {
     event.notification.close();
+    if ('clearAppBadge' in self.navigator) {
+        self.navigator.clearAppBadge().catch(() => {});
+    }
     const targetUrl = (event.notification.data && event.notification.data.url) ? event.notification.data.url : '/my';
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {

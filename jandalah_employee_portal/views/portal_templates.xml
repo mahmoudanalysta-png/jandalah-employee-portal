@@ -1247,16 +1247,13 @@
                         }
                     }
 
-                    // Real-Time Smart Poller for Bell Notifications (Shows in-app banner once per session)
+                    // Real-Time Smart Poller for Bell Notifications and App Icon Badging (Like WhatsApp)
+                    // Sudden popup toast banners only trigger ONCE per new alert (saved in localStorage)
+                    let seenToasts = {};
                     try {
-                        localStorage.removeItem('jandalah_seen_alerts_v1');
-                        localStorage.removeItem('jandalah_seen_alerts_v2');
-                    } catch(e) {}
-                    let seenAlerts = {};
-                    try {
-                        seenAlerts = JSON.parse(sessionStorage.getItem('jandalah_seen_alerts_v3') || '{}');
+                        seenToasts = JSON.parse(localStorage.getItem('jandalah_seen_toasts_registry_v1') || '{}');
                     } catch(e) {
-                        seenAlerts = {};
+                        seenToasts = {};
                     }
                     let isPollingRunning = false;
                     async function pollPendingNotifications() {
@@ -1271,13 +1268,13 @@
                             const data = await res.json();
                             const notifs = (data.result &amp;&amp; (data.result.alerts || data.result.notifications)) ? (data.result.alerts || data.result.notifications) : [];
                             
-                            let hasNew = false;
+                            let hasNewToast = false;
                             for (let n of notifs) {
                                 const key = n.id || (n.tag || (n.title + n.body));
-                                if (!seenAlerts[key]) {
-                                    seenAlerts[key] = Date.now();
-                                    hasNew = true;
-                                    // 1. Live floating in-app banner with chime and vibration!
+                                if (!seenToasts[key]) {
+                                    seenToasts[key] = Date.now();
+                                    hasNewToast = true;
+                                    // 1. Live floating in-app banner with chime and vibration (POPS UP ONCE FOR NEW ALERTS ONLY!)
                                     showLiveToast(n.title, n.body, n.url);
                                     // 2. Android system status bar / lockscreen notification!
                                     const opts = {
@@ -1294,21 +1291,30 @@
                                 }
                             }
 
-                            if (hasNew) {
+                            if (hasNewToast) {
                                 try {
-                                    sessionStorage.setItem('jandalah_seen_alerts_v3', JSON.stringify(seenAlerts));
+                                    localStorage.setItem('jandalah_seen_toasts_registry_v1', JSON.stringify(seenToasts));
                                 } catch(e) {}
                             }
 
-                            // Dynamic Live Bell Badge update
+                            // Dynamic Live Bell Badge and Mobile App Home Screen Icon Badge (Like WhatsApp)
                             if (data.result &amp;&amp; typeof data.result.total_active !== 'undefined') {
+                                const totalActive = parseInt(data.result.total_active) || 0;
                                 const badge = document.getElementById('bell_badge_counter');
                                 if (badge) {
-                                    if (data.result.total_active &gt; 0) {
-                                        badge.textContent = data.result.total_active;
+                                    if (totalActive &gt; 0) {
+                                        badge.textContent = totalActive;
                                         badge.classList.remove('d-none');
                                     } else {
                                         badge.classList.add('d-none');
+                                    }
+                                }
+                                // Update phone home screen icon badge (App Badging API - Red circle with number)
+                                if ('setAppBadge' in navigator) {
+                                    if (totalActive &gt; 0) {
+                                        navigator.setAppBadge(totalActive).catch(() => {});
+                                    } else {
+                                        navigator.clearAppBadge().catch(() => {});
                                     }
                                 }
                             }
