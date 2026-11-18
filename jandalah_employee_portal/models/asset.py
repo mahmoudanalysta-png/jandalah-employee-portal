@@ -77,56 +77,19 @@ class JandalahHrAsset(models.Model):
                 except Exception:
                     pass
 
-    def init(self):
-        super().init()
-        # Seed default asset categories if table exists and empty
+    @api.model
+    def _register_hook(self):
+        super()._register_hook()
         try:
-            self.env.cr.execute("""
-                CREATE TABLE IF NOT EXISTS jandalah_hr_asset_category (
-                    id serial PRIMARY KEY,
-                    name varchar NOT NULL,
-                    code varchar,
-                    sequence integer DEFAULT 10,
-                    active boolean DEFAULT true,
-                    create_date timestamp without time zone,
-                    write_date timestamp without time zone,
-                    create_uid integer,
-                    write_uid integer
-                );
-            """)
-            self.env.cr.execute("SELECT count(*) FROM jandalah_hr_asset_category;")
-            count = self.env.cr.fetchone()[0]
-            if count == 0:
+            with self.env.cr.savepoint():
                 self.env.cr.execute("""
-                    INSERT INTO jandalah_hr_asset_category (name, code, sequence, active, create_date, write_date)
-                    VALUES 
-                    ('حاسوب محمول / لابتوب', 'laptop', 10, true, NOW(), NOW()),
-                    ('هاتف محمول / شريحة اتصال', 'mobile', 20, true, NOW(), NOW()),
-                    ('سيارة شركة', 'car', 30, true, NOW(), NOW()),
-                    ('أدوات ومعدات عمل ميداني', 'tools', 40, true, NOW(), NOW()),
-                    ('بريد إلكتروني / حساب رقمي', 'digital', 50, true, NOW(), NOW()),
-                    ('شاشات وملحقات مكتبية', 'monitors', 60, true, NOW(), NOW()),
-                    ('أجهزة لوحية (تابلت)', 'tablets', 70, true, NOW(), NOW()),
-                    ('مفاتيح مقرات وخزائن', 'keys', 80, true, NOW(), NOW()),
-                    ('زي رسمي / يونيفورم', 'uniform', 90, true, NOW(), NOW()),
-                    ('بطاقات دخول وأجهزة ذكية', 'access_cards', 100, true, NOW(), NOW()),
-                    ('عهدة أخرى', 'other', 110, true, NOW(), NOW());
+                    UPDATE jandalah_hr_asset ja
+                    SET category_id = jc.id
+                    FROM jandalah_hr_asset_category jc
+                    WHERE ja.category_id IS NULL AND ja.category = jc.code;
                 """)
-
-            # Migrate existing records category_id from category column
-            self.env.cr.execute("""
-                DO $$
-                BEGIN
-                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='jandalah_hr_asset' AND column_name='category_id') THEN
-                        UPDATE jandalah_hr_asset ja
-                        SET category_id = jc.id
-                        FROM jandalah_hr_asset_category jc
-                        WHERE ja.category_id IS NULL AND ja.category = jc.code;
-                    END IF;
-                END $$;
-            """)
-        except Exception as e_seed:
-            _logger.warning("Could not seed jandalah_hr_asset_category: %s", e_seed)
+        except Exception:
+            pass
 
     @api.model_create_multi
     def create(self, vals_list):

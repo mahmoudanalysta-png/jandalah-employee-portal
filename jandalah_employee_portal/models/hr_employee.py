@@ -33,16 +33,18 @@ class HrEmployee(models.Model):
                                        help='المسافة المسموح بها حول الموقع بالأمتار (0 = غير مقيد)')
     asset_ids = fields.One2many('jandalah.hr.asset', 'employee_id', string='العهد ومستلزمات العمل')
 
-    def init(self):
-        super().init()
+    @api.model
+    def _register_hook(self):
+        super()._register_hook()
         try:
-            self.env.cr.execute("""
-                UPDATE hr_employee
-                SET work_radius_meters = 1000
-                WHERE work_radius_meters IS NULL OR work_radius_meters IN (0, 500);
-            """)
-        except Exception as e:
-            _logger.warning("Could not set default work_radius_meters to 1000: %s", e)
+            with self.env.cr.savepoint():
+                self.env.cr.execute("""
+                    UPDATE hr_employee
+                    SET work_radius_meters = 1000
+                    WHERE work_radius_meters IS NULL OR work_radius_meters IN (0, 500);
+                """)
+        except Exception:
+            pass
 
     @api.onchange('google_maps_url')
     def _onchange_google_maps_url(self):

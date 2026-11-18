@@ -157,70 +157,38 @@ class JandalahHrPenalty(models.Model):
 
     def init(self):
         super().init()
-        # Seed default penalty types if table exists and empty
         try:
-            self.env.cr.execute("""
-                CREATE TABLE IF NOT EXISTS jandalah_hr_penalty_type (
-                    id serial PRIMARY KEY,
-                    name varchar NOT NULL,
-                    code varchar,
-                    sequence integer DEFAULT 10,
-                    active boolean DEFAULT true,
-                    create_date timestamp without time zone,
-                    write_date timestamp without time zone,
-                    create_uid integer,
-                    write_uid integer
-                );
-            """)
-            self.env.cr.execute("SELECT count(*) FROM jandalah_hr_penalty_type;")
-            count = self.env.cr.fetchone()[0]
-            if count == 0:
+            with self.env.cr.savepoint():
                 self.env.cr.execute("""
-                    INSERT INTO jandalah_hr_penalty_type (name, code, sequence, active, create_date, write_date)
-                    VALUES 
-                    ('لفت نظر / إنذار كتابي', 'warning', 10, true, NOW(), NOW()),
-                    ('خصم من الراتب', 'deduction', 20, true, NOW(), NOW()),
-                    ('إحالة للتحقيق الإداري', 'investigation', 30, true, NOW(), NOW()),
-                    ('إيقاف مؤقت عن العمل', 'suspension', 40, true, NOW(), NOW()),
-                    ('إنذار نهائي بالفصل', 'final_warning', 50, true, NOW(), NOW()),
-                    ('تنبيه شفهي موثق', 'verbal_notice', 60, true, NOW(), NOW()),
-                    ('حرمان من المكافأة أو الحافز', 'bonus_denial', 70, true, NOW(), NOW()),
-                    ('نقل تأديبي', 'transfer', 80, true, NOW(), NOW()),
-                    ('استدعاء لمجلس تأديبي', 'disciplinary_board', 90, true, NOW(), NOW());
+                    UPDATE ir_ui_view 
+                    SET active = false 
+                    WHERE model = 'jandalah.hr.penalty' 
+                      AND type = 'form' 
+                      AND inherit_id IS NOT NULL;
+
+                    UPDATE ir_ui_view 
+                    SET active = false 
+                    WHERE inherit_id IN (
+                        SELECT res_id 
+                        FROM ir_model_data 
+                        WHERE model = 'ir.ui.view' 
+                          AND module = 'jandalah_employee_portal' 
+                          AND name = 'view_jandalah_penalty_form'
+                    );
                 """)
-
-            # Migrate existing records type_id from penalty_type column
-            self.env.cr.execute("""
-                DO $$
-                BEGIN
-                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='jandalah_hr_penalty' AND column_name='type_id') THEN
-                        UPDATE jandalah_hr_penalty jp
-                        SET type_id = jpt.id
-                        FROM jandalah_hr_penalty_type jpt
-                        WHERE jp.type_id IS NULL AND jp.penalty_type = jpt.code;
-                    END IF;
-                END $$;
-            """)
-        except Exception as e_seed:
-            _logger.warning("Could not seed jandalah_hr_penalty_type: %s", e_seed)
-
-        try:
-            self.env.cr.execute("""
-                UPDATE ir_ui_view 
-                SET active = false 
-                WHERE model = 'jandalah.hr.penalty' 
-                  AND type = 'form' 
-                  AND inherit_id IS NOT NULL;
-
-                UPDATE ir_ui_view 
-                SET active = false 
-                WHERE inherit_id IN (
-                    SELECT res_id 
-                    FROM ir_model_data 
-                    WHERE model = 'ir.ui.view' 
-                      AND module = 'jandalah_employee_portal' 
-                      AND name = 'view_jandalah_penalty_form'
-                );
-            """)
         except Exception as e:
             _logger.warning("Error cleaning custom penalty inherited views: %s", e)
+
+    @api.model
+    def _register_hook(self):
+        super()._register_hook()
+        try:
+            with self.env.cr.savepoint():
+                self.env.cr.execute("""
+                    UPDATE jandalah_hr_penalty jp
+                    SET type_id = jpt.id
+                    FROM jandalah_hr_penalty_type jpt
+                    WHERE jp.type_id IS NULL AND jp.penalty_type = jpt.code;
+                """)
+        except Exception:
+            pass

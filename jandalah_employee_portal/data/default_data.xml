@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- 1. Announcement Types -->
+    <record id="announcement_type_circular" model="jandalah.announcement.type">
+        <field name="name">تعميم إداري عام</field>
+        <field name="code">circular</field>
+        <field name="sequence">10</field>
+        <field name="active">True</field>
+    </record>
+
+    <record id="announcement_type_letter" model="jandalah.announcement.type">
+        <field name="name">خطاب رسمي</field>
+        <field name="code">letter</field>
+        <field name="sequence">20</field>
+        <field name="active">True</field>
+    </record>
+
+    <record id="announcement_type_decision" model="jandalah.announcement.type">
+        <field name="name">قرار إداري</field>
+        <field name="code">decision</field>
+        <field name="sequence">30</field>
+        <field name="active">True</field>
+    </record>
+
+    <record id="announcement_type_policy" model="jandalah.announcement.type">
+        <field name="name">لائحة وسياسة داخلية</field>
+        <field name="code">policy</field>
+        <field name="sequence">40</field>
+        <field name="active">True</field>
+    </record>
+
+    <record id="announcement_type_greeting" model="jandalah.announcement.type">
+        <field name="name">تهنئة / مناسبة</field>
+        <field name="code">greeting</field>
+        <field name="sequence">50</field>
+        <field name="active">True</field>
+    </record>
+
+    <record id="announcement_type_warning" model="jandalah.announcement.type">
+        <field name="name">تنبيه هام</field>
+        <field name="code">warning</field>
+        <field name="sequence">60</field>
+        <field name="active">True</field>
+    </record>
+
+    <!-- 2. Asset Categories -->
+    <record id="asset_cat_laptop" model="jandalah.hr.asset.category">
+        <field name="name">حاسوب محمول / لابتوب</field>
+        <field name="code">laptop</field>
+        <field name="sequence">10</field>
+        <field name="active">True</field>
+    </record>
+
+    <record id="asset_cat_mobile" model="jandalah.hr.asset.category">
+        <field name="name">هاتف محمول / شريحة اتصال</field>
+        <field name="code">mobile</field>
+        <field name="sequence">20</field>
+        <field name="active">True</field>
+    </record>
+
+    <record id="asset_cat_car" model="jandalah.hr.asset.category">
+        <field name="name">سيارة شركة</field>
+        <field name="code">car</field>
+        <field name="sequence">30</field>
+        <field name="active">True</field>
+    </record>
+
+    <record id="asset_cat_tools" model="jandalah.hr.asset.category">
+        <field name="name">أدوات ومعدات عمل ميداني</field>
+        <field name="code">tools</field>
+        <field name="sequence">40</field>
+        <field name="active">True</field>
+    </record>
+
+    <record id="asset_cat_digital" model="jandalah.hr.asset.category">
+        <field name="name">بريد إلكتروني / حساب رقمي</field>
+        <field name="code">digital</field>
+        <field name="sequence">50</field>
+        <field name="active">True</field>
+    </record>
+
+    <record id="asset_cat_monitors" model="jandalah.hr.asset.category">
+        <field name="name">شاشات وملحقات مكتبية</field>
+        <field name="code">monitors</field>
+        <field name="sequence">60</field>
+        <field name="active">True</field>
+    </record>
+
+    <record id="asset_cat_tablets" model="jandalah.hr.asset.category">
+        <field name="name">أجهزة لوحية (تابلت)</field>
+        <field name="code">tablets</field>
+        <field name="sequence">70</field>
+        <field name="active">True</field>
+    </record>
+
+    <record id="asset_cat_keys" model="jandalah.hr.asset.category">
+        <field name="name">مفاتيح مقرات وخزائن</field>
+        <field name="code">keys</field>
+        <field name="sequence">80</field>
+        <field name="active">True</field>
+    </record>
+
+    <record id="asset_cat_uniform" model="jandalah.hr.asset.category">
+        <field name="name">زي رسمي / يونيفورم</field>
+        <field name="code">uniform</field>
+        <field name="sequence">90</field>
+        <field name="active">True</field>
+    </record>
+
+    <record id="asset_cat_access_cards" model="jandalah.hr.asset.category">
+        <field name="name">بطاقات دخول وأجهزة ذكية</field>
+        <field name="code">access_cards</field>
+        <field name="sequence">100</field>
+        <field name="active">True</field>
+    </record>
+
+    <record id="asset_cat_other" model="jandalah.hr.asset.category">
+        <field name="name">عهدة أخرى</field>
+        <field name="code">other</field>
+        <field name="sequence">110</field>
+        <field name="active">True</field>
+    </record>
+
+    <!-- 3. Penalty Types -->
+    <record id="penalty_type_warning" model="jandalah.hr.penalty.type">
+        <field name="name">لفت نظر / إنذار كتابي</field>
+        <field name="code">warning</field>
+        <field name="sequence">10</field>
+        <field name="active">True</field>
+    </record>
+
+    <record id="penalty_type_deduction" model="jandalah.hr.penalty.type">
+        <field name="name">خصم من الراتب</field>
+        <field name="code">deduction</field>
+        <field name="sequence">20</field>
+        <field name="active">True</field>
+    </record>
+
+    <record id="penalty_type_investigation" model="jandalah.hr.penalty.type">
+        <field name="name">إحالة للتحقيق الإداري</field>
+        <field name="code">investigation</field>
+        <field name="sequence">30</field>
+        <field name="active">True</field>
+    </record>
+
+    <record id="penalty_type_suspension" model="jandalah.hr.penalty.type">
+        <field name="name">إيقاف مؤقت عن العمل</field>
+        <field name="code">suspension</field>
+        <field name="sequence">40</field>
+        <field name="active">True</field>
+    </record>
+
+    <record id="penalty_type_final_warning" model="jandalah.hr.penalty.type">
+        <field name="name">إنذار نهائي بالفصل</field>
+        <field name="code">final_warning</field>
+        <field name="sequence">50</field>
+        <field name="active">True</field>
+    </record>
+
+    <record id="penalty_type_verbal_notice" model="jandalah.hr.penalty.type">
+        <field name="name">تنبيه شفهي موثق</field>
+        <field name="code">verbal_notice</field>
+        <field name="sequence">60</field>
+        <field name="active">True</field>
+    </record>
+
+    <record id="penalty_type_bonus_denial" model="jandalah.hr.penalty.type">
+        <field name="name">حرمان من المكافأة أو الحافز</field>
+        <field name="code">bonus_denial</field>
+        <field name="sequence">70</field>
+        <field name="active">True</field>
+    </record>
+
+    <record id="penalty_type_transfer" model="jandalah.hr.penalty.type">
+        <field name="name">نقل تأديبي</field>
+        <field name="code">transfer</field>
+        <field name="sequence">80</field>
+        <field name="active">True</field>
+    </record>
+
+    <record id="penalty_type_disciplinary_board" model="jandalah.hr.penalty.type">
+        <field name="name">استدعاء لمجلس تأديبي</field>
+        <field name="code">disciplinary_board</field>
+        <field name="sequence">90</field>
+        <field name="active">True</field>
+    </record>
+</odoo>

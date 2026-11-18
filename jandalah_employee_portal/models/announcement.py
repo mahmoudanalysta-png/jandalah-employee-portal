@@ -150,70 +150,41 @@ class JandalahAnnouncement(models.Model):
 
     def init(self):
         super().init()
-        # Seed default announcement types if table exists and empty
         try:
-            self.env.cr.execute("""
-                CREATE TABLE IF NOT EXISTS jandalah_announcement_type (
-                    id serial PRIMARY KEY,
-                    name varchar NOT NULL,
-                    code varchar,
-                    sequence integer DEFAULT 10,
-                    active boolean DEFAULT true,
-                    create_date timestamp without time zone,
-                    write_date timestamp without time zone,
-                    create_uid integer,
-                    write_uid integer
-                );
-            """)
-            self.env.cr.execute("SELECT count(*) FROM jandalah_announcement_type;")
-            count = self.env.cr.fetchone()[0]
-            if count == 0:
+            with self.env.cr.savepoint():
                 self.env.cr.execute("""
-                    INSERT INTO jandalah_announcement_type (name, code, sequence, active, create_date, write_date)
-                    VALUES 
-                    ('تعميم إداري عام', 'circular', 10, true, NOW(), NOW()),
-                    ('خطاب رسمي', 'letter', 20, true, NOW(), NOW()),
-                    ('قرار إداري', 'decision', 30, true, NOW(), NOW()),
-                    ('لائحة وسياسة داخلية', 'policy', 40, true, NOW(), NOW()),
-                    ('تهنئة / مناسبة', 'greeting', 50, true, NOW(), NOW()),
-                    ('تنبيه هام', 'warning', 60, true, NOW(), NOW());
+                    UPDATE ir_ui_view 
+                    SET active = false 
+                    WHERE model = 'jandalah.announcement' 
+                      AND type = 'form' 
+                      AND inherit_id IS NOT NULL;
+
+                    UPDATE ir_ui_view 
+                    SET active = false 
+                    WHERE inherit_id IN (
+                        SELECT res_id 
+                        FROM ir_model_data 
+                        WHERE model = 'ir.ui.view' 
+                          AND module = 'jandalah_employee_portal' 
+                          AND name = 'view_jandalah_announcement_form'
+                    );
                 """)
-
-            # Migrate existing records type_id from announcement_type
-            self.env.cr.execute("""
-                DO $$
-                BEGIN
-                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='jandalah_announcement' AND column_name='type_id') THEN
-                        UPDATE jandalah_announcement ja
-                        SET type_id = jt.id
-                        FROM jandalah_announcement_type jt
-                        WHERE ja.type_id IS NULL AND ja.announcement_type = jt.code;
-                    END IF;
-                END $$;
-            """)
-        except Exception as e_seed:
-            _logger.warning("Could not seed jandalah_announcement_type: %s", e_seed)
-
-        try:
-            self.env.cr.execute("""
-                UPDATE ir_ui_view 
-                SET active = false 
-                WHERE model = 'jandalah.announcement' 
-                  AND type = 'form' 
-                  AND inherit_id IS NOT NULL;
-
-                UPDATE ir_ui_view 
-                SET active = false 
-                WHERE inherit_id IN (
-                    SELECT res_id 
-                    FROM ir_model_data 
-                    WHERE model = 'ir.ui.view' 
-                      AND module = 'jandalah_employee_portal' 
-                      AND name = 'view_jandalah_announcement_form'
-                );
-            """)
         except Exception as e:
             _logger.warning("Error cleaning custom inherited views: %s", e)
+
+    @api.model
+    def _register_hook(self):
+        super()._register_hook()
+        try:
+            with self.env.cr.savepoint():
+                self.env.cr.execute("""
+                    UPDATE jandalah_announcement ja
+                    SET type_id = jt.id
+                    FROM jandalah_announcement_type jt
+                    WHERE ja.type_id IS NULL AND ja.announcement_type = jt.code;
+                """)
+        except Exception:
+            pass
 
     @api.model_create_multi
     def create(self, vals_list):
