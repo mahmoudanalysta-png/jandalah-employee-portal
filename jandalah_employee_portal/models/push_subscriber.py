@@ -152,7 +152,6 @@ class JandalahPushSubscriber(models.Model):
                             'code': 'model.cron_check_overdue_attendance()',
                             'interval_number': 5,
                             'interval_type': 'minutes',
-                            'numbercall': -1,
                             'active': True,
                         })
                         _logger.info("Created overdue attendance cron job successfully.")
