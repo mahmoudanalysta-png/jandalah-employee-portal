@@ -48,12 +48,12 @@ class HrEmployee(models.Model):
         try:
             with self.env.cr.savepoint():
                 lt_model = self.env['hr.leave.type']
-                p_type = lt_model.search([('name', 'ilike', 'إذن')], limit=1)
+                p_type = lt_model.search([('name', '=', 'إذن')], limit=1)
                 if not p_type:
-                    p_type = lt_model.search([('name', 'ilike', 'اذن')], limit=1)
+                    p_type = lt_model.search([('name', 'ilike', 'إذن')], limit=1)
                 if not p_type:
                     vals = {
-                        'name': 'إذن ساعي',
+                        'name': 'إذن',
                         'requires_allocation': 'no',
                         'leave_validation_type': 'both',
                     }
