@@ -1603,6 +1603,12 @@ self.addEventListener('notificationclick', event => {
         try:
             calc_hours = 2.0
             if is_hourly_type:
+                if hasattr(lt, 'request_unit') and lt.request_unit != 'hour':
+                    try:
+                        lt.sudo().write({'request_unit': 'hour'})
+                    except Exception as e_lt:
+                        _logger.warning("Could not set lt request_unit to hour: %s", e_lt)
+
                 perm_date = permission_date or request_date_from or str(fields.Date.today())
                 h_from = request_hour_from or '09:00'
                 h_to = request_hour_to or '12:00'
@@ -1686,27 +1692,33 @@ self.addEventListener('notificationclick', event => {
                     err_msg = f"لا يمكن تنفيذ الطلب: تجاوزت الحد الأقصى الشهري للأذونات (9 ساعات شهرياً). استهلكت هذا الشهر {monthly_used_h:g} س والمتبقي لك هو {rem_month:g} س فقط (طلبت {calc_hours:g} س)."
                     return request.redirect(f'/my/leaves?error={urllib.parse.quote(err_msg)}')
 
+                hf = [int(x) for x in h_from.split(':')]
+                ht = [int(x) for x in h_to.split(':')]
+                h_from_float = round(hf[0] + hf[1] / 60.0, 2)
+                h_to_float = round(ht[0] + ht[1] / 60.0, 2)
+
                 leave_vals = {
                     'holiday_status_id': lt.id,
                     'employee_id': emp.id,
                     'request_date_from': perm_date,
                     'request_date_to': perm_date,
                     'name': name.strip() if name else f"طلب إذن استئذان ({calc_hours:g} س)",
+                    'number_of_days': round(calc_hours / 8.0, 4),
                 }
                 if 'request_unit_hours' in request.env['hr.leave']._fields:
                     leave_vals['request_unit_hours'] = True
                 if 'request_hour_from' in request.env['hr.leave']._fields:
-                    leave_vals['request_hour_from'] = h_from
+                    f_from = request.env['hr.leave']._fields['request_hour_from']
+                    leave_vals['request_hour_from'] = h_from_float if f_from.type == 'float' else f"{h_from_float:g}"
                 if 'request_hour_to' in request.env['hr.leave']._fields:
-                    leave_vals['request_hour_to'] = h_to
+                    f_to = request.env['hr.leave']._fields['request_hour_to']
+                    leave_vals['request_hour_to'] = h_to_float if f_to.type == 'float' else f"{h_to_float:g}"
                 if 'number_of_hours_display' in request.env['hr.leave']._fields:
                     leave_vals['number_of_hours_display'] = calc_hours
 
                 user_tz_name = get_current_user_tz()
                 user_tz = pytz.timezone(user_tz_name)
                 try:
-                    hf = [int(x) for x in h_from.split(':')]
-                    ht = [int(x) for x in h_to.split(':')]
                     d_obj = fields.Date.from_string(perm_date)
                     dt_f = user_tz.localize(datetime.combine(d_obj, datetime.time(hf[0], hf[1])))
                     dt_t = user_tz.localize(datetime.combine(d_obj, datetime.time(ht[0], ht[1])))
