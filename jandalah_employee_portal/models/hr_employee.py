@@ -908,7 +908,9 @@ class HrLeave(models.Model):
             ])
             total_alloc = sum(allocs.mapped('number_of_days'))
             if total_alloc <= 0:
-                continue
+                raise exceptions.ValidationError(
+                    _("لا يمكن تقديم طلب الإجازة: ليس لديك رصيد إجازات متاح لهذا النوع (الرصيد المتاح: 0 يوم). يرجى مراجعة إدارة الموارد البشرية.")
+                )
 
             # Sum other taken leaves
             other_leaves = self.search([

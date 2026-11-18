@@ -274,38 +274,11 @@ class JandalahCustomerPortal(CustomerPortal):
             LeaveReq = request.env['hr.leave'].sudo()
 
             # 1. Ensure standard Leave Types exist:
-            # - إجازة اعتيادية: 15 days annual
-            # - إجازة عارضة: 6 days casual
-            standard_defaults = [
-                ('إجازة اعتيادية', 15),
-                ('إجازة عارضة', 6),
-            ]
-
-            # 6-Month probation and pro-rata calculation for new employees
-            today_d = date.today()
-            start_date = getattr(emp, 'first_contract_date', False) or (emp.contract_id.date_start if getattr(emp, 'contract_id', False) else False)
-            is_in_probation = False
-            probation_end_date = None
-            if start_date:
-                from dateutil.relativedelta import relativedelta
-                six_months_date = start_date + relativedelta(months=6)
-                probation_end_date = six_months_date
-                if today_d < six_months_date:
-                    is_in_probation = True
-                elif six_months_date.year == today_d.year:
-                    # After 6 months in first year: calculate pro-rata balance for remainder of current year
-                    remaining_months = max(1, 12 - six_months_date.month + 1)
-                    pro_rata_reg = round(((remaining_months / 12.0) * 15.0) * 2) / 2.0
-                    pro_rata_cas = round(((remaining_months / 12.0) * 6.0) * 2) / 2.0
-                    standard_defaults = [
-                        ('إجازة اعتيادية', pro_rata_reg),
-                        ('إجازة عارضة', pro_rata_cas),
-                    ]
-            for type_name, default_days in standard_defaults:
+            for type_name in ['إجازة اعتيادية', 'إجازة عارضة']:
                 lt = LeaveType.search([('name', '=', type_name)], limit=1)
                 if not lt:
                     try:
-                        lt = LeaveType.create({
+                        LeaveType.create({
                             'name': type_name,
                             'requires_allocation': 'yes',
                             'leave_validation_type': 'both',
@@ -313,31 +286,6 @@ class JandalahCustomerPortal(CustomerPortal):
                         })
                     except Exception as e_cr:
                         _logger.warning("Could not auto-create leave type %s: %s", type_name, e_cr)
-
-                if lt:
-                    # Check if employee has approved allocation for this type
-                    has_alloc = LeaveAlloc.search_count([
-                        ('employee_id', '=', emp.id),
-                        ('holiday_status_id', '=', lt.id),
-                        ('state', '=', 'validate')
-                    ])
-                    if not has_alloc:
-                        try:
-                            new_alloc = LeaveAlloc.create({
-                                'name': f"رصيد سنوي ({type_name}) - {emp.name}",
-                                'holiday_status_id': lt.id,
-                                'employee_id': emp.id,
-                                'number_of_days': default_days,
-                                'state': 'confirm',
-                            })
-                            if hasattr(new_alloc, 'action_validate'):
-                                new_alloc.action_validate()
-                            elif hasattr(new_alloc, 'action_approve'):
-                                new_alloc.action_approve()
-                            else:
-                                new_alloc.write({'state': 'validate'})
-                        except Exception as e_al:
-                            _logger.warning("Could not allocate for %s: %s", type_name, e_al)
 
             # 2. Query leave types and compute days
             all_types = LeaveType.search([('active', '=', True)], order='sequence asc, id asc')
