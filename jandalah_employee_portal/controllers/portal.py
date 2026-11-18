@@ -264,11 +264,27 @@ class JandalahCustomerPortal(CustomerPortal):
             'monthly_perm_used': 0.0,
             'monthly_perm_remaining': 9.0,
             'monthly_perm_text': '9 ساعات',
+            'is_in_probation': False,
+            'probation_end_date': '',
         }
         if not emp:
             return res
 
         try:
+            today_d = date.today()
+            start_date = getattr(emp, 'first_contract_date', False) or (emp.contract_id.date_start if getattr(emp, 'contract_id', False) else False)
+            is_in_probation = False
+            probation_end_date = None
+            if start_date:
+                from dateutil.relativedelta import relativedelta
+                six_months_date = start_date + relativedelta(months=6)
+                probation_end_date = six_months_date
+                if today_d < six_months_date:
+                    is_in_probation = True
+
+            res['is_in_probation'] = is_in_probation
+            res['probation_end_date'] = str(probation_end_date) if probation_end_date else ''
+
             LeaveType = request.env['hr.leave.type'].sudo()
             LeaveAlloc = request.env['hr.leave.allocation'].sudo()
             LeaveReq = request.env['hr.leave'].sudo()
@@ -456,10 +472,33 @@ class JandalahCustomerPortal(CustomerPortal):
                 if open_att.check_in:
                     check_in_dt = pytz.utc.localize(open_att.check_in).astimezone(user_tz)
                     elapsed_hours = (now_local - check_in_dt).total_seconds() / 3600.0
-                    if elapsed_hours >= (shift_hours + 0.25):
-                        is_overdue_checkout = True
-                        over_mins = int((elapsed_hours - shift_hours) * 60)
-                        overdue_checkout_msg = f'انتهت ساعات دوامك المقررة ({int(shift_hours)} ساعات) منذ {over_mins} دقيقة. يرجى تسجيل الانصراف الآن!'
+
+                    # 1. Check scheduled calendar attendance for today (e.g. shift ends at 16:00 / 4:00 PM)
+                    scheduled_end_dt = None
+                    if calendar and calendar.sudo().attendance_ids:
+                        today_dow = str(now_local.weekday())
+                        today_atts = calendar.sudo().attendance_ids.filtered(lambda a: a.dayofweek == today_dow)
+                        if today_atts:
+                            max_hour_to = max(today_atts.mapped('hour_to'))
+                            h_end = int(max_hour_to)
+                            m_end = int(round((max_hour_to - h_end) * 60))
+                            scheduled_end_dt = now_local.replace(hour=h_end, minute=m_end, second=0, microsecond=0)
+
+                    # 2. Determine overdue condition:
+                    if scheduled_end_dt:
+                        # Shift ends at scheduled time; allow a 15-minute grace period before reminding
+                        if now_local >= (scheduled_end_dt + timedelta(minutes=15)):
+                            is_overdue_checkout = True
+                            over_mins = int((now_local - scheduled_end_dt).total_seconds() / 60)
+                            end_time_str = scheduled_end_dt.strftime('%I:%M %p').replace('AM', 'ص').replace('PM', 'م')
+                            overdue_checkout_msg = f'انتهى موعد دوامك الرسمي المقرر (الساعة {end_time_str}) منذ {over_mins} دقيقة. يرجى تسجيل الانصراف الآن!'
+                    else:
+                        # Fallback if no calendar schedule: require elapsed hours >= 8 hours + 30 mins buffer
+                        effective_shift = max(8.0, shift_hours)
+                        if elapsed_hours >= (effective_shift + 0.5):
+                            is_overdue_checkout = True
+                            over_mins = int((elapsed_hours - effective_shift) * 60)
+                            overdue_checkout_msg = f'انتهت ساعات دوامك المقررة ({int(effective_shift)} ساعات) منذ {over_mins} دقيقة. يرجى تسجيل الانصراف الآن!'
             except Exception as e_cal:
                 _logger.warning("Error checking overdue checkout: %s", e_cal)
 
@@ -574,6 +613,8 @@ class JandalahCustomerPortal(CustomerPortal):
             'leaves_count': request.env['hr.leave'].sudo().search_count([('employee_id', '=', emp.id)]),
             'recent_approved_leaves_count': recent_approved_leaves_count,
             'leave_balances': leave_balances,
+            'is_in_probation': leave_info.get('is_in_probation', False),
+            'probation_end_date': leave_info.get('probation_end_date', ''),
             'monthly_perm_used': monthly_perm_used,
             'monthly_perm_remaining': monthly_perm_remaining,
             'monthly_perm_text': monthly_perm_text,
@@ -1527,6 +1568,8 @@ self.addEventListener('notificationclick', event => {
             'leaves': leaves_data,
             'leave_types': leave_types_data,
             'leave_balances': leave_balances_page,
+            'is_in_probation': leave_info.get('is_in_probation', False),
+            'probation_end_date': leave_info.get('probation_end_date', ''),
             'monthly_perm_used': monthly_perm_used,
             'monthly_perm_remaining': monthly_perm_remaining,
             'monthly_perm_text': monthly_perm_text,

@@ -334,6 +334,19 @@
                                                 تقديم ومتابعة طلبات الإجازات والأذونات الساعية ونصف اليوم بكل سهولة.
                                             </p>
 
+                                            <!-- Probation Period Entitlement Banner -->
+                                            <t t-if="is_in_probation and probation_end_date">
+                                                <div class="alert alert-warning py-2 px-3 mb-2 rounded-3 small border-0 shadow-sm" style="background-color: #fffbeb; color: #92400e; border-right: 4px solid #f59e0b !important;">
+                                                    <div class="d-flex align-items-center">
+                                                        <i class="fa fa-hourglass-half me-2 fs-5 text-warning"/>
+                                                        <div>
+                                                            <div class="fw-bold">فترة التجربة (أول 6 أشهر):</div>
+                                                            <div style="font-size:0.8rem;">يبدأ استحقاق الإجازات من: <b><t t-esc="probation_end_date"/></b></div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </t>
+
                                             <!-- Leave Balances & Monthly Permissions Section -->
                                             <t t-if="leave_balances or monthly_perm_remaining is not None">
                                                 <div class="border rounded-3 p-2 mb-3 bg-light">
@@ -1584,6 +1597,22 @@
                         </a>
                     </div>
                 </div>
+
+                <!-- Probation Entitlement Banner on Leaves Page -->
+                <t t-if="is_in_probation and probation_end_date">
+                    <div class="alert alert-warning py-3 px-3 mb-4 rounded-3 shadow-sm border-0" style="background-color: #fffbeb; color: #92400e; border-right: 4px solid #f59e0b !important;">
+                        <div class="d-flex align-items-center">
+                            <i class="fa fa-hourglass-half me-3 fs-3 text-warning"/>
+                            <div>
+                                <h6 class="fw-bold mb-1">تنبيه فترة التجربة (أول 6 أشهر):</h6>
+                                <div class="small">
+                                    وفقاً للائحة العمل، يبدأ استحقاق الإجازات الاعتيادية والعارضة لهذا الموظف من تاريخ: <b><t t-esc="probation_end_date"/></b>
+                                    (بينما الأذونات الشهرية متاحة كالمعتاد 9 ساعات شهرياً).
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </t>
 
                 <!-- Leave Balances Panel -->
                 <t t-if="leave_balances">
