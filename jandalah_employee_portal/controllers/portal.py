@@ -2192,7 +2192,22 @@ self.addEventListener('notificationclick', event => {
             admin_leave = leave.sudo().with_user(SUPERUSER_ID)
             if action == 'approve':
                 val_type = getattr(leave.holiday_status_id, 'leave_validation_type', 'manager')
-                if leave.state == 'confirm':
+                if is_hr_admin:
+                    # Direct HR Approval: Validates directly to final state, bypassing supervisor if needed
+                    if hasattr(admin_leave, 'action_validate'):
+                        admin_leave.action_validate()
+                    elif hasattr(admin_leave, 'action_approve'):
+                        admin_leave.action_approve()
+                    else:
+                        admin_leave.write({'state': 'validate'})
+                    try:
+                        admin_leave.message_post(
+                            body=f"تم الاعتماد النهائي للطلب من قبل إدارة الموارد البشرية ({emp.name})."
+                        )
+                    except Exception:
+                        pass
+                else:
+                    # Supervisor Approval: Moves to validate1 (pending HR approval)
                     if hasattr(admin_leave, 'action_approve'):
                         admin_leave.action_approve()
                     else:
@@ -2200,21 +2215,10 @@ self.addEventListener('notificationclick', event => {
                         admin_leave.write({'state': new_st})
                     try:
                         admin_leave.message_post(
-                            body=f"تم اعتماد الطلب من المدير المباشر ({emp.name})."
+                            body=f"تمت موافقة المشرف المباشر ({emp.name})، وبانتظار الاعتماد النهائي من الموارد البشرية."
                         )
                     except Exception:
                         pass
-                elif leave.state == 'validate1' and is_hr_admin:
-                    # Final HR Approval
-                    if hasattr(admin_leave, 'action_validate'):
-                        admin_leave.action_validate()
-                    else:
-                        admin_leave.write({'state': 'validate'})
-                else:
-                    if hasattr(admin_leave, 'action_approve'):
-                        admin_leave.action_approve()
-                    elif hasattr(admin_leave, 'action_validate'):
-                        admin_leave.action_validate()
 
                 try:
                     req_type = leave.holiday_status_id.name or "إجازة/إذن"

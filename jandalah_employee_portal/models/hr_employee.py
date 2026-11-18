@@ -928,6 +928,13 @@ class HrLeave(models.Model):
                 )
 
     def action_validate(self, *args, **kwargs):
+        # Allow HR Manager / Officers to validate directly from confirm or validate1, bypassing supervisor if needed
+        for leave in self:
+            if leave.state == 'confirm' and getattr(leave.holiday_status_id, 'leave_validation_type', False) == 'both':
+                try:
+                    super(HrLeave, leave).action_approve(*args, **kwargs)
+                except Exception:
+                    leave.write({'state': 'validate1'})
         res = super(HrLeave, self).action_validate(*args, **kwargs)
         try:
             with self.env.cr.savepoint():
