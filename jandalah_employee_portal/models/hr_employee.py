@@ -45,6 +45,23 @@ class HrEmployee(models.Model):
                 """)
         except Exception:
             pass
+        try:
+            with self.env.cr.savepoint():
+                lt_model = self.env['hr.leave.type']
+                p_type = lt_model.search([('name', 'ilike', 'إذن')], limit=1)
+                if not p_type:
+                    p_type = lt_model.search([('name', 'ilike', 'اذن')], limit=1)
+                if not p_type:
+                    vals = {
+                        'name': 'إذن ساعي',
+                        'requires_allocation': 'no',
+                        'leave_validation_type': 'both',
+                    }
+                    if 'request_unit' in lt_model._fields:
+                        vals['request_unit'] = 'hour'
+                    lt_model.create(vals)
+        except Exception:
+            pass
 
     @api.onchange('google_maps_url')
     def _onchange_google_maps_url(self):

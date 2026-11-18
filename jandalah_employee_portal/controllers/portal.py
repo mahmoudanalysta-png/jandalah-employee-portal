@@ -287,6 +287,23 @@ class JandalahCustomerPortal(CustomerPortal):
                     except Exception as e_cr:
                         _logger.warning("Could not auto-create leave type %s: %s", type_name, e_cr)
 
+            # Ensure 'إذن ساعي' exists for hourly permissions
+            perm_type = LeaveType.search([('name', 'ilike', 'إذن')], limit=1)
+            if not perm_type:
+                perm_type = LeaveType.search([('name', 'ilike', 'اذن')], limit=1)
+            if not perm_type:
+                try:
+                    p_vals = {
+                        'name': 'إذن ساعي',
+                        'requires_allocation': 'no',
+                        'leave_validation_type': 'both',
+                    }
+                    if 'request_unit' in LeaveType._fields:
+                        p_vals['request_unit'] = 'hour'
+                    LeaveType.create(p_vals)
+                except Exception as e_perm:
+                    _logger.warning("Could not auto-create permission type: %s", e_perm)
+
             # 2. Query leave types and compute days
             all_types = LeaveType.search([('active', '=', True)], order='sequence asc, id asc')
             balances = []
