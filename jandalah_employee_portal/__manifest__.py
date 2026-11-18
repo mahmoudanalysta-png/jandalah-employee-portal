@@ -18,7 +18,6 @@
     'data': [
         'security/ir.model.access.csv',
         'data/default_data.xml',
-        'data/ir_cron_data.xml',
         'views/portal_templates.xml',
         'views/hr_views.xml',
     ],

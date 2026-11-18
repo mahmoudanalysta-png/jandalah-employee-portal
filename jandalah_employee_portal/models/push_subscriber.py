@@ -140,12 +140,13 @@ class JandalahPushSubscriber(models.Model):
         super()._register_hook()
         try:
             with self.env.cr.savepoint():
-                cron = self.env.ref('jandalah_employee_portal.ir_cron_overdue_attendance_reminder', raise_if_not_found=False)
-                if not cron:
-                    model_record = self.env['ir.model'].search([('model', '=', 'jandalah.push.subscriber')], limit=1)
-                    if model_record:
+                cron_name = 'جندله | تذكير الموظفين بالانصراف التلقائي (Web Push)'
+                cron = self.env['ir.cron'].sudo().search([('name', '=', cron_name)], limit=1)
+                model_record = self.env['ir.model'].sudo().search([('model', '=', 'jandalah.push.subscriber')], limit=1)
+                if model_record:
+                    if not cron:
                         self.env['ir.cron'].sudo().create({
-                            'name': 'جندله | تذكير الموظفين بالانصراف التلقائي (Web Push)',
+                            'name': cron_name,
                             'model_id': model_record.id,
                             'state': 'code',
                             'code': 'model.cron_check_overdue_attendance()',
@@ -154,12 +155,16 @@ class JandalahPushSubscriber(models.Model):
                             'numbercall': -1,
                             'active': True,
                         })
-                else:
-                    cron.sudo().write({
-                        'interval_number': 5,
-                        'interval_type': 'minutes',
-                        'active': True,
-                    })
+                        _logger.info("Created overdue attendance cron job successfully.")
+                    else:
+                        cron.sudo().write({
+                            'model_id': model_record.id,
+                            'code': 'model.cron_check_overdue_attendance()',
+                            'interval_number': 5,
+                            'interval_type': 'minutes',
+                            'active': True,
+                        })
+                        _logger.info("Updated overdue attendance cron job to 5 minutes.")
         except Exception as e:
             _logger.warning("Error ensuring overdue attendance cron: %s", e)
 
