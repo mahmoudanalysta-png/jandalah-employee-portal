@@ -1026,13 +1026,42 @@ self.addEventListener('notificationclick', event => {
                     check_in_local = pytz.utc.localize(open_att.check_in).astimezone(user_tz)
                     if check_in_local.date() == today_local_date:
                         is_punched_today = True
-                        # Overdue Shift End Reminder (>= 8.25 hours)
-                        if (now_local - check_in_local).total_seconds() / 3600.0 >= 8.25:
+                        elapsed_hours = (now_local - check_in_local).total_seconds() / 3600.0
+
+                        # Check calendar schedule
+                        calendar = emp.resource_calendar_id or (emp.company_id and emp.company_id.resource_calendar_id)
+                        shift_hours = calendar.hours_per_day if calendar and hasattr(calendar, 'hours_per_day') and calendar.hours_per_day else 8.0
+                        scheduled_end_dt = None
+                        if calendar and calendar.attendance_ids:
+                            today_dow = str(now_local.weekday())
+                            today_atts = calendar.attendance_ids.filtered(lambda a: a.dayofweek == today_dow)
+                            if today_atts:
+                                max_hour_to = max(today_atts.mapped('hour_to'))
+                                h_end = int(max_hour_to)
+                                m_end = int(round((max_hour_to - h_end) * 60))
+                                scheduled_end_dt = now_local.replace(hour=h_end, minute=m_end, second=0, microsecond=0)
+
+                        is_overdue = False
+                        msg_body = f'مرحباً {emp.name}، لقد أتممت ساعات العمل المقررة اليوم. يرجى تسجيل الانصراف الآن.'
+                        if scheduled_end_dt:
+                            if now_local >= (scheduled_end_dt + timedelta(minutes=10)):
+                                is_overdue = True
+                                over_mins = int((now_local - scheduled_end_dt).total_seconds() / 60)
+                                end_time_str = scheduled_end_dt.strftime('%I:%M %p').replace('AM', 'ص').replace('PM', 'م')
+                                msg_body = f'مرحباً {emp.name}، انتهى موعد دوامك الرسمي المقرر (الساعة {end_time_str}) منذ {over_mins} دقيقة. يرجى تسجيل الانصراف الآن!'
+                        else:
+                            effective_shift = max(8.0, shift_hours)
+                            if elapsed_hours >= (effective_shift + 0.5):
+                                is_overdue = True
+                                over_mins = int((elapsed_hours - effective_shift) * 60)
+                                msg_body = f'مرحباً {emp.name}، انتهت ساعات دوامك المقررة ({int(effective_shift)} ساعات) منذ {over_mins} دقيقة. يرجى تسجيل الانصراف الآن!'
+
+                        if is_overdue:
                             alerts.append({
                                 'id': f'att_overdue_{open_att.id}_{now_local.strftime("%Y%m%d")}',
                                 'type': 'overdue_attendance',
                                 'title': 'تنبيه انتهاء الدوام ⏰',
-                                'body': f'مرحباً {emp.name}، لقد أتممت ساعات العمل المقررة اليوم. يرجى تسجيل الانصراف الآن.',
+                                'body': msg_body,
                                 'url': '/my',
                                 'tag': f'att_overdue_{open_att.id}'
                             })

@@ -318,6 +318,8 @@ class HrAttendance(models.Model):
     )
     distance_from_work = fields.Float(string='المسافة عن موقع العمل (متر)', digits=(10, 2))
     is_outside_geofence = fields.Boolean(string='خارج النطاق الجغرافي المسموح', default=False)
+    checkout_reminder_sent = fields.Boolean(string='تم إرسال تذكير الانصراف', default=False)
+    last_checkout_reminder_time = fields.Datetime(string='وقت آخر تذكير انصراف')
 
     def init(self):
         super().init()

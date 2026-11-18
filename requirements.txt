@@ -1,0 +1,2 @@
+pywebpush>=1.14.0
+py-vapid>=1.9.0

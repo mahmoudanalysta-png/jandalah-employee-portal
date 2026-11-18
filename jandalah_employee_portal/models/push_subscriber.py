@@ -134,3 +134,144 @@ class JandalahPushSubscriber(models.Model):
         except Exception as e_push:
             _logger.warning("WebPush dispatch exception for sub %s: %s", self.id, e_push)
             return False
+
+    @api.model
+    def _register_hook(self):
+        super()._register_hook()
+        try:
+            with self.env.cr.savepoint():
+                cron = self.env.ref('jandalah_employee_portal.ir_cron_overdue_attendance_reminder', raise_if_not_found=False)
+                if not cron:
+                    model_record = self.env['ir.model'].search([('model', '=', 'jandalah.push.subscriber')], limit=1)
+                    if model_record:
+                        self.env['ir.cron'].sudo().create({
+                            'name': 'جندله | تذكير الموظفين بالانصراف التلقائي (Web Push)',
+                            'model_id': model_record.id,
+                            'state': 'code',
+                            'code': 'model.cron_check_overdue_attendance()',
+                            'interval_number': 5,
+                            'interval_type': 'minutes',
+                            'numbercall': -1,
+                            'active': True,
+                        })
+                else:
+                    cron.sudo().write({
+                        'interval_number': 5,
+                        'interval_type': 'minutes',
+                        'active': True,
+                    })
+        except Exception as e:
+            _logger.warning("Error ensuring overdue attendance cron: %s", e)
+
+    @api.model
+    def cron_check_overdue_attendance(self):
+        """
+        Runs every 5 minutes in background to send Web Push reminders to employees
+        who have completed their scheduled work shift but haven't checked out yet.
+        """
+        _logger.info("Executing cron_check_overdue_attendance (every 5 minutes)...")
+        Attendance = self.env['hr.attendance'].sudo()
+        open_attendances = Attendance.search([
+            ('check_out', '=', False),
+            ('check_in', '!=', False)
+        ])
+        if not open_attendances:
+            return True
+
+        from datetime import datetime, timedelta, date
+        import pytz
+
+        now_utc = datetime.utcnow()
+        sent_total = 0
+
+        for att in open_attendances:
+            try:
+                emp = att.employee_id
+                if not emp or not emp.active:
+                    continue
+
+                user_tz_name = (emp.user_id and emp.user_id.tz) or (emp.company_id and emp.company_id.partner_id.tz) or 'Africa/Cairo'
+                try:
+                    user_tz = pytz.timezone(user_tz_name)
+                except Exception:
+                    user_tz = pytz.timezone('Africa/Cairo')
+
+                now_local = pytz.utc.localize(now_utc).astimezone(user_tz)
+                check_in_local = pytz.utc.localize(att.check_in).astimezone(user_tz)
+                elapsed_hours = (now_local - check_in_local).total_seconds() / 3600.0
+
+                is_overdue = False
+                overdue_msg = ""
+                scheduled_end_dt = None
+
+                # 1. Check if punch is from a previous day
+                if now_local.date() > check_in_local.date():
+                    is_overdue = True
+                    overdue_msg = f"مرحباً {emp.name}، تذكير: لديك بصمة حضور مفتوحة من يوم سابق لم يتم تسجيل انصرافها. يرجى تسجيل الانصراف الآن لإغلاق حركتك."
+                else:
+                    calendar = emp.resource_calendar_id or (emp.company_id and emp.company_id.resource_calendar_id)
+                    shift_hours = calendar.hours_per_day if calendar and hasattr(calendar, 'hours_per_day') and calendar.hours_per_day else 8.0
+
+                    if calendar and calendar.attendance_ids:
+                        today_dow = str(now_local.weekday())
+                        today_atts = calendar.attendance_ids.filtered(lambda a: a.dayofweek == today_dow)
+                        if today_atts:
+                            max_hour_to = max(today_atts.mapped('hour_to'))
+                            h_end = int(max_hour_to)
+                            m_end = int(round((max_hour_to - h_end) * 60))
+                            scheduled_end_dt = now_local.replace(hour=h_end, minute=m_end, second=0, microsecond=0)
+
+                    if scheduled_end_dt:
+                        # 10 minutes grace period after scheduled shift end
+                        if now_local >= (scheduled_end_dt + timedelta(minutes=10)):
+                            is_overdue = True
+                            over_mins = int((now_local - scheduled_end_dt).total_seconds() / 60)
+                            end_time_str = scheduled_end_dt.strftime('%I:%M %p').replace('AM', 'ص').replace('PM', 'م')
+                            overdue_msg = f"مرحباً {emp.name}، انتهى موعد دوامك الرسمي المقرر (الساعة {end_time_str}) منذ {over_mins} دقيقة. يرجى تسجيل الانصراف الآن!"
+                    else:
+                        effective_shift = max(8.0, shift_hours)
+                        if elapsed_hours >= (effective_shift + 0.5):
+                            is_overdue = True
+                            over_mins = int((elapsed_hours - effective_shift) * 60)
+                            overdue_msg = f"مرحباً {emp.name}، لقد أتممت ساعات العمل المقررة ({int(effective_shift)} ساعات) منذ {over_mins} دقيقة. يرجى تسجيل الانصراف الآن!"
+
+                if not is_overdue:
+                    continue
+
+                # Anti-spam logic:
+                # 1. Send first notification immediately.
+                # 2. Only send follow-up reminder if at least 60 minutes have elapsed since the last reminder.
+                should_send = False
+                has_sent_field = 'checkout_reminder_sent' in Attendance._fields
+                has_time_field = 'last_checkout_reminder_time' in Attendance._fields
+
+                if has_sent_field and not att.checkout_reminder_sent:
+                    should_send = True
+                elif has_time_field and att.last_checkout_reminder_time:
+                    mins_since = (now_utc - att.last_checkout_reminder_time).total_seconds() / 60.0
+                    if mins_since >= 60.0:
+                        should_send = True
+                elif not has_sent_field:
+                    should_send = True
+
+                if should_send:
+                    _logger.info("Sending overdue checkout Web Push to %s...", emp.name)
+                    sent = self.notify_employee(
+                        employee=emp,
+                        title="تنبيه انتهاء الدوام ⏰",
+                        body=overdue_msg,
+                        url="/my"
+                    )
+                    sent_total += sent
+                    write_vals = {}
+                    if has_sent_field:
+                        write_vals['checkout_reminder_sent'] = True
+                    if has_time_field:
+                        write_vals['last_checkout_reminder_time'] = fields.Datetime.now()
+                    if write_vals:
+                        att.write(write_vals)
+            except Exception as e_emp:
+                _logger.warning("Error processing overdue attendance for att %s: %s", att.id, e_emp)
+
+        _logger.info("cron_check_overdue_attendance finished. Total push notifications sent: %s", sent_total)
+        return True
