@@ -23,8 +23,26 @@ class HrEmployee(models.Model):
         string='موقع العمل من خرائط جوجل (Google Location)',
         help='الصق رابط الموقع من خرائط جوجل أو الإحداثيات مباشرة (مثال: https://maps.app.goo.gl/... أو 24.7136, 46.6753)'
     )
-    work_radius_meters = fields.Integer(string='نطاق السماح الجغرافي (بالمتر)', default=500,
+    google_maps_url_2 = fields.Char(
+        string='موقع العمل الثاني من خرائط جوجل (Google Location 2)',
+        help='الصق رابط الموقع الثاني من خرائط جوجل إن وجد (اختياري)'
+    )
+    work_latitude_2 = fields.Float(string='خط عرض موقع العمل الثاني المعتمد', digits=(10, 7))
+    work_longitude_2 = fields.Float(string='خط طول موقع العمل الثاني المعتمد', digits=(10, 7))
+    work_radius_meters = fields.Integer(string='نطاق السماح الجغرافي (بالمتر)', default=1000,
                                        help='المسافة المسموح بها حول الموقع بالأمتار (0 = غير مقيد)')
+    asset_ids = fields.One2many('jandalah.hr.asset', 'employee_id', string='العهد ومستلزمات العمل')
+
+    def init(self):
+        super().init()
+        try:
+            self.env.cr.execute("""
+                UPDATE hr_employee
+                SET work_radius_meters = 1000
+                WHERE work_radius_meters IS NULL OR work_radius_meters IN (0, 500);
+            """)
+        except Exception as e:
+            _logger.warning("Could not set default work_radius_meters to 1000: %s", e)
 
     @api.onchange('google_maps_url')
     def _onchange_google_maps_url(self):
@@ -33,6 +51,14 @@ class HrEmployee(models.Model):
             if lat is not None and lon is not None:
                 self.work_latitude = lat
                 self.work_longitude = lon
+
+    @api.onchange('google_maps_url_2')
+    def _onchange_google_maps_url_2(self):
+        if self.google_maps_url_2:
+            lat, lon = self._parse_google_maps_coordinates(self.google_maps_url_2)
+            if lat is not None and lon is not None:
+                self.work_latitude_2 = lat
+                self.work_longitude_2 = lon
 
     def _parse_google_maps_coordinates(self, url_or_coords):
         """Extracts latitude and longitude from Google Maps URLs, shortlinks, or raw coords."""
@@ -109,6 +135,14 @@ class HrEmployee(models.Model):
                     vals['work_longitude'] = lon
             elif vals.get('work_latitude') and vals.get('work_longitude') and not vals.get('google_maps_url'):
                 vals['google_maps_url'] = f"https://www.google.com/maps?q={vals['work_latitude']},{vals['work_longitude']}"
+
+            if vals.get('google_maps_url_2'):
+                lat2, lon2 = self._parse_google_maps_coordinates(vals['google_maps_url_2'])
+                if lat2 is not None and lon2 is not None:
+                    vals['work_latitude_2'] = lat2
+                    vals['work_longitude_2'] = lon2
+            elif vals.get('work_latitude_2') and vals.get('work_longitude_2') and not vals.get('google_maps_url_2'):
+                vals['google_maps_url_2'] = f"https://www.google.com/maps?q={vals['work_latitude_2']},{vals['work_longitude_2']}"
         return super(HrEmployee, self).create(vals_list)
 
     def write(self, vals):
@@ -123,6 +157,18 @@ class HrEmployee(models.Model):
                 lon = vals.get('work_longitude', emp.work_longitude)
                 if lat and lon and not emp.google_maps_url:
                     vals['google_maps_url'] = f"https://www.google.com/maps?q={lat},{lon}"
+
+        if vals.get('google_maps_url_2'):
+            lat2, lon2 = self._parse_google_maps_coordinates(vals['google_maps_url_2'])
+            if lat2 is not None and lon2 is not None:
+                vals['work_latitude_2'] = lat2
+                vals['work_longitude_2'] = lon2
+        elif (vals.get('work_latitude_2') or vals.get('work_longitude_2')) and 'google_maps_url_2' not in vals:
+            for emp in self:
+                lat2 = vals.get('work_latitude_2', emp.work_latitude_2)
+                lon2 = vals.get('work_longitude_2', emp.work_longitude_2)
+                if lat2 and lon2 and not emp.google_maps_url_2:
+                    vals['google_maps_url_2'] = f"https://www.google.com/maps?q={lat2},{lon2}"
         return super(HrEmployee, self).write(vals)
 
     def calculate_distance_meters(self, lat1, lon1, lat2, lon2):
@@ -165,16 +211,21 @@ class HrEmployee(models.Model):
                 'location_name': active_req.temp_location_name or 'موقع عمل مؤقت معتمد',
                 'latitude': active_req.temp_latitude,
                 'longitude': active_req.temp_longitude,
-                'radius': active_req.temp_radius_meters or self.work_radius_meters or 500,
+                'latitude_2': None,
+                'longitude_2': None,
+                'radius': active_req.temp_radius_meters or self.work_radius_meters or 1000,
             }
 
         geo_type = self.sudo().geofence_type or 'office'
+        w_rad = int(self.sudo().work_radius_meters or 1000) if geo_type != 'field' else 0
         return {
             'is_temporary': False,
             'location_name': 'ميداني حر (غير مقيد)' if geo_type == 'field' else ('العمل عن بعد من المنزل' if geo_type == 'home' else 'المقر المعتمد للشركة'),
             'latitude': float(self.sudo().work_latitude or 0.0),
             'longitude': float(self.sudo().work_longitude or 0.0),
-            'radius': int(self.sudo().work_radius_meters or 0) if geo_type != 'field' else 0,
+            'latitude_2': float(self.sudo().work_latitude_2 or 0.0) if self.sudo().work_latitude_2 else None,
+            'longitude_2': float(self.sudo().work_longitude_2 or 0.0) if self.sudo().work_longitude_2 else None,
+            'radius': w_rad,
         }
 
     @api.model
@@ -786,10 +837,20 @@ class HrLeave(models.Model):
                 ('request_date_from', '>=', str(m_start)),
                 ('request_date_from', '<=', str(m_end)),
             ])
+            perm_month_leaves = [
+                l for l in month_leaves
+                if (getattr(l, 'request_unit_hours', False) or any(k in (l.holiday_status_id.name or '') for k in ['إذن', 'اذن', 'استئذان', 'ساعي', 'خروج']))
+            ]
+
+            # Monthly count check: strictly max 3 permissions per calendar month
+            if len(perm_month_leaves) >= 3:
+                raise exceptions.ValidationError(
+                    _("لا يمكن اعتماد الطلب: استنفذت الحد الأقصى لعدد الأذونات المسموحة شهرياً (3 أذونات فقط في الشهر الميلادي الواحد).")
+                )
+
             month_h = sum(
                 (l.number_of_hours_display or (l.number_of_days * 8.0 if l.number_of_days < 1 else 3.0))
-                for l in month_leaves
-                if (getattr(l, 'request_unit_hours', False) or any(k in (l.holiday_status_id.name or '') for k in ['إذن', 'اذن', 'استئذان', 'ساعي', 'خروج']))
+                for l in perm_month_leaves
             )
             if month_h + hours > 9.0:
                 rem_m = max(0.0, 9.0 - month_h)
@@ -812,6 +873,22 @@ class HrLeave(models.Model):
             )
             if is_perm:
                 continue
+
+            # Check 6-month probation rule for regular / casual leaves
+            emp = leave.employee_id
+            start_date = getattr(emp, 'first_contract_date', False) or (emp.contract_id.date_start if getattr(emp, 'contract_id', False) else False)
+            if start_date:
+                from dateutil.relativedelta import relativedelta
+                six_months_date = start_date + relativedelta(months=6)
+                req_d = leave.request_date_from or (leave.date_from.date() if leave.date_from else fields.Date.today())
+                if isinstance(req_d, str):
+                    req_d = datetime.datetime.strptime(req_d, '%Y-%m-%d').date()
+                if req_d < six_months_date:
+                    raise exceptions.ValidationError(
+                        _("لا يمكن تقديم طلب إجازة خلال فترة الستة أشهر الأولى من تاريخ بداية العمل أو العقد (تاريخ استحقاق الإجازات: %(date)s).") % {
+                            'date': six_months_date.strftime('%Y-%m-%d')
+                        }
+                    )
 
             requires_alloc = getattr(leave.holiday_status_id, 'requires_allocation', 'yes') != 'no'
             if not requires_alloc:

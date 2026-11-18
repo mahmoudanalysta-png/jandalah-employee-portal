@@ -274,12 +274,33 @@ class JandalahCustomerPortal(CustomerPortal):
             LeaveReq = request.env['hr.leave'].sudo()
 
             # 1. Ensure standard Leave Types exist:
-            # - إجازة اعتيادية: 21 days annual
+            # - إجازة اعتيادية: 15 days annual
             # - إجازة عارضة: 6 days casual
             standard_defaults = [
-                ('إجازة اعتيادية', 21),
+                ('إجازة اعتيادية', 15),
                 ('إجازة عارضة', 6),
             ]
+
+            # 6-Month probation and pro-rata calculation for new employees
+            today_d = date.today()
+            start_date = getattr(emp, 'first_contract_date', False) or (emp.contract_id.date_start if getattr(emp, 'contract_id', False) else False)
+            is_in_probation = False
+            probation_end_date = None
+            if start_date:
+                from dateutil.relativedelta import relativedelta
+                six_months_date = start_date + relativedelta(months=6)
+                probation_end_date = six_months_date
+                if today_d < six_months_date:
+                    is_in_probation = True
+                elif six_months_date.year == today_d.year:
+                    # After 6 months in first year: calculate pro-rata balance for remainder of current year
+                    remaining_months = max(1, 12 - six_months_date.month + 1)
+                    pro_rata_reg = round(((remaining_months / 12.0) * 15.0) * 2) / 2.0
+                    pro_rata_cas = round(((remaining_months / 12.0) * 6.0) * 2) / 2.0
+                    standard_defaults = [
+                        ('إجازة اعتيادية', pro_rata_reg),
+                        ('إجازة عارضة', pro_rata_cas),
+                    ]
             for type_name, default_days in standard_defaults:
                 lt = LeaveType.search([('name', '=', type_name)], limit=1)
                 if not lt:
@@ -394,6 +415,19 @@ class JandalahCustomerPortal(CustomerPortal):
             res['monthly_perm_used'] = used_h_disp
             res['monthly_perm_remaining'] = rem_h_disp
             res['monthly_perm_text'] = f"{rem_h_disp} س"
+
+            # Count of permission requests in current month (max 3 per month)
+            perm_count = sum(
+                1 for ml in month_leaves
+                if (getattr(ml, 'request_unit_hours', False) or
+                    (hasattr(ml, 'number_of_hours_display') and ml.number_of_hours_display > 0 and ml.number_of_hours_display < 8) or
+                    any(k in (ml.holiday_status_id.name or '') for k in ['إذن', 'اذن', 'استئذان', 'ساعي', 'خروج']))
+            )
+            res['monthly_perm_count_used'] = perm_count
+            res['monthly_perm_count_remaining'] = max(0, 3 - perm_count)
+            res['monthly_perm_count_text'] = f"{max(0, 3 - perm_count)} من 3 أذونات"
+            res['is_in_probation'] = is_in_probation
+            res['probation_end_date'] = str(probation_end_date) if probation_end_date else None
         except Exception as e:
             _logger.warning("Error in _get_employee_leave_balances: %s", e)
 
@@ -1177,20 +1211,34 @@ self.addEventListener('notificationclick', event => {
                     in_vals['in_latitude'] = lat_f
                     in_vals['in_longitude'] = lon_f
 
-                    # Check geofence against effective location (including approved temporary locations)
+                    # Check geofence against effective location (including Location 1, Location 2, and approved temporary locations)
                     if hasattr(emp.sudo(), 'get_effective_work_location'):
                         eff_loc = emp.sudo().get_effective_work_location()
                         effective_loc_name = eff_loc.get('location_name', 'المقر المعتمد')
                         work_lat = eff_loc.get('latitude', 0.0)
                         work_lon = eff_loc.get('longitude', 0.0)
-                        radius = eff_loc.get('radius', 0)
+                        work_lat_2 = eff_loc.get('latitude_2')
+                        work_lon_2 = eff_loc.get('longitude_2')
+                        radius = eff_loc.get('radius', 1000) or 1000
 
+                        distances = []
                         if work_lat and work_lon and hasattr(emp, 'calculate_distance_meters'):
-                            distance_m = emp.calculate_distance_meters(lat_f, lon_f, work_lat, work_lon)
+                            d1 = emp.calculate_distance_meters(lat_f, lon_f, work_lat, work_lon)
+                            distances.append(d1)
+                        if work_lat_2 and work_lon_2 and hasattr(emp, 'calculate_distance_meters'):
+                            d2 = emp.calculate_distance_meters(lat_f, lon_f, work_lat_2, work_lon_2)
+                            distances.append(d2)
+
+                        if distances:
+                            min_dist = min(distances)
+                            distance_m = min_dist
                             in_vals['distance_from_work'] = round(distance_m, 1)
-                            if radius > 0 and distance_m > radius:
+                            if radius > 0 and min_dist > radius:
                                 is_outside = True
                                 in_vals['is_outside_geofence'] = True
+                            else:
+                                is_outside = False
+                                in_vals['is_outside_geofence'] = False
                 except (ValueError, TypeError):
                     pass
 
@@ -1614,6 +1662,17 @@ self.addEventListener('notificationclick', event => {
                         any(k in m_tname for k in ['إذن', 'اذن', 'استئذان', 'ساعي', 'خروج'])):
                         monthly_used_h += getattr(ml, 'number_of_hours_display', 0.0) or (ml.number_of_days * 8.0 if ml.number_of_days < 1 else 3.0)
 
+                # 3. Monthly Permissions Count Check: Maximum 3 requests per month
+                perm_requests_count = sum(
+                    1 for ml in month_leaves
+                    if (getattr(ml, 'request_unit_hours', False) or
+                        (hasattr(ml, 'number_of_hours_display') and ml.number_of_hours_display > 0 and ml.number_of_hours_display < 8) or
+                        any(k in (ml.holiday_status_id.name or '') for k in ['إذن', 'اذن', 'استئذان', 'ساعي', 'خروج']))
+                )
+                if perm_requests_count >= 3:
+                    err_msg = "لا يمكن تنفيذ الطلب: تجاوزت الحد الأقصى لعدد الأذونات المسموحة شهرياً (3 أذونات فقط في الشهر الميلادي الواحد)."
+                    return request.redirect(f'/my/leaves?error={urllib.parse.quote(err_msg)}')
+
                 if (monthly_used_h + calc_hours) > 9.0:
                     rem_month = max(0.0, 9.0 - monthly_used_h)
                     err_msg = f"لا يمكن تنفيذ الطلب: تجاوزت الحد الأقصى الشهري للأذونات (9 ساعات شهرياً). استهلكت هذا الشهر {monthly_used_h:g} س والمتبقي لك هو {rem_month:g} س فقط (طلبت {calc_hours:g} س)."
@@ -1649,16 +1708,33 @@ self.addEventListener('notificationclick', event => {
                     _logger.warning("Error computing permission datetime: %s", e_time)
 
             else:
-                if not request_date_from or not request_date_to:
-                    return request.redirect('/my/leaves?error=missing_fields')
+                # 6-Month probation rule check before allowing leave submission
+                start_date = getattr(emp, 'first_contract_date', False) or (emp.contract_id.date_start if getattr(emp, 'contract_id', False) else False)
+                if start_date:
+                    from dateutil.relativedelta import relativedelta
+                    six_months_date = start_date + relativedelta(months=6)
+                    if date.today() < six_months_date:
+                        err_msg = f"عذراً، لا يمكن تقديم طلب إجازة قبل إتمام 6 أشهر كاملة من بداية العمل أو العقد (تاريخ استحقاق الإجازات: {six_months_date.strftime('%Y-%m-%d')})."
+                        return request.redirect(f'/my/leaves?error={urllib.parse.quote(err_msg)}')
 
-                d_from = fields.Date.from_string(request_date_from)
-                d_to = fields.Date.from_string(request_date_to)
-                if not d_from or not d_to or d_to < d_from:
-                    err_msg = "تاريخ نهاية الإجازة يجب أن يكون مساوياً أو بعد تاريخ البداية."
-                    return request.redirect(f'/my/leaves?error={urllib.parse.quote(err_msg)}')
+                # Support Half-Day Leave (0.5 day deducted from regular balance)
+                is_half_day = (kw.get('is_half_day') == '1' or kw.get('request_unit_half') == '1')
+                if is_half_day:
+                    if not request_date_from:
+                        return request.redirect('/my/leaves?error=missing_fields')
+                    request_date_to = request_date_from
+                    requested_days = 0.5
+                else:
+                    if not request_date_from or not request_date_to:
+                        return request.redirect('/my/leaves?error=missing_fields')
 
-                requested_days = (d_to - d_from).days + 1
+                    d_from = fields.Date.from_string(request_date_from)
+                    d_to = fields.Date.from_string(request_date_to)
+                    if not d_from or not d_to or d_to < d_from:
+                        err_msg = "تاريخ نهاية الإجازة يجب أن يكون مساوياً أو بعد تاريخ البداية."
+                        return request.redirect(f'/my/leaves?error={urllib.parse.quote(err_msg)}')
+
+                    requested_days = (d_to - d_from).days + 1
 
                 # 1. Casual leave limit: Max 2 consecutive days
                 if 'عارضة' in (lt.name or '') and requested_days > 2:
@@ -1696,8 +1772,12 @@ self.addEventListener('notificationclick', event => {
                     'employee_id': emp.id,
                     'request_date_from': request_date_from,
                     'request_date_to': request_date_to,
-                    'name': name.strip() if name else f'طلب إجازة ({lt.name}) من البوابة',
+                    'name': name.strip() if name else (f'طلب إجازة نصف يوم ({lt.name})' if is_half_day else f'طلب إجازة ({lt.name}) من البوابة'),
                 }
+                if is_half_day:
+                    leave_vals['number_of_days'] = 0.5
+                    if 'request_unit_half' in request.env['hr.leave']._fields:
+                        leave_vals['request_unit_half'] = True
 
             new_leave = request.env['hr.leave'].sudo().create(leave_vals)
 
@@ -2502,16 +2582,25 @@ self.addEventListener('notificationclick', event => {
 
         assets_data = []
         for a in records:
+            cat_name = a.category_id.name if a.category_id else (
+                dict(a._fields['category'].selection).get(a.category, 'عهدة أخرى') if a.category else 'عهدة أخرى'
+            )
             assets_data.append({
                 'id': a.id,
                 'name': a.name,
                 'asset_code': a.asset_code or '-',
                 'category': a.category,
+                'category_name': cat_name,
                 'handover_date': str(a.handover_date or ''),
                 'return_date': str(a.return_date or '-'),
                 'notes': a.notes or '',
                 'state': a.state,
                 'ack_date': str(a.ack_date or ''),
+                'has_attachment': bool(a.attachment_file),
+                'attachment_name': a.attachment_name or f"asset_{a.id}.pdf",
+                'employee_feedback': a.employee_feedback or '',
+                'return_notes': a.return_notes or '',
+                'return_request_date': str(a.return_request_date or ''),
             })
 
         values = self._prepare_portal_layout_values()
@@ -2538,14 +2627,54 @@ self.addEventListener('notificationclick', event => {
             return request.redirect('/my/assets?error=unauthorized')
 
         try:
+            feedback = (kw.get('employee_feedback') or '').strip()
             asset.sudo().write({
                 'state': 'acknowledged',
                 'ack_date': fields.Datetime.now(),
                 'ack_signature': f"تم الإقرار إلكترونياً بواسطة: {emp.name}",
+                'employee_feedback': feedback,
             })
             return request.redirect('/my/assets?success=acknowledged')
         except Exception as e:
             _logger.error("Error acknowledging asset: %s", e)
+            return request.redirect(f'/my/assets?error={str(e)}')
+
+    @http.route('/my/assets/download/<int:asset_id>', type='http', auth='user', website=True)
+    def portal_asset_download(self, asset_id, **kw):
+        """Allows employee to download official asset attachment."""
+        emp = self._get_employee()
+        if not emp:
+            return request.not_found()
+        asset = request.env['jandalah.hr.asset'].sudo().browse(int(asset_id))
+        if not asset.exists() or asset.employee_id.id != emp.id:
+            return request.not_found()
+        if asset.attachment_file:
+            import base64
+            file_data = base64.b64decode(asset.attachment_file)
+            filename = asset.attachment_name or f"asset_{asset.id}.pdf"
+            return request.make_response(file_data, [
+                ('Content-Type', 'application/octet-stream'),
+                ('Content-Disposition', f'attachment; filename="{filename}"')
+            ])
+        return request.not_found()
+
+    @http.route('/my/assets/return/<int:asset_id>', type='http', auth='user', methods=['POST'], website=True, csrf=True)
+    def portal_asset_return_request(self, asset_id, return_notes=None, **kw):
+        """Allows employee to initiate asset return with condition notes."""
+        emp = self._get_employee()
+        if not emp:
+            return request.redirect('/my?error=no_employee')
+        asset = request.env['jandalah.hr.asset'].sudo().browse(int(asset_id))
+        if not asset.exists() or asset.employee_id.id != emp.id:
+            return request.redirect('/my/assets?error=unauthorized')
+        try:
+            asset.sudo().write({
+                'state': 'return_requested',
+                'return_request_date': fields.Datetime.now(),
+                'return_notes': (return_notes or '').strip(),
+            })
+            return request.redirect('/my/assets?success=return_requested')
+        except Exception as e:
             return request.redirect(f'/my/assets?error={str(e)}')
 
 

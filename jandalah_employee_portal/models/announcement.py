@@ -5,29 +5,45 @@ from odoo import models, fields, api
 
 _logger = logging.getLogger(__name__)
 
+
+class JandalahAnnouncementType(models.Model):
+    _name = 'jandalah.announcement.type'
+    _description = 'نوع التعميم / الإشعار'
+    _order = 'sequence, id'
+
+    name = fields.Char(string='نوع الإشعار', required=True, translate=True)
+    code = fields.Char(string='الكود')
+    sequence = fields.Integer(string='الترتيب', default=10)
+    active = fields.Boolean(string='نشط', default=True)
+
+
 class JandalahAnnouncement(models.Model):
     _name = 'jandalah.announcement'
     _description = 'تعاميم وقرارات إدارية'
     _order = 'date desc, id desc'
 
     name = fields.Char(string='عنوان التعميم / الخطاب', required=True)
+    type_id = fields.Many2one('jandalah.announcement.type', string='نوع الإشعار', ondelete='restrict')
     announcement_type = fields.Selection([
         ('circular', 'تعميم إداري عام'),
         ('letter', 'خطاب رسمي'),
         ('decision', 'قرار إداري'),
         ('policy', 'لائحة وسياسة داخلية'),
-    ], string='نوع الإشعار', default='circular', required=True)
+    ], string='نوع الإشعار (قديم)')
     
     date = fields.Date(string='تاريخ الإصدار', default=fields.Date.today, required=True)
-    issued_by = fields.Char(string='الجهة أو المسؤول المصدر', default='الإدارة العامة', help='مثال: الإدارة العامة / د. عماد / إدارة الموارد البشرية')
+    issued_by_user_id = fields.Many2one('res.users', string='الجهة أو المسؤول المصدر', default=lambda self: self.env.user)
+    issued_by = fields.Char(string='الجهة أو المسؤول المصدر (نص)', compute='_compute_issued_by', inverse='_inverse_issued_by', store=True)
     content = fields.Html(string='نص التعميم / القرار', required=True)
     
     target_type = fields.Selection([
-        ('all', 'كافة الموظفين'),
-        ('department', 'قسم محدد'),
+        ('all', 'كافة الموظفين (كافة الشركات)'),
+        ('company', 'شركة محددة'),
+        ('department', 'قسم محدد داخل شركة'),
         ('employees', 'موظفون محددون'),
     ], string='الفئة المستهدفة', default='all', required=True)
 
+    company_id = fields.Many2one('res.company', string='الشركة المستهدفة', default=lambda self: self.env.company)
     department_id = fields.Many2one('hr.department', string='القسم المستهدف')
     employee_ids = fields.Many2many('hr.employee', 'jandalah_announcement_emp_rel', 'announcement_id', 'employee_id', string='الموظفون المخصصون')
     
@@ -35,6 +51,21 @@ class JandalahAnnouncement(models.Model):
     attachment_file = fields.Binary(string='المرفق الرسمي (PDF / صورة)', attachment=True)
     attachment_name = fields.Char(string='اسم الملف المرفق')
     active = fields.Boolean(string='نشط', default=True)
+
+    @api.depends('issued_by_user_id')
+    def _compute_issued_by(self):
+        for rec in self:
+            if rec.issued_by_user_id:
+                rec.issued_by = rec.issued_by_user_id.name
+            elif not rec.issued_by:
+                rec.issued_by = 'الإدارة العامة'
+
+    def _inverse_issued_by(self):
+        for rec in self:
+            if rec.issued_by and not rec.issued_by_user_id:
+                user = self.env['res.users'].sudo().search([('name', '=ilike', rec.issued_by.strip())], limit=1)
+                if user:
+                    rec.issued_by_user_id = user.id
 
     def get_official_attachment_info(self):
         """Safely retrieves attachment metadata and data whether stored in binary field, Many2one, or ir.attachment."""
@@ -119,6 +150,50 @@ class JandalahAnnouncement(models.Model):
 
     def init(self):
         super().init()
+        # Seed default announcement types if table exists and empty
+        try:
+            self.env.cr.execute("""
+                CREATE TABLE IF NOT EXISTS jandalah_announcement_type (
+                    id serial PRIMARY KEY,
+                    name varchar NOT NULL,
+                    code varchar,
+                    sequence integer DEFAULT 10,
+                    active boolean DEFAULT true,
+                    create_date timestamp without time zone,
+                    write_date timestamp without time zone,
+                    create_uid integer,
+                    write_uid integer
+                );
+            """)
+            self.env.cr.execute("SELECT count(*) FROM jandalah_announcement_type;")
+            count = self.env.cr.fetchone()[0]
+            if count == 0:
+                self.env.cr.execute("""
+                    INSERT INTO jandalah_announcement_type (name, code, sequence, active, create_date, write_date)
+                    VALUES 
+                    ('تعميم إداري عام', 'circular', 10, true, NOW(), NOW()),
+                    ('خطاب رسمي', 'letter', 20, true, NOW(), NOW()),
+                    ('قرار إداري', 'decision', 30, true, NOW(), NOW()),
+                    ('لائحة وسياسة داخلية', 'policy', 40, true, NOW(), NOW()),
+                    ('تهنئة / مناسبة', 'greeting', 50, true, NOW(), NOW()),
+                    ('تنبيه هام', 'warning', 60, true, NOW(), NOW());
+                """)
+
+            # Migrate existing records type_id from announcement_type
+            self.env.cr.execute("""
+                DO $$
+                BEGIN
+                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='jandalah_announcement' AND column_name='type_id') THEN
+                        UPDATE jandalah_announcement ja
+                        SET type_id = jt.id
+                        FROM jandalah_announcement_type jt
+                        WHERE ja.type_id IS NULL AND ja.announcement_type = jt.code;
+                    END IF;
+                END $$;
+            """)
+        except Exception as e_seed:
+            _logger.warning("Could not seed jandalah_announcement_type: %s", e_seed)
+
         try:
             self.env.cr.execute("""
                 UPDATE ir_ui_view 
@@ -147,13 +222,23 @@ class JandalahAnnouncement(models.Model):
             if rec.active:
                 try:
                     title = f"تعميم إداري جديد: {rec.name}"
-                    body = f"صادر عن: {rec.issued_by or 'الإدارة'}. يرجى الاطلاع والإقرار."
+                    issuer_str = rec.issued_by or (rec.issued_by_user_id.name if rec.issued_by_user_id else 'الإدارة')
+                    body = f"صادر عن: {issuer_str}. يرجى الاطلاع والإقرار."
                     if rec.target_type == 'all':
                         self.env['jandalah.push.subscriber'].sudo().notify_all_employees(
                             title=title, body=body, url='/my/announcements'
                         )
+                    elif rec.target_type == 'company' and rec.company_id:
+                        emps = self.env['hr.employee'].sudo().search([('company_id', '=', rec.company_id.id)])
+                        for emp in emps:
+                            self.env['jandalah.push.subscriber'].sudo().notify_employee(
+                                employee=emp, title=title, body=body, url='/my/announcements'
+                            )
                     elif rec.target_type == 'department' and rec.department_id:
-                        emps = self.env['hr.employee'].sudo().search([('department_id', '=', rec.department_id.id)])
+                        dom = [('department_id', '=', rec.department_id.id)]
+                        if rec.company_id:
+                            dom.append(('company_id', '=', rec.company_id.id))
+                        emps = self.env['hr.employee'].sudo().search(dom)
                         for emp in emps:
                             self.env['jandalah.push.subscriber'].sudo().notify_employee(
                                 employee=emp, title=title, body=body, url='/my/announcements'
@@ -191,8 +276,13 @@ class JandalahAnnouncement(models.Model):
             return False
         if self.target_type == 'all':
             return True
+        elif self.target_type == 'company' and self.company_id:
+            return employee.company_id.id == self.company_id.id
         elif self.target_type == 'department' and self.department_id:
-            return employee.department_id.id == self.department_id.id
+            dept_match = (employee.department_id.id == self.department_id.id)
+            if self.company_id:
+                return dept_match and (employee.company_id.id == self.company_id.id)
+            return dept_match
         elif self.target_type == 'employees':
             return employee.id in self.employee_ids.ids
         return False

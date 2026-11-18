@@ -18,3 +18,9 @@ access_resource_calendar_portal,resource.calendar.portal,resource.model_resource
 access_resource_calendar_attendance_portal,resource.calendar.attendance.portal,resource.model_resource_calendar_attendance,base.group_portal,1,0,0,0
 access_resource_calendar_leaves_portal,resource.calendar.leaves.portal,resource.model_resource_calendar_leaves,base.group_portal,1,0,0,0
 access_hr_employee_portal,hr.employee.portal,hr.model_hr_employee,base.group_portal,1,0,0,0
+access_jandalah_announcement_type_portal,jandalah.announcement.type.portal,model_jandalah_announcement_type,base.group_portal,1,0,0,0
+access_jandalah_announcement_type_user,jandalah.announcement.type.user,model_jandalah_announcement_type,base.group_user,1,1,1,1
+access_jandalah_hr_penalty_type_portal,jandalah.hr.penalty.type.portal,model_jandalah_hr_penalty_type,base.group_portal,1,0,0,0
+access_jandalah_hr_penalty_type_user,jandalah.hr.penalty.type.user,model_jandalah_hr_penalty_type,base.group_user,1,1,1,1
+access_jandalah_hr_asset_category_portal,jandalah.hr.asset.category.portal,model_jandalah_hr_asset_category,base.group_portal,1,0,0,0
+access_jandalah_hr_asset_category_user,jandalah.hr.asset.category.user,model_jandalah_hr_asset_category,base.group_user,1,1,1,1

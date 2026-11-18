@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- HR Employee Form Inherit: Geofencing Coordinates -->
+    <!-- HR Employee Form Inherit: Geofencing Coordinates & Assets Tab -->
     <record id="view_employee_form_inherit_geofence" model="ir.ui.view">
         <field name="name">hr.employee.form.inherit.geofence</field>
         <field name="model">hr.employee</field>
@@ -8,18 +8,44 @@
         <field name="priority">50</field>
         <field name="arch" type="xml">
             <xpath expr="//notebook" position="inside">
+                <!-- 1. Geofencing Tab -->
                 <page string="النطاق الجغرافي للحضور (Geofencing)" name="geofencing_settings" groups="hr.group_hr_user">
                     <group string="إعدادات الموقع المعتمد لتسجيل الحضور">
                         <group string="طبيعة العمل ونطاق السماح">
                             <field name="geofence_type"/>
                             <field name="work_radius_meters"/>
                         </group>
-                        <group string="موقع العمل من خرائط جوجل">
+                        <group string="موقع العمل الأول (خرائط جوجل)">
                             <field name="google_maps_url" widget="url" placeholder="الصق رابط موقع جوجل ماب هنا (مثل: https://maps.app.goo.gl/... أو 24.7136, 46.6753)"/>
                             <field name="work_latitude" invisible="1"/>
                             <field name="work_longitude" invisible="1"/>
                         </group>
+                        <group string="موقع العمل الثاني (خرائط جوجل - اختياري)">
+                            <field name="google_maps_url_2" widget="url" placeholder="الصق رابط الموقع الثاني من خرائط جوجل إن وجد"/>
+                            <field name="work_latitude_2" invisible="1"/>
+                            <field name="work_longitude_2" invisible="1"/>
+                        </group>
                     </group>
+                </page>
+
+                <!-- 2. Custody & Assets Tab -->
+                <page string="العهد ومستلزمات العمل" name="assets_tab" groups="hr.group_hr_user">
+                    <field name="asset_ids">
+                        <list string="العهد ومستلزمات العمل" editable="bottom">
+                            <field name="name"/>
+                            <field name="category_id" options="{'no_create_edit': False}"/>
+                            <field name="asset_code"/>
+                            <field name="handover_date"/>
+                            <field name="return_date"/>
+                            <field name="attachment_name" column_invisible="True"/>
+                            <field name="attachment_file" filename="attachment_name" string="المرفق الرسمي"/>
+                            <field name="state" widget="badge" 
+                                   decoration-warning="state == 'assigned'" 
+                                   decoration-info="state == 'return_requested'" 
+                                   decoration-success="state == 'acknowledged'" 
+                                   decoration-muted="state == 'returned'"/>
+                        </list>
+                    </field>
                 </page>
             </xpath>
         </field>
@@ -114,9 +140,10 @@
             <list string="التعاميم والقرارات الإدارية">
                 <field name="date"/>
                 <field name="name"/>
-                <field name="issued_by"/>
-                <field name="announcement_type"/>
+                <field name="issued_by_user_id"/>
+                <field name="type_id"/>
                 <field name="target_type"/>
+                <field name="company_id" optional="show"/>
                 <field name="department_id" optional="show"/>
                 <field name="ack_count"/>
                 <field name="active" widget="boolean_toggle"/>
@@ -136,14 +163,15 @@
                     </div>
                     <group>
                         <group>
-                            <field name="announcement_type"/>
-                            <field name="issued_by" placeholder="مثال: الإدارة العامة / د. عماد / إدارة الموارد البشرية"/>
+                            <field name="type_id" options="{'no_create_edit': False}"/>
+                            <field name="issued_by_user_id" options="{'no_create_edit': True}"/>
                             <field name="date"/>
                             <field name="attachment_name" invisible="1"/>
                             <field name="attachment_file" filename="attachment_name" string="المرفق الرسمي (PDF / صورة)"/>
                         </group>
                         <group>
                             <field name="target_type"/>
+                            <field name="company_id" invisible="target_type not in ('company', 'department')"/>
                             <field name="department_id" invisible="target_type != 'department'"/>
                             <field name="employee_ids" widget="many2many_tags" invisible="target_type != 'employees'"/>
                             <field name="active" widget="boolean_toggle"/>
@@ -186,7 +214,8 @@
             <list string="الجزاءات والتحقيقات الإدارية">
                 <field name="name"/>
                 <field name="employee_id"/>
-                <field name="penalty_type"/>
+                <field name="issued_by_user_id"/>
+                <field name="type_id"/>
                 <field name="date"/>
                 <field name="deduction_days" optional="show"/>
                 <field name="state" widget="badge" decoration-info="state == 'issued'" decoration-success="state == 'accepted'" decoration-danger="state == 'objected'" decoration-muted="state == 'closed'"/>
@@ -211,10 +240,10 @@
                     <group>
                         <group>
                             <field name="employee_id"/>
-                            <field name="issued_by" placeholder="مثال: الشؤون القانونية / إدارة الموارد البشرية"/>
-                            <field name="penalty_type"/>
+                            <field name="issued_by_user_id" options="{'no_create_edit': True}"/>
+                            <field name="type_id" options="{'no_create_edit': False}"/>
                             <field name="date"/>
-                            <field name="deduction_days" invisible="penalty_type != 'deduction'"/>
+                            <field name="deduction_days"/>
                             <field name="attachment_name" invisible="1"/>
                             <field name="attachment_file" filename="attachment_name" string="المستند الرسمي (PDF / صورة)"/>
                         </group>
@@ -252,10 +281,15 @@
             <list string="العهد ومستلزمات العمل">
                 <field name="name"/>
                 <field name="asset_code"/>
-                <field name="category"/>
+                <field name="category_id"/>
                 <field name="employee_id"/>
                 <field name="handover_date"/>
-                <field name="state" widget="badge" decoration-warning="state == 'assigned'" decoration-success="state == 'acknowledged'" decoration-muted="state == 'returned'"/>
+                <field name="return_date"/>
+                <field name="state" widget="badge" 
+                       decoration-warning="state == 'assigned'" 
+                       decoration-info="state == 'return_requested'"
+                       decoration-success="state == 'acknowledged'" 
+                       decoration-muted="state == 'returned'"/>
             </list>
         </field>
     </record>
@@ -266,7 +300,8 @@
         <field name="arch" type="xml">
             <form string="عهدة موظف">
                 <header>
-                    <field name="state" widget="statusbar" statusbar_visible="assigned,acknowledged,returned"/>
+                    <button name="action_confirm_return" string="تأكيد استرداد العهدة" type="object" class="btn-primary" invisible="state != 'return_requested'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="assigned,acknowledged,return_requested,returned"/>
                 </header>
                 <sheet>
                     <div class="oe_title">
@@ -276,8 +311,10 @@
                     <group>
                         <group>
                             <field name="employee_id"/>
-                            <field name="category"/>
+                            <field name="category_id" options="{'no_create_edit': False}"/>
                             <field name="asset_code"/>
+                            <field name="attachment_name" invisible="1"/>
+                            <field name="attachment_file" filename="attachment_name" string="المرفق الرسمي للعهدة (PDF / صورة)"/>
                         </group>
                         <group>
                             <field name="handover_date"/>
@@ -289,6 +326,18 @@
                     <notebook>
                         <page string="مواصفات وحالة العهدة">
                             <field name="notes" placeholder="ملاحظات الحالة الفنية أو الرقم التسلسلي أو المواصفات..."/>
+                        </page>
+                        <page string="إفادة واستلام الموظف" invisible="state == 'assigned'">
+                            <group>
+                                <field name="employee_feedback" readonly="1"/>
+                            </group>
+                        </page>
+                        <page string="تفاصيل وإجراءات الاسترجاع" invisible="state not in ('return_requested', 'returned')">
+                            <group>
+                                <field name="return_request_date" readonly="1"/>
+                                <field name="return_notes" readonly="1"/>
+                                <field name="returned_by_user_id" readonly="1"/>
+                            </group>
                         </page>
                     </notebook>
                 </sheet>
@@ -363,6 +412,67 @@
         <field name="view_mode">list,form</field>
     </record>
 
+    <!-- ==================== 5. Dynamic Models Views (Types & Categories) ==================== -->
+    <!-- Announcement Types -->
+    <record id="view_jandalah_announcement_type_tree" model="ir.ui.view">
+        <field name="name">jandalah.announcement.type.tree</field>
+        <field name="model">jandalah.announcement.type</field>
+        <field name="arch" type="xml">
+            <list string="أنواع التعاميم والإشعارات" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_jandalah_announcement_types" model="ir.actions.act_window">
+        <field name="name">أنواع التعاميم والإشعارات</field>
+        <field name="res_model">jandalah.announcement.type</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- Penalty Types -->
+    <record id="view_jandalah_penalty_type_tree" model="ir.ui.view">
+        <field name="name">jandalah.hr.penalty.type.tree</field>
+        <field name="model">jandalah.hr.penalty.type</field>
+        <field name="arch" type="xml">
+            <list string="أنواع الجزاءات والتحقيقات" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_jandalah_penalty_types" model="ir.actions.act_window">
+        <field name="name">أنواع الجزاءات والتحقيقات</field>
+        <field name="res_model">jandalah.hr.penalty.type</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- Asset Categories -->
+    <record id="view_jandalah_asset_category_tree" model="ir.ui.view">
+        <field name="name">jandalah.hr.asset.category.tree</field>
+        <field name="model">jandalah.hr.asset.category</field>
+        <field name="arch" type="xml">
+            <list string="تصنيفات العهد ومستلزمات العمل" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_jandalah_asset_categories" model="ir.actions.act_window">
+        <field name="name">تصنيفات العهد ومستلزمات العمل</field>
+        <field name="res_model">jandalah.hr.asset.category</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
     <!-- ==================== Push Notification Subscribers Views ==================== -->
     <record id="view_jandalah_push_subscriber_list" model="ir.ui.view">
         <field name="name">jandalah.push.subscriber.list</field>
@@ -420,6 +530,30 @@
               parent="menu_jandalah_hr_portal_management"
               action="action_jandalah_push_subscribers"
               sequence="50"/>
+
+    <!-- Configuration Menu for Dynamic Types & Categories -->
+    <menuitem id="menu_jandalah_configuration_sub"
+              name="إعدادات الأنواع والتصنيفات"
+              parent="menu_jandalah_hr_portal_management"
+              sequence="90"/>
+
+    <menuitem id="menu_jandalah_announcement_types_sub"
+              name="أنواع التعاميم والإشعارات"
+              parent="menu_jandalah_configuration_sub"
+              action="action_jandalah_announcement_types"
+              sequence="10"/>
+
+    <menuitem id="menu_jandalah_penalty_types_sub"
+              name="أنواع الجزاءات والتحقيقات"
+              parent="menu_jandalah_configuration_sub"
+              action="action_jandalah_penalty_types"
+              sequence="20"/>
+
+    <menuitem id="menu_jandalah_asset_categories_sub"
+              name="تصنيفات العهد ومستلزمات العمل"
+              parent="menu_jandalah_configuration_sub"
+              action="action_jandalah_asset_categories"
+              sequence="30"/>
 
     <!-- Auto-sync validated leaves to attendance records on module install / update -->
     <function model="hr.attendance" name="sync_all_validated_leaves"/>

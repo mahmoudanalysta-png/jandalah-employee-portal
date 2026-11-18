@@ -317,7 +317,7 @@
                                         <div>
                                             <div class="d-flex align-items-center justify-content-between mb-2">
                                                 <h5 class="fw-bold mb-0 text-success">
-                                                    <i class="fa fa-calendar-check-o me-2"/> طلبات الإجازات
+                                                    <i class="fa fa-calendar-check-o me-2"/> طلبات الإجازات والأذونات
                                                 </h5>
                                                 <div>
                                                     <t t-if="recent_approved_leaves_count &gt; 0">
@@ -331,7 +331,7 @@
                                                 </div>
                                             </div>
                                             <p class="text-muted small mb-3">
-                                                تقديم طلبات الإجازات ومتابعة حالة اعتمادها بكل سهولة.
+                                                تقديم ومتابعة طلبات الإجازات والأذونات الساعية ونصف اليوم بكل سهولة.
                                             </p>
 
                                             <!-- Leave Balances & Monthly Permissions Section -->
@@ -361,7 +361,7 @@
                                                             أذونات شهر (<t t-esc="monthly_perm_month_name or 'الحالي'"/>)
                                                         </small>
                                                         <span class="badge bg-primary text-white rounded-pill px-2.5 py-0.5 small fw-bold">
-                                                            متبقي <t t-esc="monthly_perm_remaining"/> من 9 س
+                                                            متبقي <t t-esc="monthly_perm_remaining"/> س (<t t-esc="monthly_perm_count_remaining or 3"/> من 3 أذونات)
                                                         </span>
                                                     </div>
                                                 </div>
@@ -376,7 +376,7 @@
 
                                         <div class="text-center py-2">
                                             <a href="/my/leaves" class="btn btn-lg btn-outline-success w-100 fw-bold rounded-pill py-3 shadow-sm">
-                                                <i class="fa fa-plus-circle me-2"/> تقديم طلب إجازة جديد
+                                                <i class="fa fa-plus-circle me-2"/> تقديم طلب إجازة أو إذن
                                             </a>
                                         </div>
 
@@ -1577,7 +1577,7 @@
                     </div>
                     <div class="col-md-6 text-md-end mt-3 mt-md-0">
                         <button type="button" class="btn btn-success rounded-pill px-4 shadow-sm fw-bold me-2" data-bs-toggle="modal" data-bs-target="#newLeaveModal">
-                            <i class="fa fa-plus-circle me-1"/> طلب إجازة جديد
+                            <i class="fa fa-plus-circle me-1"/> تقديم طلب إجازة أو إذن
                         </button>
                         <a href="/my" class="btn btn-outline-secondary rounded-pill">
                             <i class="fa fa-arrow-right me-1"/> العودة للرئيسية
@@ -1631,7 +1631,7 @@
                                                  t-attf-style="width:#{[monthly_perm_remaining/9.0*100, 100][0] if monthly_perm_remaining/9.0*100 &lt; 100 else 100}%">
                                             </div>
                                         </div>
-                                        <div class="small text-muted mt-1">من 9 ساعات شهرياً</div>
+                                        <div class="small text-muted mt-1">من 9 س شهرياً (<t t-esc="monthly_perm_count_remaining or 3"/> من 3 أذونات)</div>
                                     </div>
                                 </div>
                             </div>
@@ -1815,7 +1815,7 @@
                                 <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
                                 <div class="modal-header border-0 pb-0">
                                     <h5 class="modal-title fw-bold text-success" id="newLeaveModalLabel">
-                                        <i class="fa fa-calendar-plus-o me-2"/> طلب إجازة جديد
+                                        <i class="fa fa-calendar-plus-o me-2"/> تقديم طلب إجازة أو إذن
                                     </h5>
                                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                 </div>
@@ -1831,14 +1831,35 @@
                                     </div>
 
                                     <!-- 1. Normal Days Section -->
-                                    <div id="days_section" class="row g-2 mb-3">
-                                        <div class="col-6">
-                                            <label class="form-label fw-bold">من تاريخ <span class="text-danger">*</span></label>
-                                            <input type="date" name="request_date_from" id="request_date_from" class="form-control rounded-3" required="required"/>
+                                    <div id="days_section">
+                                        <div class="mb-3 p-2 bg-light rounded-3 border">
+                                            <label class="form-label fw-bold small text-muted mb-2 d-block">طبيعة مدة الإجازة:</label>
+                                            <div class="d-flex gap-4">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="radio" name="is_half_day" id="half_day_no" value="0" checked="checked" onchange="toggleHalfDayMode(false)"/>
+                                                    <label class="form-check-label fw-semibold" for="half_day_no">يوم كامل (أو عدة أيام)</label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="radio" name="is_half_day" id="half_day_yes" value="1" onchange="toggleHalfDayMode(true)"/>
+                                                    <label class="form-check-label fw-semibold text-primary" for="half_day_yes">
+                                                        <i class="fa fa-adjust me-1"/> إجازة نصف يوم (0.5 يوم)
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <small id="half_day_hint" class="text-muted d-none mt-1 d-block" style="font-size:0.75rem;">
+                                                * يخصم نصف يوم (0.5) من رصيد الإجازة الاعتيادية ولا يؤثر على عداد الأذونات الساعية.
+                                            </small>
                                         </div>
-                                        <div class="col-6">
-                                            <label class="form-label fw-bold">إلى تاريخ <span class="text-danger">*</span></label>
-                                            <input type="date" name="request_date_to" id="request_date_to" class="form-control rounded-3" required="required"/>
+
+                                        <div class="row g-2 mb-3">
+                                            <div class="col-6" id="date_from_col">
+                                                <label class="form-label fw-bold" id="label_date_from">من تاريخ <span class="text-danger">*</span></label>
+                                                <input type="date" name="request_date_from" id="request_date_from" class="form-control rounded-3" required="required"/>
+                                            </div>
+                                            <div class="col-6" id="date_to_col">
+                                                <label class="form-label fw-bold" id="label_date_to">إلى تاريخ <span class="text-danger">*</span></label>
+                                                <input type="date" name="request_date_to" id="request_date_to" class="form-control rounded-3" required="required"/>
+                                            </div>
                                         </div>
                                     </div>
 
@@ -1852,7 +1873,8 @@
                                             <div>
                                                 • الحد الأقصى للإذن هو <b>3 ساعات</b> في اليوم الواحد.<br/>
                                                 • الحد الأقصى الشهري هو <b>9 ساعات</b> (تتجدد تلقائياً كل شهر).<br/>
-                                                • رصيدك المتبقي لشهر (<t t-esc="monthly_perm_month_name or 'الحالي'"/>): <b><t t-esc="monthly_perm_remaining"/> ساعات</b> (استهلكت <t t-esc="monthly_perm_used"/> من 9 س).
+                                                • الحد الأقصى لعدد الأذونات هو <b>3 أذونات شهرياً</b>.<br/>
+                                                • رصيدك المتبقي لهذا الشهر: <b><t t-esc="monthly_perm_remaining"/> س</b> (<t t-esc="monthly_perm_count_remaining or 3"/> من 3 أذونات).
                                             </div>
                                         </div>
                                         <div class="mb-3">
@@ -1909,6 +1931,27 @@
                 </div>
 
                 <script type="text/javascript">
+                    function toggleHalfDayMode(isHalf) {
+                        var toCol = document.getElementById('date_to_col');
+                        var fromCol = document.getElementById('date_from_col');
+                        var labelFrom = document.getElementById('label_date_from');
+                        var reqTo = document.getElementById('request_date_to');
+                        var hint = document.getElementById('half_day_hint');
+                        if (isHalf) {
+                            if (toCol) toCol.classList.add('d-none');
+                            if (fromCol) { fromCol.classList.remove('col-6'); fromCol.classList.add('col-12'); }
+                            if (labelFrom) labelFrom.innerHTML = 'تاريخ نصف يوم الإجازة <span class="text-danger">*</span>';
+                            if (reqTo) reqTo.removeAttribute('required');
+                            if (hint) hint.classList.remove('d-none');
+                        } else {
+                            if (toCol) toCol.classList.remove('d-none');
+                            if (fromCol) { fromCol.classList.remove('col-12'); fromCol.classList.add('col-6'); }
+                            if (labelFrom) labelFrom.innerHTML = 'من تاريخ <span class="text-danger">*</span>';
+                            if (reqTo) reqTo.setAttribute('required', 'required');
+                            if (hint) hint.classList.add('d-none');
+                        }
+                    }
+
                     document.addEventListener('DOMContentLoaded', function() {
                         var sel = document.getElementById('holiday_status_select');
                         var daysSec = document.getElementById('days_section');
@@ -3215,14 +3258,18 @@
     <!-- ========================================================================= -->
     <!-- 8. Assets & Custody View (/my/assets)                                     -->
     <!-- ========================================================================= -->
-    <template id="portal_my_assets_view" name="العهد ومستلزمات العمل">
+        <template id="portal_my_assets_view" name="العهد ومستلزمات العمل">
         <t t-call="portal.portal_layout">
             <t t-set="breadcrumbs_searchbar" t-value="True"/>
             <t t-set="title">العهد ومستلزمات العمل | جندله</t>
 
             <div class="container-fluid py-3">
                 <div t-if="success == 'acknowledged'" class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm" role="alert">
-                    <i class="fa fa-check-circle me-2"/> تم إقرار استلام العهدة رسمياً وحفظ الإقرار الإلكتروني.
+                    <i class="fa fa-check-circle me-2"/> تم إقرار استلام العهدة رسمياً وحفظ الإقرار وملاحظاتك.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                <div t-if="success == 'return_requested'" class="alert alert-warning alert-dismissible fade show rounded-3 shadow-sm" role="alert">
+                    <i class="fa fa-info-circle me-2"/> تم تسجيل طلب إرجاع العهدة للإدارة بنجاح، وهو قيد مراجعة وتأكيد الاسترداد.
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
 
@@ -3232,7 +3279,7 @@
                             <i class="fa fa-laptop text-info me-2"/> سجل العهد ومستلزمات العمل
                         </h3>
                         <p class="text-muted small mb-0">
-                            متابعة الأجهزة والمعدات والسيارات المسلمة لك بعهدة الشركة وتأكيد استلامها.
+                            متابعة الأجهزة والمعدات والسيارات المسلمة لك بعهدة الشركة وتأكيد استلامها وإرجاعها.
                         </p>
                     </div>
                     <div class="col-md-5 text-md-end mt-3 mt-md-0">
@@ -3264,12 +3311,15 @@
                                         </div>
                                         <div>
                                             <h6 class="fw-bold text-dark mb-0"><t t-esc="ast['name']"/></h6>
-                                            <small class="text-muted">كود: <t t-esc="ast['asset_code']"/></small>
+                                            <small class="text-muted">التصنيف: <t t-esc="ast['category_name']"/> | كود: <t t-esc="ast['asset_code']"/></small>
                                         </div>
                                     </div>
-                                    <span t-if="ast['state'] == 'assigned'" class="badge bg-warning text-dark rounded-pill px-2.5 py-1 small">بانتظار الإقرار</span>
-                                    <span t-elif="ast['state'] == 'acknowledged'" class="badge bg-success rounded-pill px-2.5 py-1 small">تم الاستلام</span>
-                                    <span t-else="" class="badge bg-secondary rounded-pill px-2.5 py-1 small">مستردة</span>
+                                    <div>
+                                        <span t-if="ast['state'] == 'assigned'" class="badge bg-warning text-dark rounded-pill px-2.5 py-1 small">بانتظار الإقرار</span>
+                                        <span t-elif="ast['state'] == 'acknowledged'" class="badge bg-success rounded-pill px-2.5 py-1 small">تم الاستلام</span>
+                                        <span t-elif="ast['state'] == 'return_requested'" class="badge bg-warning text-dark rounded-pill px-2.5 py-1 small">قيد تأكيد الاسترداد</span>
+                                        <span t-else="" class="badge bg-secondary rounded-pill px-2.5 py-1 small">تم إرجاع العهدة</span>
+                                    </div>
                                 </div>
 
                                 <div class="small flex-grow-1">
@@ -3279,24 +3329,118 @@
                                     </div>
                                     <t t-if="ast['notes']">
                                         <div class="d-flex justify-content-between py-1">
-                                            <span class="text-muted">ملاحظات الحالة:</span>
+                                            <span class="text-muted">مواصفات العهدة:</span>
                                             <span class="text-dark"><t t-esc="ast['notes']"/></span>
+                                        </div>
+                                    </t>
+                                    <t t-if="ast['has_attachment']">
+                                        <div class="d-flex justify-content-between align-items-center py-2 border-top border-bottom my-2 bg-light px-2 rounded-3">
+                                            <span class="text-muted"><i class="fa fa-paperclip text-primary me-1"/> المرفق الرسمي:</span>
+                                            <a t-attf-href="/my/assets/download/#{ast['id']}" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-0.5">
+                                                <i class="fa fa-download me-1"/> تحميل المرفق
+                                            </a>
+                                        </div>
+                                    </t>
+                                    <t t-if="ast['employee_feedback']">
+                                        <div class="alert alert-light border py-1.5 px-2 my-2 rounded-3 small text-muted">
+                                            <i class="fa fa-commenting-o me-1 text-primary"/> <b>ملاحظاتك عند الاستلام:</b> <t t-esc="ast['employee_feedback']"/>
+                                        </div>
+                                    </t>
+                                    <t t-if="ast['return_notes']">
+                                        <div class="alert alert-warning py-1.5 px-2 my-2 rounded-3 small text-dark">
+                                            <i class="fa fa-undo me-1 text-warning"/> <b>ملاحظات طلب الإرجاع:</b> <t t-esc="ast['return_notes']"/>
                                         </div>
                                     </t>
                                 </div>
 
                                 <div class="pt-3 border-top mt-3">
                                     <t t-if="ast['state'] == 'assigned'">
-                                        <form t-attf-action="/my/assets/ack/#{ast['id']}" method="post">
-                                            <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
-                                            <button type="submit" class="btn btn-success w-100 rounded-pill py-2 fw-bold shadow-sm" onclick="return confirm('هل تؤكد استلام هذه العهدة بحالة جيدة؟');">
-                                                <i class="fa fa-check-square-o me-1"/> إقرار واستلام العهدة رسمياً
-                                            </button>
-                                        </form>
+                                        <button type="button" class="btn btn-success w-100 rounded-pill py-2 fw-bold shadow-sm" data-bs-toggle="modal" t-attf-data-bs-target="#ackAssetModal_#{ast['id']}">
+                                            <i class="fa fa-check-square-o me-1"/> إقرار واستلام العهدة رسمياً
+                                        </button>
+
+                                        <!-- Modal: Confirm Receipt with Feedback -->
+                                        <div class="modal fade" t-attf-id="ackAssetModal_#{ast['id']}" tabindex="-1" aria-hidden="true">
+                                            <div class="modal-dialog modal-dialog-centered">
+                                                <div class="modal-content border-0 shadow rounded-4">
+                                                    <form t-attf-action="/my/assets/ack/#{ast['id']}" method="post">
+                                                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                                        <div class="modal-header border-0 pb-0">
+                                                            <h5 class="modal-title fw-bold text-success">
+                                                                <i class="fa fa-check-circle me-2"/> إقرار استلام العهدة
+                                                            </h5>
+                                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                        </div>
+                                                        <div class="modal-body p-4">
+                                                            <p class="mb-3">
+                                                                هل تؤكد استلامك لعهدة <b><t t-esc="ast['name']"/></b> (كود: <t t-esc="ast['asset_code']"/>)؟
+                                                            </p>
+                                                            <div class="mb-3">
+                                                                <label class="form-label fw-bold">إفادة وملاحظات الموظف عند الاستلام (اختياري / في حال وجود ملاحظات فنية):</label>
+                                                                <textarea name="employee_feedback" class="form-control rounded-3" rows="3" placeholder="اكتب أية ملاحظات بخصوص حالة العهدة الفنية إن وجدت..."></textarea>
+                                                            </div>
+                                                        </div>
+                                                        <div class="modal-footer border-0 pt-0">
+                                                            <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">إلغاء</button>
+                                                            <button type="submit" class="btn btn-success rounded-pill px-4 fw-bold">
+                                                                <i class="fa fa-check me-1"/> تأكيد الاستلام وحفظ الإقرار
+                                                            </button>
+                                                        </div>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </t>
                                     <t t-elif="ast['state'] == 'acknowledged'">
-                                        <small class="text-success d-block text-center fw-bold">
-                                            <i class="fa fa-check-circle me-1"/> تم الإقرار بالاستلام بتاريخ: <t t-esc="ast['ack_date']"/>
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <small class="text-success fw-bold">
+                                                <i class="fa fa-check-circle me-1"/> تم الإقرار: <t t-esc="ast['ack_date']"/>
+                                            </small>
+                                            <button type="button" class="btn btn-sm btn-outline-warning rounded-pill px-3" data-bs-toggle="modal" t-attf-data-bs-target="#returnAssetModal_#{ast['id']}">
+                                                <i class="fa fa-undo me-1"/> طلب إرجاع العهدة
+                                            </button>
+                                        </div>
+
+                                        <!-- Modal: Request Return -->
+                                        <div class="modal fade" t-attf-id="returnAssetModal_#{ast['id']}" tabindex="-1" aria-hidden="true">
+                                            <div class="modal-dialog modal-dialog-centered">
+                                                <div class="modal-content border-0 shadow rounded-4">
+                                                    <form t-attf-action="/my/assets/return/#{ast['id']}" method="post">
+                                                        <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                                        <div class="modal-header border-0 pb-0">
+                                                            <h5 class="modal-title fw-bold text-warning">
+                                                                <i class="fa fa-undo me-2"/> طلب إرجاع العهدة للإدارة
+                                                            </h5>
+                                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                        </div>
+                                                        <div class="modal-body p-4">
+                                                            <p class="mb-3">
+                                                                هل تود تسجيل طلب إرجاع وتسليم عهدة <b><t t-esc="ast['name']"/></b> للإدارة؟
+                                                            </p>
+                                                            <div class="mb-3">
+                                                                <label class="form-label fw-bold">ملاحظات حالة العهدة عند الإرجاع (اختياري):</label>
+                                                                <textarea name="return_notes" class="form-control rounded-3" rows="3" placeholder="ملاحظات سبب الإرجاع أو حالة العهدة عند التسليم..."></textarea>
+                                                            </div>
+                                                        </div>
+                                                        <div class="modal-footer border-0 pt-0">
+                                                            <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">إلغاء</button>
+                                                            <button type="submit" class="btn btn-warning rounded-pill px-4 fw-bold">
+                                                                <i class="fa fa-paper-plane me-1"/> تأكيد إرسال طلب الإرجاع
+                                                            </button>
+                                                        </div>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </t>
+                                    <t t-elif="ast['state'] == 'return_requested'">
+                                        <small class="text-warning d-block text-center fw-bold">
+                                            <i class="fa fa-hourglass-half me-1"/> تم إرسال طلب الإرجاع بتاريخ: <t t-esc="ast['return_request_date']"/> (بانتظار تأكيد الاسترداد من الإدارة)
+                                        </small>
+                                    </t>
+                                    <t t-elif="ast['state'] == 'returned'">
+                                        <small class="text-muted d-block text-center fw-bold">
+                                            <i class="fa fa-archive me-1"/> تم استرداد العهدة وإغلاقها رسمياً بتاريخ: <t t-esc="ast['return_date']"/>
                                         </small>
                                     </t>
                                 </div>

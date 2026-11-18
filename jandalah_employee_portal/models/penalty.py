@@ -5,6 +5,18 @@ from odoo import models, fields, api
 
 _logger = logging.getLogger(__name__)
 
+
+class JandalahHrPenaltyType(models.Model):
+    _name = 'jandalah.hr.penalty.type'
+    _description = 'نوع الجزاء / الإجراء الإداري'
+    _order = 'sequence, id'
+
+    name = fields.Char(string='نوع الإجراء', required=True, translate=True)
+    code = fields.Char(string='الكود')
+    sequence = fields.Integer(string='الترتيب', default=10)
+    active = fields.Boolean(string='نشط', default=True)
+
+
 class JandalahHrPenalty(models.Model):
     _name = 'jandalah.hr.penalty'
     _description = 'جزاءات وتحقيقات إدارية'
@@ -12,15 +24,17 @@ class JandalahHrPenalty(models.Model):
 
     name = fields.Char(string='رقم / مرجع القرار', required=True, default='PEN')
     employee_id = fields.Many2one('hr.employee', string='الموظف المعني', required=True, ondelete='cascade')
+    type_id = fields.Many2one('jandalah.hr.penalty.type', string='نوع الإجراء', ondelete='restrict')
     penalty_type = fields.Selection([
         ('warning', 'لفت نظر / إنذار كتابي'),
         ('deduction', 'خصم من الراتب'),
         ('investigation', 'إحالة للتحقيق الإداري'),
         ('suspension', 'إيقاف مؤقت عن العمل'),
-    ], string='نوع الإجراء', default='warning', required=True)
+    ], string='نوع الإجراء (قديم)')
 
     date = fields.Date(string='تاريخ القرار / الإحالة', default=fields.Date.today, required=True)
-    issued_by = fields.Char(string='الجهة أو المسؤول المصدر', default='إدارة الموارد البشرية', help='مثال: الشؤون القانونية / إدارة الموارد البشرية')
+    issued_by_user_id = fields.Many2one('res.users', string='الجهة أو المسؤول المصدر', default=lambda self: self.env.user)
+    issued_by = fields.Char(string='الجهة أو المسؤول المصدر (نص)', compute='_compute_issued_by', inverse='_inverse_issued_by', store=True)
     reason = fields.Text(string='الموضوع / سبب الإجراء أو التحقيق', required=True)
     deduction_days = fields.Float(string='عدد أيام الخصم', default=0.0)
 
@@ -42,13 +56,30 @@ class JandalahHrPenalty(models.Model):
     attachment_file = fields.Binary(string='المستند الرسمي (PDF / صورة)', attachment=True)
     attachment_name = fields.Char(string='اسم الملف المرفق')
 
+    @api.depends('issued_by_user_id')
+    def _compute_issued_by(self):
+        for rec in self:
+            if rec.issued_by_user_id:
+                rec.issued_by = rec.issued_by_user_id.name
+            elif not rec.issued_by:
+                rec.issued_by = 'إدارة الموارد البشرية'
+
+    def _inverse_issued_by(self):
+        for rec in self:
+            if rec.issued_by and not rec.issued_by_user_id:
+                user = self.env['res.users'].sudo().search([('name', '=ilike', rec.issued_by.strip())], limit=1)
+                if user:
+                    rec.issued_by_user_id = user.id
+
     @api.model_create_multi
     def create(self, vals_list):
         records = super().create(vals_list)
         for rec in records:
             if rec.employee_id:
                 try:
-                    p_type = dict(rec._fields['penalty_type'].selection).get(rec.penalty_type, 'إجراء إداري')
+                    p_type = rec.type_id.name if rec.type_id else (
+                        dict(rec._fields['penalty_type'].selection).get(rec.penalty_type, 'إجراء إداري') if rec.penalty_type else 'إجراء إداري'
+                    )
                     self.env['jandalah.push.subscriber'].sudo().notify_employee(
                         employee=rec.employee_id,
                         title="تنبيه رسمي من الشؤون الإدارية ⚠️",
@@ -126,6 +157,53 @@ class JandalahHrPenalty(models.Model):
 
     def init(self):
         super().init()
+        # Seed default penalty types if table exists and empty
+        try:
+            self.env.cr.execute("""
+                CREATE TABLE IF NOT EXISTS jandalah_hr_penalty_type (
+                    id serial PRIMARY KEY,
+                    name varchar NOT NULL,
+                    code varchar,
+                    sequence integer DEFAULT 10,
+                    active boolean DEFAULT true,
+                    create_date timestamp without time zone,
+                    write_date timestamp without time zone,
+                    create_uid integer,
+                    write_uid integer
+                );
+            """)
+            self.env.cr.execute("SELECT count(*) FROM jandalah_hr_penalty_type;")
+            count = self.env.cr.fetchone()[0]
+            if count == 0:
+                self.env.cr.execute("""
+                    INSERT INTO jandalah_hr_penalty_type (name, code, sequence, active, create_date, write_date)
+                    VALUES 
+                    ('لفت نظر / إنذار كتابي', 'warning', 10, true, NOW(), NOW()),
+                    ('خصم من الراتب', 'deduction', 20, true, NOW(), NOW()),
+                    ('إحالة للتحقيق الإداري', 'investigation', 30, true, NOW(), NOW()),
+                    ('إيقاف مؤقت عن العمل', 'suspension', 40, true, NOW(), NOW()),
+                    ('إنذار نهائي بالفصل', 'final_warning', 50, true, NOW(), NOW()),
+                    ('تنبيه شفهي موثق', 'verbal_notice', 60, true, NOW(), NOW()),
+                    ('حرمان من المكافأة أو الحافز', 'bonus_denial', 70, true, NOW(), NOW()),
+                    ('نقل تأديبي', 'transfer', 80, true, NOW(), NOW()),
+                    ('استدعاء لمجلس تأديبي', 'disciplinary_board', 90, true, NOW(), NOW());
+                """)
+
+            # Migrate existing records type_id from penalty_type column
+            self.env.cr.execute("""
+                DO $$
+                BEGIN
+                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='jandalah_hr_penalty' AND column_name='type_id') THEN
+                        UPDATE jandalah_hr_penalty jp
+                        SET type_id = jpt.id
+                        FROM jandalah_hr_penalty_type jpt
+                        WHERE jp.type_id IS NULL AND jp.penalty_type = jpt.code;
+                    END IF;
+                END $$;
+            """)
+        except Exception as e_seed:
+            _logger.warning("Could not seed jandalah_hr_penalty_type: %s", e_seed)
+
         try:
             self.env.cr.execute("""
                 UPDATE ir_ui_view 
