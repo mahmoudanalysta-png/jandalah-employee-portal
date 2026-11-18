@@ -1941,7 +1941,7 @@
                                             <span><i class="fa fa-paperclip text-success me-1"/> إرفاق تقرير طبي أو مستند (اختياري)</span>
                                             <small class="text-muted">صورة أو PDF</small>
                                         </label>
-                                        <input type="file" name="attachment" id="leave_attachment_input" class="form-control rounded-3" accept="image/*,application/pdf" capture="environment"/>
+                                        <input type="file" name="attachment" id="leave_attachment_input" class="form-control rounded-3" accept="image/*,application/pdf"/>
                                         <div id="sick_leave_alert" class="alert alert-info py-2 px-3 mt-2 rounded-3 small d-none" style="background-color: #e7f1ff; border: 1px solid #b6d4fe;">
                                             <i class="fa fa-stethoscope me-1 text-primary"/>
                                             <b>تنبيه الإجازة المرضية:</b> يرجى إرفاق التقرير الطبي المعتمد لضمان سرعة اعتماد الطلب من الإدارة.
