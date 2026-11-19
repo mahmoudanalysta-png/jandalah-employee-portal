@@ -42,13 +42,25 @@ class HrEmployee(models.Model):
                     UPDATE hr_employee
                     SET work_radius_meters = 1000
                     WHERE work_radius_meters IS NULL OR work_radius_meters IN (0, 500);
+                """)
+        except Exception as e:
+            _logger.warning("Error updating work_radius_meters: %s", e)
 
-                    -- 1. Make all leave types global across all companies to prevent multi-company AccessError
+        try:
+            with self.env.cr.savepoint():
+                # 1. Make all leave types global across all companies to prevent multi-company AccessError
+                self.env.cr.execute("""
                     UPDATE hr_leave_type
                     SET company_id = NULL
                     WHERE company_id IS NOT NULL;
+                """)
+        except Exception as e:
+            _logger.warning("Error making leave types global: %s", e)
 
-                    -- 2. Grant HR managers (user id=6 and admin) access to all companies in multi-company setup
+        try:
+            with self.env.cr.savepoint():
+                # 2. Grant HR managers (user id=6 and admin) access to all companies in multi-company setup
+                self.env.cr.execute("""
                     INSERT INTO res_company_users_rel (user_id, cid)
                     SELECT u.id, c.id
                     FROM res_users u
@@ -58,18 +70,26 @@ class HrEmployee(models.Model):
                           SELECT 1 FROM res_company_users_rel r
                           WHERE r.user_id = u.id AND r.cid = c.id
                       );
-
-                    -- 3. Cancel old unapproved test permissions from previous days to keep balance fresh
-                    UPDATE hr_leave
-                    SET state = 'cancel'
-                    WHERE state IN ('confirm', 'validate1')
-                      AND holiday_status_id IN (
-                          SELECT id FROM hr_leave_type WHERE name ILIKE '%إذن%' OR name ILIKE '%اذن%'
-                      )
-                      AND create_date < CURRENT_DATE;
                 """)
-        except Exception:
-            pass
+        except Exception as e:
+            _logger.warning("Error granting HR manager company access: %s", e)
+
+        try:
+            with self.env.cr.savepoint():
+                # 3. Cancel old unapproved test permissions from previous days to keep balance fresh
+                perm_types = self.env['hr.leave.type'].sudo().search([
+                    '|', ('name', 'ilike', 'إذن'), ('name', 'ilike', 'اذن')
+                ])
+                if perm_types:
+                    old_leaves = self.env['hr.leave'].sudo().search([
+                        ('holiday_status_id', 'in', perm_types.ids),
+                        ('state', 'in', ['confirm', 'validate1']),
+                        ('create_date', '<', fields.Date.today()),
+                    ])
+                    if old_leaves:
+                        old_leaves.sudo().write({'state': 'cancel'})
+        except Exception as e:
+            _logger.warning("Error auto-cancelling old test permissions: %s", e)
         try:
             with self.env.cr.savepoint():
                 lt_model = self.env['hr.leave.type']
