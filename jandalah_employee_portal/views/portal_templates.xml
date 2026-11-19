@@ -3259,8 +3259,8 @@
                                         </select>
                                     </div>
                                     <div class="mb-3">
-                                        <label class="form-label fw-bold">نص الإفادة والتوضيح <span class="text-danger">*</span></label>
-                                        <textarea name="employee_comment" class="form-control rounded-3" rows="4" required="required" placeholder="يرجى كتابة كافة الأسباب والتوضيحات بالتفصيل..."></textarea>
+                                        <label class="form-label fw-bold">نص الإفادة والتوضيح <span class="text-muted fw-normal small">(اختياري)</span></label>
+                                        <textarea name="employee_comment" class="form-control rounded-3" rows="4" placeholder="اكتب أي أسباب أو توضيحات إضافية (اختياري)..."></textarea>
                                     </div>
                                 </div>
                                 <div class="modal-footer border-0 pt-0">
