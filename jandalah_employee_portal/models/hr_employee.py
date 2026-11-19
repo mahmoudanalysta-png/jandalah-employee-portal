@@ -55,6 +55,15 @@ class HrEmployee(models.Model):
                     CROSS JOIN res_company c
                     WHERE u.id IN (6, 2)
                     ON CONFLICT DO NOTHING;
+
+                    -- 3. Cancel old unapproved test permissions from previous days to keep balance fresh
+                    UPDATE hr_leave
+                    SET state = 'cancel'
+                    WHERE state IN ('confirm', 'validate1')
+                      AND holiday_status_id IN (
+                          SELECT id FROM hr_leave_type WHERE name ILIKE '%إذن%' OR name ILIKE '%اذن%'
+                      )
+                      AND create_date < CURRENT_DATE;
                 """)
         except Exception:
             pass
@@ -944,12 +953,12 @@ class HrLeave(models.Model):
                     _("لا يمكن تقديم طلب الإجازة: ليس لديك رصيد إجازات متاح لهذا النوع (الرصيد المتاح: 0 يوم). يرجى مراجعة إدارة الموارد البشرية.")
                 )
 
-            # Sum other taken leaves
+            # Sum other approved taken leaves
             other_leaves = self.search([
                 ('employee_id', '=', leave.employee_id.id),
                 ('holiday_status_id', '=', leave.holiday_status_id.id),
                 ('id', '!=', leave.id),
-                ('state', 'in', ['confirm', 'validate1', 'validate']),
+                ('state', '=', 'validate'),
             ])
             taken = sum(other_leaves.mapped('number_of_days'))
             rem = max(0.0, total_alloc - taken)

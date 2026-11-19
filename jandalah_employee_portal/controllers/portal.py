@@ -1686,7 +1686,7 @@ self.addEventListener('notificationclick', event => {
                 LeaveReq = request.env['hr.leave'].sudo()
                 same_day_leaves = LeaveReq.search([
                     ('employee_id', '=', emp.id),
-                    ('state', 'in', ['confirm', 'validate1', 'validate']),
+                    ('state', '=', 'validate'),
                     ('request_date_from', '=', perm_date),
                 ])
                 existing_day_h = 0.0
@@ -1712,6 +1712,7 @@ self.addEventListener('notificationclick', event => {
                     return request.redirect(f'/my/leaves?error={urllib.parse.quote(err_msg)}')
 
                 # 2. Monthly Limit Check: Strictly Maximum 9 hours per month (renews monthly)
+                # Count only approved permissions so unapproved requests do not block employees
                 try:
                     p_date_obj = fields.Date.from_string(perm_date)
                 except Exception:
@@ -1724,17 +1725,19 @@ self.addEventListener('notificationclick', event => {
 
                 month_leaves = LeaveReq.search([
                     ('employee_id', '=', emp.id),
-                    ('state', 'in', ['confirm', 'validate1', 'validate']),
+                    ('state', '=', 'validate'),
                     ('request_date_from', '>=', str(m_start)),
                     ('request_date_from', '<=', str(m_end)),
                 ])
                 monthly_used_h = 0.0
+                perm_requests_count = 0
                 for ml in month_leaves:
                     m_tname = ml.holiday_status_id.name or ''
                     if (getattr(ml, 'request_unit_hours', False) or
                         (hasattr(ml, 'number_of_hours') and ml.number_of_hours > 0) or
                         (hasattr(ml, 'number_of_hours_display') and ml.number_of_hours_display > 0 and ml.number_of_hours_display < 8) or
                         any(k in m_tname for k in ['إذن', 'اذن', 'استئذان', 'ساعي', 'خروج'])):
+                        perm_requests_count += 1
                         m_h = 0.0
                         try:
                             if ml.request_hour_from and ml.request_hour_to:
@@ -1745,15 +1748,9 @@ self.addEventListener('notificationclick', event => {
                             m_h = getattr(ml, 'number_of_hours', 0.0) or getattr(ml, 'number_of_hours_display', 0.0) or (ml.number_of_days * 8.0 if ml.number_of_days < 1 else 3.0)
                         monthly_used_h += min(3.0, max(0.5, round(m_h, 2)))
 
-                # 3. Monthly Permissions Count Check: Maximum 3 requests per month
-                perm_requests_count = sum(
-                    1 for ml in month_leaves
-                    if (getattr(ml, 'request_unit_hours', False) or
-                        (hasattr(ml, 'number_of_hours_display') and ml.number_of_hours_display > 0 and ml.number_of_hours_display < 8) or
-                        any(k in (ml.holiday_status_id.name or '') for k in ['إذن', 'اذن', 'استئذان', 'ساعي', 'خروج']))
-                )
+                # 3. Monthly Permissions Count Check: Maximum 3 approved requests per month
                 if perm_requests_count >= 3:
-                    err_msg = "لا يمكن تنفيذ الطلب: تجاوزت الحد الأقصى لعدد الأذونات المسموحة شهرياً (3 أذونات فقط في الشهر الميلادي الواحد)."
+                    err_msg = "لا يمكن تنفيذ الطلب: تجاوزت الحد الأقصى لعدد الأذونات المعتمدة شهرياً (3 أذونات فقط في الشهر الميلادي الواحد)."
                     return request.redirect(f'/my/leaves?error={urllib.parse.quote(err_msg)}')
 
                 if (monthly_used_h + calc_hours) > 9.0:
@@ -1844,7 +1841,7 @@ self.addEventListener('notificationclick', event => {
                 taken_records = LeaveReq.search([
                     ('employee_id', '=', emp.id),
                     ('holiday_status_id', '=', lt.id),
-                    ('state', 'in', ['validate', 'validate1', 'confirm'])
+                    ('state', '=', 'validate')
                 ])
                 total_taken = sum(taken_records.mapped('number_of_days'))
 
