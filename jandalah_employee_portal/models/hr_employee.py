@@ -92,6 +92,16 @@ class HrEmployee(models.Model):
             _logger.warning("Error auto-cancelling old test permissions: %s", e)
         try:
             with self.env.cr.savepoint():
+                self.env.cr.execute("""
+                    UPDATE resource_calendar_attendance
+                    SET duration_hours = ROUND((hour_to - hour_from)::numeric, 2)
+                    WHERE hour_to IS NOT NULL AND hour_from IS NOT NULL AND (duration_hours IS NULL OR duration_hours = 0);
+                """)
+        except Exception as e:
+            _logger.warning("Error computing duration_hours on attendance: %s", e)
+
+        try:
+            with self.env.cr.savepoint():
                 lt_model = self.env['hr.leave.type']
                 p_type = lt_model.search([('name', '=', 'إذن')], limit=1)
                 if not p_type:
@@ -1153,3 +1163,25 @@ class HrLeave(models.Model):
                     cur_date += datetime.timedelta(days=1)
         except Exception as e:
             _logger.exception("Error in _sync_leaves_to_attendance: %s", e)
+
+
+class ResourceCalendarAttendance(models.Model):
+    _inherit = 'resource.calendar.attendance'
+
+    duration_hours = fields.Float(
+        string='عدد الساعات',
+        compute='_compute_duration_hours',
+        store=True,
+        readonly=True,
+        digits=(12, 2),
+        help='إجمالي عدد ساعات فترة العمل (العمل إلى - العمل من)'
+    )
+
+    @api.depends('hour_from', 'hour_to')
+    def _compute_duration_hours(self):
+        for rec in self:
+            if rec.hour_to is not False and rec.hour_from is not False:
+                rec.duration_hours = max(0.0, round(rec.hour_to - rec.hour_from, 2))
+            else:
+                rec.duration_hours = 0.0
+

@@ -573,4 +573,16 @@
         </field>
     </record>
 
+    <!-- Working Schedule Attendance Tree Inherit: Duration in Hours -->
+    <record id="view_resource_calendar_attendance_tree_inherit_duration" model="ir.ui.view">
+        <field name="name">resource.calendar.attendance.tree.inherit.duration</field>
+        <field name="model">resource.calendar.attendance</field>
+        <field name="inherit_id" ref="resource.view_resource_calendar_attendance_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='hour_to']" position="after">
+                <field name="duration_hours" widget="float_time" sum="إجمالي الساعات"/>
+            </xpath>
+        </field>
+    </record>
+
 </odoo>

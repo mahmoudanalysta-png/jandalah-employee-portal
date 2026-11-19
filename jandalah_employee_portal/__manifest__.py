@@ -12,6 +12,7 @@
         'portal',
         'auth_signup',
         'hr',
+        'resource',
         'hr_attendance',
         'hr_holidays',
     ],
