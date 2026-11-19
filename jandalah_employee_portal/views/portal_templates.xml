@@ -1637,7 +1637,7 @@
                                             <t t-if="lb['max'] &gt; 0">
                                                 <div class="progress mt-2" style="height:5px;">
                                                     <div t-attf-class="progress-bar bg-#{lb['color']}"
-                                                         t-attf-style="width:#{[lb['remaining']/lb['max']*100, 100][0] if lb['remaining']/lb['max']*100 &lt; 100 else 100}%">
+                                                         t-attf-style="width: #{int(min(100, (lb['remaining'] * 100.0 / lb['max']))) if lb['max'] else 0}%;">
                                                     </div>
                                                 </div>
                                                 <div class="small text-muted mt-1">من <t t-esc="lb['max']"/> يوم</div>
