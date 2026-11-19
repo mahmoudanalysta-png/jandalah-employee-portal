@@ -1702,16 +1702,11 @@
                                 <div class="col-7">
                                     <div class="bg-light p-2 rounded-3 border">
                                         <small class="text-muted d-block">
-                                            <t t-if="l.get('is_hourly')">تاريخ الإذن الساعي:</t>
-                                            <t t-else="">الفترة المطلوبة:</t>
+                                            <t t-esc="l.get('date_label') or ('تاريخ الإذن الساعي:' if l.get('is_hourly') else 'تاريخ الإجازة:')"/>
                                         </small>
-                                        <t t-if="l.get('is_hourly')">
-                                            <span class="fw-bold text-dark small d-block"><t t-esc="l['request_date_from']"/></span>
-                                        </t>
-                                        <t t-else="">
-                                            <span class="fw-bold text-dark small d-block">من <t t-esc="l['request_date_from']"/></span>
-                                            <span class="fw-bold text-dark small d-block">إلى <t t-esc="l['request_date_to']"/></span>
-                                        </t>
+                                        <span class="fw-bold text-dark small d-block">
+                                            <t t-esc="l.get('date_display') or l.get('request_date_from')"/>
+                                        </span>
                                     </div>
                                 </div>
                                 <div class="col-5">
@@ -1719,11 +1714,13 @@
                                         <small class="text-muted d-block">المدة:</small>
                                         <t t-if="l.get('is_hourly')">
                                             <span class="badge bg-primary text-white rounded-pill px-2.5 py-1.5 fs-6">
-                                                <i class="fa fa-clock-o me-1"/> <t t-esc="l.get('hours_display') or 'إذن ساعات'"/>
+                                                <i class="fa fa-clock-o me-1"/> <t t-esc="l.get('duration_display') or l.get('hours_display') or 'إذن ساعات'"/>
                                             </span>
                                         </t>
                                         <t t-else="">
-                                            <span class="fw-bold text-primary fs-5"><t t-esc="l['number_of_days']"/> يوم</span>
+                                            <span class="fw-bold text-primary fs-6">
+                                                <t t-esc="l.get('duration_display') or (str(l['number_of_days']) + ' يوم')"/>
+                                            </span>
                                         </t>
                                     </div>
                                 </div>
@@ -1787,16 +1784,16 @@
                                         <td class="fw-bold text-dark">
                                             <t t-esc="l['holiday_type']"/>
                                         </td>
-                                        <td><t t-esc="l['request_date_from']"/></td>
+                                        <td><t t-esc="l.get('date_display') or (l['request_date_from'] if l['request_date_from'] == l['request_date_to'] else ('من ' + str(l['request_date_from']) + ' إلى ' + str(l['request_date_to'])))"/></td>
                                         <td><t t-esc="l['request_date_to']"/></td>
                                         <td class="fw-bold">
                                             <t t-if="l.get('is_hourly')">
                                                 <span class="badge bg-primary text-white rounded-pill px-2.5 py-1">
-                                                    <i class="fa fa-clock-o me-1"/> <t t-esc="l.get('hours_display') or 'إذن ساعات'"/>
+                                                    <i class="fa fa-clock-o me-1"/> <t t-esc="l.get('duration_display') or l.get('hours_display') or 'إذن ساعات'"/>
                                                 </span>
                                             </t>
                                             <t t-else="">
-                                                <span class="text-primary"><t t-esc="l['number_of_days']"/> يوم</span>
+                                                <span class="text-primary"><t t-esc="l.get('duration_display') or (str(l['number_of_days']) + ' يوم')"/></span>
                                             </t>
                                         </td>
                                         <td class="text-muted small">
@@ -2540,16 +2537,11 @@
                                 <div class="col-7">
                                     <div class="bg-light p-2 rounded-3 border">
                                         <small class="text-muted d-block">
-                                            <t t-if="pl.get('is_hourly')">تاريخ الإذن الساعي:</t>
-                                            <t t-else="">الفترة المطلوبة:</t>
+                                            <t t-esc="pl.get('date_label') or ('تاريخ الإذن الساعي:' if pl.get('is_hourly') else 'تاريخ الإجازة:')"/>
                                         </small>
-                                        <t t-if="pl.get('is_hourly')">
-                                            <span class="fw-bold text-dark small d-block"><t t-esc="pl['request_date_from']"/></span>
-                                        </t>
-                                        <t t-else="">
-                                            <span class="fw-bold text-dark small d-block">من <t t-esc="pl['request_date_from']"/></span>
-                                            <span class="fw-bold text-dark small d-block">إلى <t t-esc="pl['request_date_to']"/></span>
-                                        </t>
+                                        <span class="fw-bold text-dark small d-block">
+                                            <t t-esc="pl.get('date_display') or pl.get('request_date_from')"/>
+                                        </span>
                                     </div>
                                 </div>
                                 <div class="col-5">
@@ -2557,11 +2549,13 @@
                                         <small class="text-muted d-block">المدة:</small>
                                         <t t-if="pl.get('is_hourly')">
                                             <span class="badge bg-primary text-white rounded-pill px-2.5 py-1.5 fs-6">
-                                                <i class="fa fa-clock-o me-1"/> <t t-esc="pl.get('hours_display') or 'إذن ساعات'"/>
+                                                <i class="fa fa-clock-o me-1"/> <t t-esc="pl.get('duration_display') or pl.get('hours_display') or 'إذن ساعات'"/>
                                             </span>
                                         </t>
                                         <t t-else="">
-                                            <span class="fw-bold text-primary fs-5"><t t-esc="pl['number_of_days']"/> يوم</span>
+                                            <span class="fw-bold text-primary fs-6">
+                                                <t t-esc="pl.get('duration_display') or (str(pl['number_of_days']) + ' يوم')"/>
+                                            </span>
                                         </t>
                                     </div>
                                 </div>
@@ -2662,11 +2656,11 @@
                                         <td class="fw-bold">
                                             <t t-if="pl.get('is_hourly')">
                                                 <span class="badge bg-primary text-white rounded-pill px-2.5 py-1">
-                                                    <i class="fa fa-clock-o me-1"/> <t t-esc="pl.get('hours_display') or 'إذن ساعات'"/>
+                                                    <i class="fa fa-clock-o me-1"/> <t t-esc="pl.get('duration_display') or pl.get('hours_display') or 'إذن ساعات'"/>
                                                 </span>
                                             </t>
                                             <t t-else="">
-                                                <span class="text-primary"><t t-esc="pl['number_of_days']"/> يوم</span>
+                                                <span class="text-primary"><t t-esc="pl.get('duration_display') or (str(pl['number_of_days']) + ' يوم')"/></span>
                                             </t>
                                         </td>
                                         <td class="text-muted small">
@@ -2780,7 +2774,16 @@
                                         <td class="text-start ps-4 fw-bold text-dark"><t t-esc="hl['employee_name']"/></td>
                                         <td><t t-esc="hl['holiday_type']"/></td>
                                         <td class="small text-muted"><t t-esc="hl['request_date_from']"/> إلى <t t-esc="hl['request_date_to']"/></td>
-                                        <td class="fw-bold text-primary"><t t-esc="hl['number_of_days']"/> يوم</td>
+                                        <td class="fw-bold">
+                                            <t t-if="hl.get('is_hourly')">
+                                                <span class="badge bg-primary text-white rounded-pill px-2.5 py-1">
+                                                    <i class="fa fa-clock-o me-1"/> <t t-esc="hl.get('duration_display') or hl.get('hours_display') or 'إذن ساعات'"/>
+                                                </span>
+                                            </t>
+                                            <t t-else="">
+                                                <span class="text-primary"><t t-esc="hl.get('duration_display') or (str(hl['number_of_days']) + ' يوم')"/></span>
+                                            </t>
+                                        </td>
                                         <td class="small">
                                             <t t-if="hl['has_attachment']">
                                                 <a t-attf-href="/my/leaves/attachment/#{hl['id']}" target="_blank" class="small text-primary text-decoration-none me-2">

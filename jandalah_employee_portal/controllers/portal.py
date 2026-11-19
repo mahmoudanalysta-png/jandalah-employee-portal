@@ -1502,6 +1502,73 @@ self.addEventListener('notificationclick', event => {
         })
         return request.render('jandalah_employee_portal.portal_my_attendance_view', values)
 
+    @classmethod
+    def _format_leave_display(cls, l):
+        leave_type = l.holiday_status_id.name if l.holiday_status_id else 'إجازة'
+        date_from_val = l.request_date_from or (l.date_from.date() if l.date_from else '')
+        date_to_val = l.request_date_to or (l.date_to.date() if l.date_to else '')
+
+        is_perm = any(k in (leave_type or '') for k in ['إذن', 'اذن', 'استئذان', 'ساعي', 'خروج'])
+        if not is_perm and getattr(l, 'request_unit_hours', False):
+            if l.holiday_status_id and getattr(l.holiday_status_id, 'request_unit', '') == 'hour':
+                is_perm = True
+
+        is_half_day = (
+            getattr(l, 'request_unit_half', False) or
+            (round(l.number_of_days or 0.0, 2) == 0.5) or
+            ('نصف يوم' in (l.name or ''))
+        )
+
+        if is_perm:
+            h_val = 0.0
+            try:
+                if l.request_hour_from and l.request_hour_to:
+                    h_val = float(l.request_hour_to) - float(l.request_hour_from)
+            except Exception:
+                h_val = 0.0
+            if h_val <= 0:
+                h_val = getattr(l, 'number_of_hours_display', 0.0) or (l.number_of_days * 8.0 if l.number_of_days < 1 else 2.0)
+            h_val = min(3.0, max(0.5, round(h_val, 2)))
+            duration_disp = f"{int(h_val)} س" if h_val.is_integer() else f"{h_val:g} س"
+            date_label = "تاريخ الإذن الساعي:"
+            date_disp = str(date_from_val or '-')
+            is_hourly = True
+        elif is_half_day:
+            duration_disp = "نصف يوم (0.5 يوم)"
+            date_label = "تاريخ الإجازة:"
+            date_disp = str(date_from_val or '-')
+            is_hourly = False
+        else:
+            days = round(l.number_of_days or 1.0, 1)
+            if days == 1.0 or days == 1:
+                duration_disp = "يوم واحد"
+            elif days == 2.0 or days == 2:
+                duration_disp = "يومان"
+            elif 3.0 <= days <= 10.0:
+                duration_disp = f"{int(days)} أيام"
+            else:
+                duration_disp = f"{int(days) if days.is_integer() else days:g} يوم"
+
+            if str(date_from_val) == str(date_to_val) or not date_to_val:
+                date_label = "تاريخ الإجازة:"
+                date_disp = str(date_from_val or '-')
+            else:
+                date_label = "فترة الإجازة:"
+                date_disp = f"من {date_from_val} إلى {date_to_val}"
+            is_hourly = False
+
+        return {
+            'is_hourly': is_perm,
+            'is_half_day': is_half_day,
+            'duration_display': duration_disp,
+            'hours_display': duration_disp if is_perm else '',
+            'date_label': date_label,
+            'date_display': date_disp,
+            'holiday_type': leave_type,
+            'date_from_val': date_from_val,
+            'date_to_val': date_to_val,
+        }
+
     @http.route(['/my/leaves', '/my/leaves/page/<int:page>'], type='http', auth='user', website=True)
     def portal_my_leaves(self, page=1, success=None, error=None, **kw):
         emp = self._get_employee()
@@ -1560,27 +1627,7 @@ self.addEventListener('notificationclick', event => {
                 elif 'notes' in l._fields and l.notes:
                     refusal_reason = l.notes
 
-            date_from_val = l.request_date_from or (l.date_from.date() if l.date_from else '')
-            date_to_val = l.request_date_to or (l.date_to.date() if l.date_to else '')
-
-            is_hourly_req = (
-                getattr(l, 'request_unit_hours', False) or
-                (hasattr(l, 'number_of_hours') and l.number_of_hours > 0) or
-                (hasattr(l, 'number_of_hours_display') and l.number_of_hours_display > 0 and l.number_of_hours_display < 8) or
-                any(k in leave_type for k in ['إذن', 'اذن', 'استئذان', 'ساعي', 'خروج'])
-            )
-            hours_disp = ''
-            if is_hourly_req:
-                h_val = 0.0
-                try:
-                    if l.request_hour_from and l.request_hour_to:
-                        h_val = float(l.request_hour_to) - float(l.request_hour_from)
-                except Exception:
-                    h_val = 0.0
-                if h_val <= 0:
-                    h_val = getattr(l, 'number_of_hours', 0.0) or getattr(l, 'number_of_hours_display', 0.0) or (l.number_of_days * 8.0 if l.number_of_days < 1 else 3.0)
-                h_val = min(3.0, max(0.5, round(h_val, 2)))
-                hours_disp = f"{int(h_val)} س" if h_val.is_integer() else f"{h_val:g} س"
+            fmt = self._format_leave_display(l)
 
             state_labels = {
                 'confirm': 'بانتظار موافقة المدير المباشر',
@@ -1592,12 +1639,16 @@ self.addEventListener('notificationclick', event => {
             }
             leaves_data.append({
                 'id': l.id,
-                'holiday_type': leave_type,
-                'request_date_from': str(date_from_val or '-'),
-                'request_date_to': str(date_to_val or '-'),
+                'holiday_type': fmt['holiday_type'],
+                'request_date_from': str(fmt['date_from_val'] or '-'),
+                'request_date_to': str(fmt['date_to_val'] or '-'),
+                'date_label': fmt['date_label'],
+                'date_display': fmt['date_display'],
+                'duration_display': fmt['duration_display'],
                 'number_of_days': l.number_of_days or 1.0,
-                'is_hourly': is_hourly_req,
-                'hours_display': hours_disp,
+                'is_hourly': fmt['is_hourly'],
+                'is_half_day': fmt['is_half_day'],
+                'hours_display': fmt['hours_display'],
                 'name': l.name or '',
                 'state': l.state,
                 'state_desc': state_labels.get(l.state, l.state),
@@ -2146,39 +2197,22 @@ self.addEventListener('notificationclick', event => {
             except Exception:
                 pass
 
-            date_from_val = l.request_date_from or (l.date_from.date() if l.date_from else '')
-            date_to_val = l.request_date_to or (l.date_to.date() if l.date_to else '')
-
-            is_hourly_req = (
-                getattr(l, 'request_unit_hours', False) or
-                (hasattr(l, 'number_of_hours') and l.number_of_hours > 0) or
-                (hasattr(l, 'number_of_hours_display') and l.number_of_hours_display > 0 and l.number_of_hours_display < 8) or
-                any(k in leave_type for k in ['إذن', 'اذن', 'استئذان', 'ساعي', 'خروج'])
-            )
-            hours_disp = ''
-            if is_hourly_req:
-                h_val = 0.0
-                try:
-                    if l.request_hour_from and l.request_hour_to:
-                        h_val = float(l.request_hour_to) - float(l.request_hour_from)
-                except Exception:
-                    h_val = 0.0
-                if h_val <= 0:
-                    h_val = getattr(l, 'number_of_hours', 0.0) or getattr(l, 'number_of_hours_display', 0.0) or (l.number_of_days * 8.0 if l.number_of_days < 1 else 3.0)
-                h_val = min(3.0, max(0.5, round(h_val, 2)))
-                hours_disp = f"{int(h_val)} س" if h_val.is_integer() else f"{h_val:g} س"
-
+            fmt = self._format_leave_display(l)
             pending_leaves_data.append({
                 'id': l.id,
                 'employee_name': emp_name,
                 'avatar_char': avatar_char,
                 'job_title': job_title,
-                'holiday_type': leave_type,
-                'request_date_from': str(date_from_val or '-'),
-                'request_date_to': str(date_to_val or '-'),
+                'holiday_type': fmt['holiday_type'],
+                'request_date_from': str(fmt['date_from_val'] or '-'),
+                'request_date_to': str(fmt['date_to_val'] or '-'),
+                'date_label': fmt['date_label'],
+                'date_display': fmt['date_display'],
+                'duration_display': fmt['duration_display'],
                 'number_of_days': l.number_of_days or 1.0,
-                'is_hourly': is_hourly_req,
-                'hours_display': hours_disp,
+                'is_hourly': fmt['is_hourly'],
+                'is_half_day': fmt['is_half_day'],
+                'hours_display': fmt['hours_display'],
                 'name': l.name or '',
                 'has_attachment': has_attachment,
             })
@@ -2208,30 +2242,21 @@ self.addEventListener('notificationclick', event => {
                 elif 'notes' in l._fields and l.notes:
                     refusal_reason = l.notes
 
-            date_from_val = l.request_date_from or (l.date_from.date() if l.date_from else '')
-            date_to_val = l.request_date_to or (l.date_to.date() if l.date_to else '')
-
-            is_hourly_hist = (
-                getattr(l, 'request_unit_hours', False) or
-                (hasattr(l, 'number_of_hours_display') and l.number_of_hours_display > 0 and l.number_of_hours_display < 8) or
-                any(k in leave_type for k in ['إذن', 'اذن', 'استئذان', 'ساعي', 'خروج'])
-            )
-            hours_disp_hist = ''
-            if is_hourly_hist:
-                h_val_hist = getattr(l, 'number_of_hours_display', 0.0) or (l.number_of_days * 8.0 if l.number_of_days < 1 else 3.0)
-                h_val_hist = min(h_val_hist, 3.0)
-                hours_disp_hist = f"{int(h_val_hist)} س" if h_val_hist.is_integer() else f"{h_val_hist:g} س"
-
+            fmt = self._format_leave_display(l)
             history_leaves_data.append({
                 'id': l.id,
                 'employee_name': emp_name,
                 'job_title': job_title,
-                'holiday_type': leave_type,
-                'request_date_from': str(date_from_val or '-'),
-                'request_date_to': str(date_to_val or '-'),
+                'holiday_type': fmt['holiday_type'],
+                'request_date_from': str(fmt['date_from_val'] or '-'),
+                'request_date_to': str(fmt['date_to_val'] or '-'),
+                'date_label': fmt['date_label'],
+                'date_display': fmt['date_display'],
+                'duration_display': fmt['duration_display'],
                 'number_of_days': l.number_of_days or 1.0,
-                'is_hourly': is_hourly_hist,
-                'hours_display': hours_disp_hist,
+                'is_hourly': fmt['is_hourly'],
+                'is_half_day': fmt['is_half_day'],
+                'hours_display': fmt['hours_display'],
                 'state': l.state,
                 'refusal_reason': refusal_reason,
                 'has_attachment': has_attachment,
