@@ -842,6 +842,18 @@ class HrLeave(models.Model):
                     pass
         return records
 
+    @api.constrains('date_from', 'date_to', 'employee_id')
+    def _check_date(self):
+        """Allow hourly exit permissions to coexist on work days without false full-day overlap blocks."""
+        if self.env.context.get('leave_skip_date_check', False):
+            return
+        non_perm_leaves = self.filtered(lambda l: not (
+            getattr(l, 'request_unit_hours', False) or
+            any(k in (l.holiday_status_id.name or '') for k in ['إذن', 'اذن', 'استئذان', 'ساعي', 'خروج'])
+        ))
+        if non_perm_leaves:
+            super(HrLeave, non_perm_leaves)._check_date()
+
     @api.constrains('holiday_status_id', 'employee_id', 'request_date_from', 'number_of_hours_display', 'request_unit_hours')
     def _check_permission_hours_limits(self):
         for leave in self:

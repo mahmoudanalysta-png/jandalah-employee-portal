@@ -1763,6 +1763,8 @@ self.addEventListener('notificationclick', event => {
                 ht = [int(x) for x in h_to.split(':')]
                 h_from_float = round(hf[0] + hf[1] / 60.0, 2)
                 h_to_float = round(ht[0] + ht[1] / 60.0, 2)
+                if h_to_float <= h_from_float:
+                    h_to_float = round(h_from_float + calc_hours, 2)
 
                 leave_vals = {
                     'holiday_status_id': lt.id,
@@ -1788,7 +1790,7 @@ self.addEventListener('notificationclick', event => {
                 try:
                     d_obj = fields.Date.from_string(perm_date)
                     dt_f = user_tz.localize(datetime.combine(d_obj, datetime.time(hf[0], hf[1])))
-                    dt_t = user_tz.localize(datetime.combine(d_obj, datetime.time(ht[0], ht[1])))
+                    dt_t = dt_f + timedelta(hours=calc_hours)
                     leave_vals['date_from'] = dt_f.astimezone(pytz.utc).replace(tzinfo=None)
                     leave_vals['date_to'] = dt_t.astimezone(pytz.utc).replace(tzinfo=None)
                 except Exception as e_time:
@@ -1866,7 +1868,7 @@ self.addEventListener('notificationclick', event => {
                     if 'request_unit_half' in request.env['hr.leave']._fields:
                         leave_vals['request_unit_half'] = True
 
-            new_leave = request.env['hr.leave'].sudo().create(leave_vals)
+            new_leave = request.env['hr.leave'].sudo().with_context(leave_skip_date_check=True).create(leave_vals)
 
             # Mobile Push Notification to direct supervisor
             if emp.parent_id:
