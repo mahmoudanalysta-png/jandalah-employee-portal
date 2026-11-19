@@ -54,7 +54,10 @@ class HrEmployee(models.Model):
                     FROM res_users u
                     CROSS JOIN res_company c
                     WHERE u.id IN (6, 2)
-                    ON CONFLICT DO NOTHING;
+                      AND NOT EXISTS (
+                          SELECT 1 FROM res_company_users_rel r
+                          WHERE r.user_id = u.id AND r.cid = c.id
+                      );
 
                     -- 3. Cancel old unapproved test permissions from previous days to keep balance fresh
                     UPDATE hr_leave
@@ -833,7 +836,15 @@ class HrLeave(models.Model):
             if not is_perm:
                 continue
 
-            hours = getattr(leave, 'number_of_hours_display', 0.0) or (leave.number_of_days * 8.0 if leave.number_of_days < 1 else 3.0)
+            hours = 0.0
+            try:
+                if leave.request_hour_from and leave.request_hour_to:
+                    hours = float(leave.request_hour_to) - float(leave.request_hour_from)
+            except Exception:
+                hours = 0.0
+            if hours <= 0:
+                hours = getattr(leave, 'number_of_hours', 0.0) or getattr(leave, 'number_of_hours_display', 0.0) or (leave.number_of_days * 8.0 if leave.number_of_days < 1 else 3.0)
+            hours = min(3.0, max(0.5, round(hours, 2)))
 
             # 1. Daily limit check: max 3 hours
             if hours > 3.0:
@@ -843,18 +854,26 @@ class HrLeave(models.Model):
             if not req_date or not leave.employee_id:
                 continue
 
-            # Check same-day total permissions
+            # Check same-day total permissions (only approved permissions)
             same_day_leaves = self.search([
                 ('employee_id', '=', leave.employee_id.id),
                 ('id', '!=', leave.id),
-                ('state', 'in', ['confirm', 'validate1', 'validate']),
+                ('state', '=', 'validate'),
                 ('request_date_from', '=', req_date),
             ])
-            same_day_h = sum(
-                (l.number_of_hours_display or (l.number_of_days * 8.0 if l.number_of_days < 1 else 3.0))
-                for l in same_day_leaves
-                if (getattr(l, 'request_unit_hours', False) or any(k in (l.holiday_status_id.name or '') for k in ['إذن', 'اذن', 'استئذان', 'ساعي', 'خروج']))
-            )
+            same_day_h = 0.0
+            for l in same_day_leaves:
+                if (getattr(l, 'request_unit_hours', False) or any(k in (l.holiday_status_id.name or '') for k in ['إذن', 'اذن', 'استئذان', 'ساعي', 'خروج'])):
+                    lh = 0.0
+                    try:
+                        if l.request_hour_from and l.request_hour_to:
+                            lh = float(l.request_hour_to) - float(l.request_hour_from)
+                    except Exception:
+                        lh = 0.0
+                    if lh <= 0:
+                        lh = getattr(l, 'number_of_hours', 0.0) or getattr(l, 'number_of_hours_display', 0.0) or (l.number_of_days * 8.0 if l.number_of_days < 1 else 3.0)
+                    same_day_h += min(3.0, max(0.5, round(lh, 2)))
+
             if same_day_h + hours > 3.0:
                 raise exceptions.ValidationError(
                     _("لا يمكن اعتماد الطلب: تجاوزت الحد الأقصى اليومي للأذونات (3 ساعات). يوجد بالفعل %(existing)s س مسجلة للموظف في هذا اليوم.") % {
@@ -862,7 +881,7 @@ class HrLeave(models.Model):
                     }
                 )
 
-            # 2. Monthly limit check: max 9 hours per calendar month
+            # 2. Monthly limit check: max 9 hours per calendar month (only approved permissions)
             if isinstance(req_date, str):
                 req_d = datetime.datetime.strptime(req_date, '%Y-%m-%d').date()
             else:
@@ -876,7 +895,7 @@ class HrLeave(models.Model):
             month_leaves = self.search([
                 ('employee_id', '=', leave.employee_id.id),
                 ('id', '!=', leave.id),
-                ('state', 'in', ['confirm', 'validate1', 'validate']),
+                ('state', '=', 'validate'),
                 ('request_date_from', '>=', str(m_start)),
                 ('request_date_from', '<=', str(m_end)),
             ])
@@ -885,16 +904,24 @@ class HrLeave(models.Model):
                 if (getattr(l, 'request_unit_hours', False) or any(k in (l.holiday_status_id.name or '') for k in ['إذن', 'اذن', 'استئذان', 'ساعي', 'خروج']))
             ]
 
-            # Monthly count check: strictly max 3 permissions per calendar month
+            # Monthly count check: strictly max 3 approved permissions per calendar month
             if len(perm_month_leaves) >= 3:
                 raise exceptions.ValidationError(
                     _("لا يمكن اعتماد الطلب: استنفذت الحد الأقصى لعدد الأذونات المسموحة شهرياً (3 أذونات فقط في الشهر الميلادي الواحد).")
                 )
 
-            month_h = sum(
-                (l.number_of_hours_display or (l.number_of_days * 8.0 if l.number_of_days < 1 else 3.0))
-                for l in perm_month_leaves
-            )
+            month_h = 0.0
+            for l in perm_month_leaves:
+                lh = 0.0
+                try:
+                    if l.request_hour_from and l.request_hour_to:
+                        lh = float(l.request_hour_to) - float(l.request_hour_from)
+                except Exception:
+                    lh = 0.0
+                if lh <= 0:
+                    lh = getattr(l, 'number_of_hours', 0.0) or getattr(l, 'number_of_hours_display', 0.0) or (l.number_of_days * 8.0 if l.number_of_days < 1 else 3.0)
+                month_h += min(3.0, max(0.5, round(lh, 2)))
+
             if month_h + hours > 9.0:
                 rem_m = max(0.0, 9.0 - month_h)
                 raise exceptions.ValidationError(

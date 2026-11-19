@@ -1657,7 +1657,7 @@
                                         <div class="small text-muted mt-1">ساعات متبقية</div>
                                         <div class="progress mt-2" style="height:5px;">
                                             <div class="progress-bar bg-primary"
-                                                 t-attf-style="width:#{[monthly_perm_remaining/9.0*100, 100][0] if monthly_perm_remaining/9.0*100 &lt; 100 else 100}%">
+                                                 t-attf-style="width: #{int(min(100, ((monthly_perm_remaining or 0) * 100.0 / 9.0)))}%;">
                                             </div>
                                         </div>
                                         <div class="small text-muted mt-1">من 9 س شهرياً (<t t-esc="monthly_perm_count_remaining or 3"/> من 3 أذونات)</div>

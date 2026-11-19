@@ -1625,6 +1625,7 @@ self.addEventListener('notificationclick', event => {
             'monthly_perm_remaining': monthly_perm_remaining,
             'monthly_perm_text': monthly_perm_text,
             'monthly_perm_month_name': monthly_perm_month_name,
+            'monthly_perm_count_remaining': leave_info.get('monthly_perm_count_remaining', 3),
             'page_name': 'leaves',
             'pager': pager,
             'success': success,
@@ -1912,7 +1913,7 @@ self.addEventListener('notificationclick', event => {
 
             return request.redirect('/my/leaves?success=1')
         except Exception as e:
-            return request.redirect(f'/my/leaves?error={str(e)}')
+            return request.redirect(f'/my/leaves?error={urllib.parse.quote(str(e))}')
 
     @http.route('/my/leaves/attachment/<int:leave_id>', type='http', auth='user', website=True)
     def portal_leave_attachment(self, leave_id, **kw):
@@ -2361,7 +2362,7 @@ self.addEventListener('notificationclick', event => {
                 return request.redirect('/my/team/leaves?success=refused')
         except Exception as e:
             _logger.error("Error executing supervisor leave action: %s", e)
-            return request.redirect(f'/my/team/leaves?error={str(e)}')
+            return request.redirect(f'/my/team/leaves?error={urllib.parse.quote(str(e))}')
 
 
     # =========================================================================
@@ -2591,7 +2592,7 @@ self.addEventListener('notificationclick', event => {
             return request.redirect('/my/penalties?success=responded')
         except Exception as e:
             _logger.error("Error recording penalty response: %s", e)
-            return request.redirect(f'/my/penalties?error={str(e)}')
+            return request.redirect(f'/my/penalties?error={urllib.parse.quote(str(e))}')
 
     @http.route('/my/penalties/download/<int:penalty_id>', type='http', auth='user', website=True)
     def portal_penalty_download(self, penalty_id, **kw):
@@ -2735,7 +2736,7 @@ self.addEventListener('notificationclick', event => {
             return request.redirect('/my/assets?success=acknowledged')
         except Exception as e:
             _logger.error("Error acknowledging asset: %s", e)
-            return request.redirect(f'/my/assets?error={str(e)}')
+            return request.redirect(f'/my/assets?error={urllib.parse.quote(str(e))}')
 
     @http.route('/my/assets/download/<int:asset_id>', type='http', auth='user', website=True)
     def portal_asset_download(self, asset_id, **kw):
@@ -2773,7 +2774,7 @@ self.addEventListener('notificationclick', event => {
             })
             return request.redirect('/my/assets?success=return_requested')
         except Exception as e:
-            return request.redirect(f'/my/assets?error={str(e)}')
+            return request.redirect(f'/my/assets?error={urllib.parse.quote(str(e))}')
 
 
     # =========================================================================
@@ -2858,7 +2859,7 @@ self.addEventListener('notificationclick', event => {
             return request.redirect('/my/location-requests?success=submitted')
         except Exception as e:
             _logger.error("Error submitting location request: %s", e)
-            return request.redirect(f'/my/location-requests?error={str(e)}')
+            return request.redirect(f'/my/location-requests?error={urllib.parse.quote(str(e))}')
 
     @http.route(['/my/team/location-requests'], type='http', auth='user', website=True)
     def portal_team_location_requests(self, success=None, error=None, **kw):
@@ -2947,4 +2948,4 @@ self.addEventListener('notificationclick', event => {
                 return request.redirect('/my/team/location-requests?success=refused')
         except Exception as e:
             _logger.error("Error executing supervisor location action: %s", e)
-            return request.redirect(f'/my/team/location-requests?error={str(e)}')
+            return request.redirect(f'/my/team/location-requests?error={urllib.parse.quote(str(e))}')
