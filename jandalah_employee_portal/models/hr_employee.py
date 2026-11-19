@@ -42,6 +42,19 @@ class HrEmployee(models.Model):
                     UPDATE hr_employee
                     SET work_radius_meters = 1000
                     WHERE work_radius_meters IS NULL OR work_radius_meters IN (0, 500);
+
+                    -- 1. Make all leave types global across all companies to prevent multi-company AccessError
+                    UPDATE hr_leave_type
+                    SET company_id = NULL
+                    WHERE company_id IS NOT NULL;
+
+                    -- 2. Grant HR managers (user id=6 and admin) access to all companies in multi-company setup
+                    INSERT INTO res_company_users_rel (user_id, cid)
+                    SELECT u.id, c.id
+                    FROM res_users u
+                    CROSS JOIN res_company c
+                    WHERE u.id IN (6, 2)
+                    ON CONFLICT DO NOTHING;
                 """)
         except Exception:
             pass
