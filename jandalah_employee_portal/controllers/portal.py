@@ -337,11 +337,11 @@ class JandalahCustomerPortal(CustomerPortal):
                 ])
                 total_allocated = sum(alloc_records.mapped('number_of_days'))
 
-                # Sum confirmed / validated leaves taken
+                # Sum only validated (approved) leaves taken
                 taken_records = LeaveReq.search([
                     ('employee_id', '=', emp.id),
                     ('holiday_status_id', '=', lt.id),
-                    ('state', 'in', ['validate', 'validate1', 'confirm'])
+                    ('state', '=', 'validate')
                 ])
                 total_taken = sum(taken_records.mapped('number_of_days'))
 
@@ -368,6 +368,7 @@ class JandalahCustomerPortal(CustomerPortal):
             res['balances'] = balances
 
             # 3. Compute current month's permission hours (Limit: 9 hours per month)
+            # IMPORTANT: Deduct ONLY approved permissions (state == 'validate')
             today_d = date.today()
             m_start = today_d.replace(day=1)
             if today_d.month == 12:
@@ -377,17 +378,36 @@ class JandalahCustomerPortal(CustomerPortal):
 
             month_leaves = LeaveReq.search([
                 ('employee_id', '=', emp.id),
-                ('state', 'in', ['confirm', 'validate1', 'validate']),
+                ('state', '=', 'validate'),
                 ('request_date_from', '>=', str(m_start)),
                 ('request_date_from', '<=', str(m_end)),
             ])
             used_h = 0.0
+            perm_count = 0
             for ml in month_leaves:
                 m_tname = ml.holiday_status_id.name or ''
-                if (getattr(ml, 'request_unit_hours', False) or
+                is_perm = (
+                    getattr(ml, 'request_unit_hours', False) or
+                    (hasattr(ml, 'number_of_hours') and ml.number_of_hours > 0) or
                     (hasattr(ml, 'number_of_hours_display') and ml.number_of_hours_display > 0 and ml.number_of_hours_display < 8) or
-                    any(k in m_tname for k in ['إذن', 'اذن', 'استئذان', 'ساعي', 'خروج'])):
-                    h_val = getattr(ml, 'number_of_hours_display', 0.0) or (ml.number_of_days * 8.0 if ml.number_of_days < 1 else 3.0)
+                    any(k in m_tname for k in ['إذن', 'اذن', 'استئذان', 'ساعي', 'خروج'])
+                )
+                if is_perm:
+                    perm_count += 1
+                    h_val = 0.0
+                    try:
+                        if ml.request_hour_from and ml.request_hour_to:
+                            h_val = float(ml.request_hour_to) - float(ml.request_hour_from)
+                    except Exception:
+                        h_val = 0.0
+
+                    if h_val <= 0:
+                        h_val = getattr(ml, 'number_of_hours', 0.0) or getattr(ml, 'number_of_hours_display', 0.0) or 0.0
+
+                    if h_val <= 0:
+                        h_val = round(ml.number_of_days * 8.0, 1) if (ml.number_of_days and ml.number_of_days < 1) else 2.0
+
+                    h_val = min(3.0, max(0.5, round(h_val, 2)))
                     used_h += h_val
 
             rem_h = max(0.0, 9.0 - used_h)
@@ -397,13 +417,7 @@ class JandalahCustomerPortal(CustomerPortal):
             res['monthly_perm_remaining'] = rem_h_disp
             res['monthly_perm_text'] = f"{rem_h_disp} س"
 
-            # Count of permission requests in current month (max 3 per month)
-            perm_count = sum(
-                1 for ml in month_leaves
-                if (getattr(ml, 'request_unit_hours', False) or
-                    (hasattr(ml, 'number_of_hours_display') and ml.number_of_hours_display > 0 and ml.number_of_hours_display < 8) or
-                    any(k in (ml.holiday_status_id.name or '') for k in ['إذن', 'اذن', 'استئذان', 'ساعي', 'خروج']))
-            )
+            # Count of approved permission requests in current month (max 3 per month)
             res['monthly_perm_count_used'] = perm_count
             res['monthly_perm_count_remaining'] = max(0, 3 - perm_count)
             res['monthly_perm_count_text'] = f"{max(0, 3 - perm_count)} من 3 أذونات"
@@ -1551,13 +1565,21 @@ self.addEventListener('notificationclick', event => {
 
             is_hourly_req = (
                 getattr(l, 'request_unit_hours', False) or
+                (hasattr(l, 'number_of_hours') and l.number_of_hours > 0) or
                 (hasattr(l, 'number_of_hours_display') and l.number_of_hours_display > 0 and l.number_of_hours_display < 8) or
                 any(k in leave_type for k in ['إذن', 'اذن', 'استئذان', 'ساعي', 'خروج'])
             )
             hours_disp = ''
             if is_hourly_req:
-                h_val = getattr(l, 'number_of_hours_display', 0.0) or (l.number_of_days * 8.0 if l.number_of_days < 1 else 3.0)
-                h_val = min(h_val, 3.0)
+                h_val = 0.0
+                try:
+                    if l.request_hour_from and l.request_hour_to:
+                        h_val = float(l.request_hour_to) - float(l.request_hour_from)
+                except Exception:
+                    h_val = 0.0
+                if h_val <= 0:
+                    h_val = getattr(l, 'number_of_hours', 0.0) or getattr(l, 'number_of_hours_display', 0.0) or (l.number_of_days * 8.0 if l.number_of_days < 1 else 3.0)
+                h_val = min(3.0, max(0.5, round(h_val, 2)))
                 hours_disp = f"{int(h_val)} س" if h_val.is_integer() else f"{h_val:g} س"
 
             state_labels = {
@@ -1671,9 +1693,18 @@ self.addEventListener('notificationclick', event => {
                 for sdl in same_day_leaves:
                     s_tname = sdl.holiday_status_id.name or ''
                     if (getattr(sdl, 'request_unit_hours', False) or
+                        (hasattr(sdl, 'number_of_hours') and sdl.number_of_hours > 0) or
                         (hasattr(sdl, 'number_of_hours_display') and sdl.number_of_hours_display > 0 and sdl.number_of_hours_display < 8) or
                         any(k in s_tname for k in ['إذن', 'اذن', 'استئذان', 'ساعي', 'خروج'])):
-                        existing_day_h += getattr(sdl, 'number_of_hours_display', 0.0) or (sdl.number_of_days * 8.0 if sdl.number_of_days < 1 else 3.0)
+                        s_h = 0.0
+                        try:
+                            if sdl.request_hour_from and sdl.request_hour_to:
+                                s_h = float(sdl.request_hour_to) - float(sdl.request_hour_from)
+                        except Exception:
+                            s_h = 0.0
+                        if s_h <= 0:
+                            s_h = getattr(sdl, 'number_of_hours', 0.0) or getattr(sdl, 'number_of_hours_display', 0.0) or (sdl.number_of_days * 8.0 if sdl.number_of_days < 1 else 3.0)
+                        existing_day_h += min(3.0, max(0.5, round(s_h, 2)))
 
                 if (existing_day_h + calc_hours) > 3.0:
                     rem_day = max(0.0, 3.0 - existing_day_h)
@@ -1701,9 +1732,18 @@ self.addEventListener('notificationclick', event => {
                 for ml in month_leaves:
                     m_tname = ml.holiday_status_id.name or ''
                     if (getattr(ml, 'request_unit_hours', False) or
+                        (hasattr(ml, 'number_of_hours') and ml.number_of_hours > 0) or
                         (hasattr(ml, 'number_of_hours_display') and ml.number_of_hours_display > 0 and ml.number_of_hours_display < 8) or
                         any(k in m_tname for k in ['إذن', 'اذن', 'استئذان', 'ساعي', 'خروج'])):
-                        monthly_used_h += getattr(ml, 'number_of_hours_display', 0.0) or (ml.number_of_days * 8.0 if ml.number_of_days < 1 else 3.0)
+                        m_h = 0.0
+                        try:
+                            if ml.request_hour_from and ml.request_hour_to:
+                                m_h = float(ml.request_hour_to) - float(ml.request_hour_from)
+                        except Exception:
+                            m_h = 0.0
+                        if m_h <= 0:
+                            m_h = getattr(ml, 'number_of_hours', 0.0) or getattr(ml, 'number_of_hours_display', 0.0) or (ml.number_of_days * 8.0 if ml.number_of_days < 1 else 3.0)
+                        monthly_used_h += min(3.0, max(0.5, round(m_h, 2)))
 
                 # 3. Monthly Permissions Count Check: Maximum 3 requests per month
                 perm_requests_count = sum(
@@ -2111,13 +2151,21 @@ self.addEventListener('notificationclick', event => {
 
             is_hourly_req = (
                 getattr(l, 'request_unit_hours', False) or
+                (hasattr(l, 'number_of_hours') and l.number_of_hours > 0) or
                 (hasattr(l, 'number_of_hours_display') and l.number_of_hours_display > 0 and l.number_of_hours_display < 8) or
                 any(k in leave_type for k in ['إذن', 'اذن', 'استئذان', 'ساعي', 'خروج'])
             )
             hours_disp = ''
             if is_hourly_req:
-                h_val = getattr(l, 'number_of_hours_display', 0.0) or (l.number_of_days * 8.0 if l.number_of_days < 1 else 3.0)
-                h_val = min(h_val, 3.0)
+                h_val = 0.0
+                try:
+                    if l.request_hour_from and l.request_hour_to:
+                        h_val = float(l.request_hour_to) - float(l.request_hour_from)
+                except Exception:
+                    h_val = 0.0
+                if h_val <= 0:
+                    h_val = getattr(l, 'number_of_hours', 0.0) or getattr(l, 'number_of_hours_display', 0.0) or (l.number_of_days * 8.0 if l.number_of_days < 1 else 3.0)
+                h_val = min(3.0, max(0.5, round(h_val, 2)))
                 hours_disp = f"{int(h_val)} س" if h_val.is_integer() else f"{h_val:g} س"
 
             pending_leaves_data.append({
